@@ -10,6 +10,7 @@ from utilities.filters import MultiValueCharFilter
 from netbox_change_control.choices import (
     ChangeRequestPriorityChoices,
     ChangeRequestStatusChoices,
+    ConditionStateChoices,
     MergeCheckStatusChoices,
     ReviewDecisionChoices,
 )
@@ -45,6 +46,10 @@ class PolicyFilterSet(NetBoxModelFilterSet):
     object_type = django_filters.CharFilter(
         method='filter_object_type',
         label=_('Object type (app.model)'),
+    )
+    condition_state = django_filters.MultipleChoiceFilter(
+        choices=ConditionStateChoices,
+        label=_('Condition state'),
     )
     has_conditions = django_filters.BooleanFilter(
         method='filter_has_conditions',
@@ -176,6 +181,10 @@ class ChangeRequestFilterSet(NetBoxModelFilterSet):
         lookup_expr='icontains',
         label=_('Branch (name)'),
     )
+    ref = MultiValueCharFilter(
+        lookup_expr='icontains',
+        label=_('Reference'),
+    )
     branch_deleted = django_filters.BooleanFilter(
         field_name='branch',
         lookup_expr='isnull',
@@ -243,13 +252,16 @@ class ChangeRequestFilterSet(NetBoxModelFilterSet):
 
     class Meta:
         model = ChangeRequest
-        fields = ('id', 'title', 'description', 'auto_merge')
+        fields = ('id', 'ref', 'title', 'description', 'auto_merge')
 
     def search(self, queryset, name, value):
         if not value.strip():
             return queryset
         return queryset.filter(
-            Q(title__icontains=value) | Q(description__icontains=value) | Q(branch_name__icontains=value)
+            Q(ref__icontains=value)
+            | Q(title__icontains=value)
+            | Q(description__icontains=value)
+            | Q(branch_name__icontains=value)
         )
 
     def filter_has_reviews(self, queryset, name, value):

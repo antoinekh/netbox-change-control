@@ -9,6 +9,11 @@
 - The review form's Markdown hint listed examples the live preview already demonstrates.
 - The check badge in the logo was slightly too large against the branch beside it.
 
+### Added
+
+- A `ref` field on a change request, for a ticket id or change number. Shown in the list, filterable on a partial match, covered by the general search, and available through the REST API and bulk edit.
+- Policy conditions now read **both sides of a change** by default, so `status == active` catches an object being switched off as well as one being switched on. Previously only the state the branch left was read, which meant a policy guarding live circuits did not attach to one being decommissioned. A new **Condition state** field on the policy narrows this back to `after` or `before` where that is genuinely wanted.
+
 ## 0.1.0 - 2026-08-27
 
 First release. Policy-driven change control and mandatory review for NetBox branches.

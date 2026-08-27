@@ -11,8 +11,9 @@ from django.test import TestCase
 from netbox_branching.models import ChangeDiff
 from users.models import User
 
+from netbox_change_control.choices import ConditionStateChoices
 from netbox_change_control.models import Policy
-from netbox_change_control.policy import _conditions_match
+from netbox_change_control.policy import _conditions_match, match_policies
 from netbox_change_control.tests.base import make_branch
 
 
@@ -116,3 +117,89 @@ class ConditionMatchingTest(TestCase):
             modified=None,
         )
         self.assertTrue(self._matches({'attr': 'status', 'value': 'active'}))
+
+
+class ConditionStateTest(TestCase):
+    """
+    A change has two sides, and which one a condition reads decides what the policy protects.
+
+    `status == active` read only against the state the branch leaves means "leaves it active".
+    That misses a live circuit being decommissioned, which is the change most in need of a
+    review, so the default reads both sides.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='state-requester')
+
+    def _policy(self, condition_state):
+        return Policy.objects.create(
+            name=f'Active {condition_state}',
+            conditions={'attr': 'status', 'value': 'active'},
+            condition_state=condition_state,
+        )
+
+    def _diff(self, branch, before, after):
+        """
+        One changed object, with a status on each side of the change.
+        """
+        from core.choices import ObjectChangeActionChoices
+        from django.contrib.contenttypes.models import ContentType
+        from netbox_branching.models import ChangeDiff
+
+        return ChangeDiff.objects.create(
+            branch=branch,
+            object_type=ContentType.objects.get_for_model(Policy),
+            object_id=self._policy_target.pk,
+            object_repr='thing',
+            action=ObjectChangeActionChoices.ACTION_UPDATE,
+            original={'status': before},
+            modified={'status': after},
+            last_updated=None,
+        )
+
+    def setUp(self):
+        self._policy_target = Policy.objects.create(name=f'target-{self._testMethodName}')
+        self.branch = make_branch('state', self._testMethodName)
+
+    def _matches(self, policy):
+        return policy.name in [p.name for p, _ in match_policies(self.branch)]
+
+    def test_the_default_catches_an_object_being_switched_off(self):
+        """
+        The case that motivated this: a live circuit being decommissioned.
+        """
+        self._diff(self.branch, before='active', after='decommissioned')
+        self.assertTrue(self._matches(self._policy(ConditionStateChoices.EITHER)))
+
+    def test_the_default_catches_an_object_being_switched_on(self):
+        self._diff(self.branch, before='planned', after='active')
+        self.assertTrue(self._matches(self._policy(ConditionStateChoices.EITHER)))
+
+    def test_after_sees_only_the_state_the_branch_leaves(self):
+        self._diff(self.branch, before='active', after='decommissioned')
+        self.assertFalse(self._matches(self._policy(ConditionStateChoices.AFTER)))
+
+    def test_after_still_catches_a_promotion(self):
+        self._diff(self.branch, before='planned', after='active')
+        self.assertTrue(self._matches(self._policy(ConditionStateChoices.AFTER)))
+
+    def test_before_sees_only_the_state_being_replaced(self):
+        self._diff(self.branch, before='planned', after='active')
+        self.assertFalse(self._matches(self._policy(ConditionStateChoices.BEFORE)))
+
+    def test_before_catches_an_object_being_switched_off(self):
+        self._diff(self.branch, before='active', after='decommissioned')
+        self.assertTrue(self._matches(self._policy(ConditionStateChoices.BEFORE)))
+
+    def test_a_new_policy_defaults_to_either(self):
+        self.assertEqual(Policy.objects.create(name='fresh').condition_state, ConditionStateChoices.EITHER)
+
+    def test_main_is_never_consulted(self):
+        """
+        `current` describes main. Reading it would let a colleague's concurrent edit decide
+        which policies govern this change request.
+        """
+        diff = self._diff(self.branch, before='planned', after='planned')
+        type(diff).objects.filter(pk=diff.pk).update(current={'status': 'active'})
+        self.assertFalse(self._matches(self._policy(ConditionStateChoices.EITHER)))

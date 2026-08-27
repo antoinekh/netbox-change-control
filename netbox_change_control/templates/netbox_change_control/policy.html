@@ -34,7 +34,11 @@
         <tr>
           <th scope="row">{% trans "Conditions" %}</th>
           <td>
-            {% if object.conditions %}<pre class="mb-0">{{ object.conditions|json }}</pre>
+            {% if object.conditions %}
+              <pre class="mb-0">{{ object.conditions|json }}</pre>
+              <div class="small text-muted mt-1">
+                {% trans "Evaluated against:" %} {{ object.get_condition_state_display|lower }}
+              </div>
             {% else %}{{ ''|placeholder }}{% endif %}
           </td>
         </tr>

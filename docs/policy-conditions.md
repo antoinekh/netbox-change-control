@@ -42,7 +42,7 @@ Three things decide whether the condition matches.
 
 **It is evaluated per changed object, and any one match attaches the policy.** A branch touching ten circuits attaches this policy if a single one of them is active.
 
-**It sees the state the branch proposes**, not the state of main. For an edit or a creation that is the object as the branch leaves it; for a deletion it is the object being removed.
+**It reads both sides of the change**, and never the state of main. See [which side a condition reads](#which-side-a-condition-reads) below, which is the part worth understanding before you write a condition on `status`.
 
 **Related objects appear as numeric ids**, because the diff stores them that way. So a site is `{"attr": "site", "value": 5}`, not the site's name. Use the object type scope for anything you would otherwise express as a name, and keep conditions for plain values such as status, a boolean flag, or a string.
 
@@ -51,3 +51,30 @@ Three things decide whether the condition matches.
 
 > [!NOTE]
 > Conditions cost a scan of the branch diff per condition-bearing policy. Policies scoped only by object type cost nothing extra, so prefer the object type scope where it is sufficient.
+
+## Which side a condition reads
+
+A change has two sides: the object **before** it and the object **after** it. Which one the condition reads decides what the policy actually protects, and the two readings differ in a way that matters.
+
+Take `{"attr": "status", "value": "active"}` on circuits. Read only against the state the branch leaves, it does not mean "active circuits". It means **"changes that leave the circuit active"**. Decommissioning a live circuit would not match, and that is the change most likely to cause an outage.
+
+The **Condition state** field on the policy decides which side is read:
+
+| Setting | Reads | Use it for |
+|---|---|---|
+| **Either side of the change** (default) | Both | Protecting what is live: catches a circuit being switched on *and* one being switched off. |
+| **After the change** | The object as the branch leaves it | Reviewing anything being promoted into a state, without catching things leaving it. |
+| **Before the change** | The object as it stands now | Reviewing anything leaving a state, without catching things entering it. |
+
+The default is **either**, because a policy exists to catch changes. When a condition is ambiguous the safe outcome is to attach the policy and ask for a review, not to skip it silently.
+
+A creation has no before, and a deletion has no after, so each of those is matched on the one side it has whatever the setting.
+
+> [!IMPORTANT]
+> `after` and `before` are deliberate narrowings, and getting one wrong fails quietly: no policy attaches, no review is asked for, and nothing on the change request says a protection you expected did not apply. Leave the setting on **either** unless you can say precisely why not.
+
+### Main is never consulted
+
+The diff also holds `current`, the object as it stands in main right now. Conditions never read it.
+
+If they did, a colleague editing the same object on main could pull your change request into a policy, or push it out of one, without touching your branch. Which policies govern a change should depend on the change.

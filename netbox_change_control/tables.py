@@ -22,6 +22,7 @@ class PolicyTable(NetBoxTable):
         url_params={'policy_id': 'pk'},
         verbose_name=_('Rules'),
     )
+    condition_state = columns.ChoiceFieldColumn(verbose_name=_('Condition state'))
     checks = columns.ArrayColumn(verbose_name=_('Required checks'))
     tags = columns.TagColumn(url_name='plugins:netbox_change_control:policy_list')
 
@@ -35,6 +36,7 @@ class PolicyTable(NetBoxTable):
             'weight',
             'object_types',
             'rule_count',
+            'condition_state',
             'checks',
             'description',
             'tags',
@@ -55,6 +57,7 @@ class PolicyRuleTable(NetBoxTable):
 
 
 class ChangeRequestTable(NetBoxTable):
+    ref = tables.Column(linkify=True, verbose_name=_('Reference'))
     title = tables.Column(linkify=True)
     branch = tables.Column(linkify=True)
     branch_label = tables.Column(
@@ -83,6 +86,7 @@ class ChangeRequestTable(NetBoxTable):
         fields = (
             'pk',
             'id',
+            'ref',
             'title',
             'branch',
             'branch_label',
@@ -100,6 +104,7 @@ class ChangeRequestTable(NetBoxTable):
             'tags',
         )
         default_columns = (
+            'ref',
             'title',
             'description',
             'branch',

@@ -8,7 +8,11 @@ without a request.
 
 from dataclasses import dataclass, field
 
-from netbox_change_control.choices import ChangeRequestStatusChoices, ReviewDecisionChoices
+from netbox_change_control.choices import (
+    ChangeRequestStatusChoices,
+    ConditionStateChoices,
+    ReviewDecisionChoices,
+)
 from netbox_change_control.models import ChangeRequestPolicy, Policy
 
 __all__ = (
@@ -128,6 +132,27 @@ def get_touched_object_types(branch):
     return set(ChangeDiff.objects.filter(branch=branch).values_list('object_type_id', flat=True).distinct())
 
 
+def _condition_states(diff, condition_state):
+    """
+    The states a policy's conditions are evaluated against, for one changed object.
+
+    `modified` is the object as the branch leaves it and is None for a deletion; `original` is
+    the object before the change and is None for a creation. `current` is never offered: it
+    describes main, so a policy would match on somebody else's concurrent edit rather than on
+    the change under review.
+
+    EITHER offers both sides, so `status == active` catches an object being switched off as
+    well as one being switched on. AFTER and BEFORE narrow that deliberately.
+    """
+    if condition_state == ConditionStateChoices.BEFORE:
+        candidates = (diff.original,)
+    elif condition_state == ConditionStateChoices.AFTER:
+        candidates = (diff.modified,)
+    else:
+        candidates = (diff.modified, diff.original)
+    return [data for data in candidates if data]
+
+
 def _conditions_match(policy, branch):
     """
     Evaluate a policy's condition set against each changed object in the branch. The policy
@@ -141,20 +166,14 @@ def _conditions_match(policy, branch):
 
     condition_set = ConditionSet(policy.conditions)
     for diff in ChangeDiff.objects.filter(branch=branch).iterator():
-        # Evaluate the state the branch proposes, not the state of main.
-        #
-        # `modified` is the object as the branch leaves it, and is None for a deletion, where
-        # `original` holds what is being removed. `current` is deliberately not consulted: it
-        # describes main, so a policy would have matched on somebody else's concurrent edit
-        # rather than on the change under review.
-        data = diff.modified or diff.original or {}
-        try:
-            if condition_set.eval(data):
-                return True
-        except InvalidCondition:
-            # A condition referencing a field this object type does not have simply does
-            # not match; it must not break evaluation of the remaining objects.
-            continue
+        for data in _condition_states(diff, policy.condition_state):
+            try:
+                if condition_set.eval(data):
+                    return True
+            except InvalidCondition:
+                # A condition referencing a field this object type does not have simply does
+                # not match; it must not break evaluation of the remaining objects.
+                continue
     return False
 
 

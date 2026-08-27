@@ -60,6 +60,7 @@
     <div class="card">
       <h2 class="card-header">{% trans "Change Request" %}</h2>
       <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "Reference" %}</th><td>{{ object.ref|placeholder }}</td></tr>
         <tr><th scope="row">{% trans "Title" %}</th><td>{{ object.title }}</td></tr>
         <tr>
           <th scope="row">{% trans "Branch" %}</th>

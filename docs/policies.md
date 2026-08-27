@@ -13,6 +13,7 @@ A **policy** is a named set of approval rules plus the scope that decides when t
 | Weight | Evaluation order. Lower weights are listed first. |
 | Object types | Apply when the branch touches any of these. Leave empty to apply to every branch. |
 | Conditions | An optional NetBox condition set. See [narrowing a policy with conditions](policy-conditions.md). |
+| Condition state | Which side of a change the conditions read. Defaults to either side. See [which side a condition reads](policy-conditions.md#which-side-a-condition-reads). |
 | Checks | Pre-merge checks required only where this policy applies. See [checks which do not apply everywhere](checks.md#which-checks-apply-and-where). |
 
 A **rule** is one approval requirement inside a policy.

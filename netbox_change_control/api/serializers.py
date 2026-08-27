@@ -35,6 +35,7 @@ class PolicySerializer(NetBoxModelSerializer):
             'weight',
             'object_types',
             'conditions',
+            'condition_state',
             'checks',
             'comments',
             'tags',
@@ -83,6 +84,7 @@ class ChangeRequestSerializer(NetBoxModelSerializer):
             'id',
             'url',
             'display',
+            'ref',
             'branch',
             'branch_name',
             'branch_deleted',
@@ -104,7 +106,7 @@ class ChangeRequestSerializer(NetBoxModelSerializer):
             'created',
             'last_updated',
         )
-        brief_fields = ('id', 'url', 'display', 'title', 'status')
+        brief_fields = ('id', 'url', 'display', 'ref', 'title', 'status')
 
 
 class ReviewSerializer(NetBoxModelSerializer):

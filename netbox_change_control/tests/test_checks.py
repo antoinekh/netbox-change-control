@@ -12,7 +12,11 @@ from netbox_change_control.checks import (
     run_checks,
     sync_checks,
 )
-from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
+from netbox_change_control.choices import (
+    ChangeRequestStatusChoices,
+    ConditionStateChoices,
+    MergeCheckStatusChoices,
+)
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, MergeCheck, Policy
 from netbox_change_control.tests.base import ChangeControlTestCase, make_branch
 from netbox_change_control.validators import require_approved_change_request
@@ -624,7 +628,12 @@ class PolicyChecksFormTest(TestCase):
     def _form(self, **data):
         from netbox_change_control.forms import PolicyForm
 
-        payload = {'name': self.policy.name, 'weight': 1000, 'enabled': True}
+        payload = {
+            'name': self.policy.name,
+            'weight': 1000,
+            'enabled': True,
+            'condition_state': ConditionStateChoices.EITHER,
+        }
         payload.update(data)
         return PolicyForm(payload, instance=self.policy)
 

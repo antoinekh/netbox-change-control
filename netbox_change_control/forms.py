@@ -12,6 +12,7 @@ from utilities.forms.widgets import DateTimePicker, MarkdownWidget
 from netbox_change_control.choices import (
     ChangeRequestPriorityChoices,
     ChangeRequestStatusChoices,
+    ConditionStateChoices,
     MergeCheckStatusChoices,
     ReviewDecisionChoices,
 )
@@ -62,7 +63,7 @@ class PolicyForm(NetBoxModelForm):
 
     fieldsets = (
         FieldSet('name', 'description', 'enabled', 'weight', name=_('Policy')),
-        FieldSet('object_types', 'conditions', name=_('Scope')),
+        FieldSet('object_types', 'conditions', 'condition_state', name=_('Scope')),
         FieldSet('checks', 'external_checks', name=_('Checks')),
         FieldSet('tags', name=_('Tags')),
     )
@@ -76,6 +77,7 @@ class PolicyForm(NetBoxModelForm):
             'weight',
             'object_types',
             'conditions',
+            'condition_state',
             'checks',
             'comments',
             'tags',
@@ -160,7 +162,7 @@ class ChangeRequestForm(NetBoxModelForm):
     comments = CommentField()
 
     fieldsets = (
-        FieldSet('branch', 'title', 'description', 'priority', name=_('Change request')),
+        FieldSet('branch', 'ref', 'title', 'description', 'priority', name=_('Change request')),
         FieldSet('scheduled_start', 'scheduled_end', 'auto_merge', name=_('Change window')),
         FieldSet('tags', name=_('Tags')),
     )
@@ -169,6 +171,7 @@ class ChangeRequestForm(NetBoxModelForm):
         model = ChangeRequest
         fields = (
             'branch',
+            'ref',
             'title',
             'description',
             'priority',
@@ -249,7 +252,7 @@ class PolicyFilterForm(NetBoxModelFilterSetForm):
     fieldsets = (
         FieldSet('q', 'tag'),
         FieldSet('enabled', 'weight', name=_('Policy')),
-        FieldSet('object_type_id', 'has_conditions', name=_('Scope')),
+        FieldSet('object_type_id', 'has_conditions', 'condition_state', name=_('Scope')),
         FieldSet('required_checks', 'has_checks', name=_('Checks')),
     )
 
@@ -261,6 +264,9 @@ class PolicyFilterForm(NetBoxModelFilterSetForm):
         label=_('Object types'),
     )
     has_conditions = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
+    condition_state = forms.MultipleChoiceField(
+        choices=ConditionStateChoices, required=False, label=_('Condition state')
+    )
     required_checks = forms.MultipleChoiceField(required=False, label=_('Required checks'))
     has_checks = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
 
@@ -303,13 +309,14 @@ class ChangeRequestFilterForm(NetBoxModelFilterSetForm):
 
     fieldsets = (
         FieldSet('q', 'tag'),
-        FieldSet('status', 'priority', 'requester_id', name=_('Request')),
+        FieldSet('ref', 'status', 'priority', 'requester_id', name=_('Request')),
         FieldSet('branch_id', 'branch', 'branch_deleted', name=_('Branch')),
         FieldSet('policy_id', 'reviewer_id', 'has_reviews', name=_('Review')),
         FieldSet('check_status', 'has_open_threads', name=_('Checks')),
         FieldSet('has_window', 'auto_merge', name=_('Scheduling')),
     )
 
+    ref = forms.CharField(required=False, label=_('Reference'))
     status = forms.MultipleChoiceField(choices=ChangeRequestStatusChoices, required=False)
     priority = forms.MultipleChoiceField(choices=ChangeRequestPriorityChoices, required=False)
     requester_id = DynamicModelMultipleChoiceField(queryset=User.objects.all(), required=False, label=_('Requester'))
@@ -375,6 +382,7 @@ class PolicyRuleBulkEditForm(NetBoxModelBulkEditForm):
 
 class ChangeRequestBulkEditForm(NetBoxModelBulkEditForm):
     model = ChangeRequest
+    ref = forms.CharField(max_length=100, required=False, label=_('Reference'))
     status = forms.ChoiceField(choices=ChangeRequestStatusChoices, required=False)
     priority = forms.ChoiceField(choices=ChangeRequestPriorityChoices, required=False)
     description = forms.CharField(max_length=200, required=False)
@@ -382,7 +390,7 @@ class ChangeRequestBulkEditForm(NetBoxModelBulkEditForm):
     scheduled_end = forms.DateTimeField(required=False, widget=DateTimePicker())
     auto_merge = forms.NullBooleanField(required=False)
 
-    nullable_fields = ('description', 'scheduled_start', 'scheduled_end')
+    nullable_fields = ('ref', 'description', 'scheduled_start', 'scheduled_end')
 
 
 class ReviewBulkEditForm(NetBoxModelBulkEditForm):

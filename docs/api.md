@@ -82,6 +82,7 @@ The fields worth acting on:
 | `ready_to_merge` | Whether it can actually merge now. Approved is not the same thing: a check or the change window can still block. |
 | `merge_blocked_reason` | Why not, in words, when `ready_to_merge` is false. |
 | `has_conflicts` | Whether the branch genuinely conflicts with main. |
+| `ref` | Your external reference, for correlating with a ticket or change record. |
 | `branch` / `branch_name` | The branch, and its name kept after the branch is deleted. |
 | `branch_deleted` | Whether the branch is gone and the record is history only. |
 
@@ -90,6 +91,13 @@ The fields worth acting on:
 ```bash
 curl -s -H "Authorization: Token $TOKEN" \
   "$NETBOX/api/plugins/change-control/change-requests/?status=approved&check_status=failure"
+```
+
+`ref` filters on a partial, case-insensitive match, and several values are an OR, so a pipeline can look a change request up by the ticket that spawned it:
+
+```bash
+curl -s -H "Authorization: Token $TOKEN" \
+  "$NETBOX/api/plugins/change-control/change-requests/?ref=CHG0012345"
 ```
 
 ## Submitting a review

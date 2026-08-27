@@ -4,6 +4,7 @@ from utilities.choices import ChoiceSet
 __all__ = (
     'ChangeRequestPriorityChoices',
     'ChangeRequestStatusChoices',
+    'ConditionStateChoices',
     'MergeCheckStatusChoices',
     'ReviewDecisionChoices',
 )
@@ -48,6 +49,27 @@ class ChangeRequestPriorityChoices(ChoiceSet):
         (MEDIUM, _('Medium'), 'blue'),
         (HIGH, _('High'), 'orange'),
         (CRITICAL, _('Critical'), 'red'),
+    )
+
+
+class ConditionStateChoices(ChoiceSet):
+    """
+    Which state a policy's conditions are evaluated against.
+
+    A change has two sides: the object before it and the object after. `status == active`
+    read only against the second means "leaves it active", which misses a live circuit being
+    decommissioned, the change most in need of review. EITHER is the default because a policy
+    exists to catch changes, and the safe failure is to attach and ask for a review.
+    """
+
+    EITHER = 'either'
+    AFTER = 'after'
+    BEFORE = 'before'
+
+    CHOICES = (
+        (EITHER, _('Either side of the change')),
+        (AFTER, _('After the change')),
+        (BEFORE, _('Before the change')),
     )
 
 

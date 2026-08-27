@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel, PrimaryModel
 
+from netbox_change_control.choices import ConditionStateChoices
+
 __all__ = (
     'Policy',
     'PolicyRule',
@@ -45,6 +47,16 @@ class Policy(PrimaryModel):
         blank=True,
         null=True,
         help_text=_('An optional NetBox condition set evaluated against each changed object.'),
+    )
+    condition_state = models.CharField(
+        verbose_name=_('condition state'),
+        max_length=16,
+        choices=ConditionStateChoices,
+        default=ConditionStateChoices.EITHER,
+        help_text=_(
+            'Which side of a change the conditions are evaluated against. The default matches '
+            'either side, so a policy guarding active objects also catches one being switched off.'
+        ),
     )
     checks = ArrayField(
         base_field=models.CharField(max_length=100),

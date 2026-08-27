@@ -279,3 +279,39 @@ class PolicyCheckFilterTest(TestCase):
     def test_has_checks(self):
         self.assertEqual(self._filter({'has_checks': False}), {'No checks'})
         self.assertNotIn('No checks', self._filter({'has_checks': True}))
+
+
+class ChangeRequestRefTest(TestCase):
+    """
+    `ref` carries whatever a team already calls a change: a ticket id, a change number.
+    It has to be filterable and searchable, or it is just decoration.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        requester = User.objects.create(username='ref-requester')
+        for name, ref in (('a', 'CHG0012345'), ('b', 'INC-99'), ('c', '')):
+            ChangeRequest.objects.create(
+                branch=Branch.objects.create(name=f'ref-{name}'),
+                title=f'Request {name}',
+                ref=ref,
+                requester=requester,
+            )
+
+    def _filter(self, data):
+        return set(ChangeRequestFilterSet(data, queryset=ChangeRequest.objects.all()).qs.values_list('ref', flat=True))
+
+    def test_by_exact_reference(self):
+        self.assertEqual(self._filter({'ref': ['CHG0012345']}), {'CHG0012345'})
+
+    def test_by_partial_reference(self):
+        self.assertEqual(self._filter({'ref': ['chg']}), {'CHG0012345'})
+
+    def test_several_references_are_an_or(self):
+        self.assertEqual(self._filter({'ref': ['CHG0012345', 'INC-99']}), {'CHG0012345', 'INC-99'})
+
+    def test_the_general_search_covers_it(self):
+        self.assertEqual(self._filter({'q': 'INC-99'}), {'INC-99'})
+
+    def test_it_is_optional(self):
+        self.assertIn('', self._filter({}))

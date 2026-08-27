@@ -39,6 +39,13 @@ class ChangeRequest(PrimaryModel):
         editable=False,
         help_text=_('Name of the branch, kept so the record stays readable after the branch is gone.'),
     )
+    ref = models.CharField(
+        verbose_name=_('reference'),
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text=_('External reference: a ticket id, a change number, whatever your process uses.'),
+    )
     title = models.CharField(
         verbose_name=_('title'),
         max_length=200,

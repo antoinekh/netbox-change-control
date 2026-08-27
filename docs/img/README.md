@@ -20,6 +20,25 @@ These are in place and referenced from the pages listed.
 
 Every page has its image. Nothing is outstanding.
 
+## Needs recapturing
+
+Two shots predate fields added since they were taken. Neither is wrong, both are now incomplete.
+
+| File | Why | Where |
+|---|---|---|
+| `change-request-list.png` | The list gained a **Reference** column, shown by default. | `/plugins/change-control/change-requests/` |
+| `policy-detail.png` | A policy with conditions now states which side of a change they are evaluated against. | any policy carrying conditions |
+
+For the first, give at least one change request a reference such as `CHG0012345` so the column has content rather than an empty column of dashes.
+
+For the second, the line only appears on a policy that has conditions, so use one that does. `make seed` creates none with conditions; set one by hand, or through the API:
+
+```bash
+curl -X PATCH "$NETBOX/api/plugins/change-control/policies/$POLICY_ID/" \
+  -H "Authorization: Token $TOKEN" -H "Content-Type: application/json" \
+  -d '{"conditions": {"attr": "status", "value": "active"}}'
+```
+
 ## Retaking one
 
 Run `make seed` once, then `make captures`. It builds the change-request states and prints the URL, the user and what to frame for each shot. Both live in the local development harness, which is not versioned.

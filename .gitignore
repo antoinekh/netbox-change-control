@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+netbox_change_control.egg-info/
+.venv/
+venv/
+
+# Local development harness, not versioned for now.
+dev/
+Makefile
+
+# `uv run` inside the repo treats it as a uv project and writes a lock file the plugin does
+# not use. The dev tools run with --no-project, but keep this as a guard.
+uv.lock

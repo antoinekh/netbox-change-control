@@ -1,0 +1,40 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install ruff
+        # Pinned so a new ruff release cannot fail an unrelated pull request.
+        run: pip install 'ruff==0.16.4'
+
+      - name: Check
+        run: ruff check --output-format=github netbox_change_control
+
+      - name: Check formatting
+        run: ruff format --check --diff netbox_change_control

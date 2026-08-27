@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1235 366" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">netbox change control</title>
+  <g fill="none" stroke-width="17.46" stroke-linecap="round">
+    <path stroke="#001423" d="M72 60 V306"/>
+    <path stroke="#00857d" d="M72 190 H214 a32 32 0 0 0 32 -32 V91"/>
+  </g>
+  <g>
+    <circle cx="72" cy="60" r="28.73" fill="#001423"/>
+    <circle cx="72" cy="190" r="28.73" fill="#001423"/>
+    <circle cx="72" cy="306" r="28.73" fill="#001423"/>
+    <circle cx="246" cy="62" r="28.73" fill="#00857d"/>
+  </g>
+  <g id="approved">
+    <circle cx="242" cy="258" r="60" fill="#00857d"/>
+    <path d="M214 258 L235 279 L272 236" fill="none" stroke="#ffffff" stroke-width="16"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-weight="700" letter-spacing="-3">
+    <text x="400" y="162" font-size="100" fill="#001423">netbox</text>
+    <text x="400" y="276" font-size="100" fill="#00857d">change control</text>
+  </g>
+</svg>

@@ -1,0 +1,147 @@
+import django_tables2 as tables
+from django.utils.translation import gettext_lazy as _
+from netbox.tables import NetBoxTable, columns
+
+from netbox_change_control.models import ChangeRequest, MergeCheck, Policy, PolicyRule, Review
+
+__all__ = (
+    'ChangeRequestTable',
+    'MergeCheckTable',
+    'PolicyRuleTable',
+    'PolicyTable',
+    'ReviewTable',
+)
+
+
+class PolicyTable(NetBoxTable):
+    name = tables.Column(linkify=True)
+    enabled = columns.BooleanColumn(verbose_name=_('Enabled'))
+    object_types = columns.ManyToManyColumn(verbose_name=_('Object types'))
+    rule_count = columns.LinkedCountColumn(
+        viewname='plugins:netbox_change_control:policyrule_list',
+        url_params={'policy_id': 'pk'},
+        verbose_name=_('Rules'),
+    )
+    checks = columns.ArrayColumn(verbose_name=_('Required checks'))
+    tags = columns.TagColumn(url_name='plugins:netbox_change_control:policy_list')
+
+    class Meta(NetBoxTable.Meta):
+        model = Policy
+        fields = (
+            'pk',
+            'id',
+            'name',
+            'enabled',
+            'weight',
+            'object_types',
+            'rule_count',
+            'checks',
+            'description',
+            'tags',
+        )
+        default_columns = ('name', 'enabled', 'weight', 'object_types', 'rule_count', 'description')
+
+
+class PolicyRuleTable(NetBoxTable):
+    name = tables.Column(linkify=True)
+    policy = tables.Column(linkify=True)
+    groups = columns.ManyToManyColumn(verbose_name=_('Reviewer groups'))
+    users = columns.ManyToManyColumn(verbose_name=_('Reviewers'))
+
+    class Meta(NetBoxTable.Meta):
+        model = PolicyRule
+        fields = ('pk', 'id', 'name', 'policy', 'min_reviews', 'groups', 'users')
+        default_columns = ('name', 'policy', 'min_reviews', 'groups', 'users')
+
+
+class ChangeRequestTable(NetBoxTable):
+    title = tables.Column(linkify=True)
+    branch = tables.Column(linkify=True)
+    branch_label = tables.Column(
+        verbose_name=_('Branch name'),
+        orderable=False,
+        empty_values=(),
+    )
+    status = columns.ChoiceFieldColumn()
+    priority = columns.ChoiceFieldColumn()
+    requester = tables.Column(linkify=True)
+    policies = columns.ManyToManyColumn(verbose_name=_('Policies'))
+    review_count = tables.Column(accessor='reviews__count', verbose_name=_('Reviews'))
+    auto_merge = columns.BooleanColumn(verbose_name=_('Auto merge'))
+    is_ready_to_merge = columns.BooleanColumn(
+        verbose_name=_('Ready to merge'),
+        orderable=False,
+    )
+    has_conflicts = columns.BooleanColumn(
+        verbose_name=_('Conflicts'),
+        orderable=False,
+    )
+    tags = columns.TagColumn(url_name='plugins:netbox_change_control:changerequest_list')
+
+    class Meta(NetBoxTable.Meta):
+        model = ChangeRequest
+        fields = (
+            'pk',
+            'id',
+            'title',
+            'branch',
+            'branch_label',
+            'status',
+            'priority',
+            'requester',
+            'policies',
+            'review_count',
+            'description',
+            'scheduled_start',
+            'scheduled_end',
+            'auto_merge',
+            'is_ready_to_merge',
+            'created',
+            'tags',
+        )
+        default_columns = (
+            'title',
+            'description',
+            'branch',
+            'status',
+            'has_conflicts',
+            'is_ready_to_merge',
+            'priority',
+            'requester',
+            'policies',
+            'created',
+        )
+
+
+class ReviewTable(NetBoxTable):
+    reviewer = tables.Column(linkify=True)
+    change_request = tables.Column(linkify=True)
+    decision = columns.ChoiceFieldColumn()
+    comment = columns.MarkdownColumn()
+
+    class Meta(NetBoxTable.Meta):
+        model = Review
+        fields = ('pk', 'id', 'change_request', 'reviewer', 'decision', 'comment', 'created')
+        default_columns = ('change_request', 'reviewer', 'decision', 'comment', 'created')
+
+
+class MergeCheckTable(NetBoxTable):
+    display_label = tables.Column(linkify=True, verbose_name=_('Check'))
+    change_request = tables.Column(linkify=True)
+    status = columns.ChoiceFieldColumn()
+    required = columns.BooleanColumn(verbose_name=_('Required'))
+
+    class Meta(NetBoxTable.Meta):
+        model = MergeCheck
+        fields = (
+            'pk',
+            'id',
+            'display_label',
+            'name',
+            'change_request',
+            'status',
+            'required',
+            'summary',
+            'completed',
+        )
+        default_columns = ('display_label', 'change_request', 'status', 'required', 'summary', 'completed')

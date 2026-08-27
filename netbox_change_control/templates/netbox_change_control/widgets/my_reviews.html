@@ -1,0 +1,21 @@
+{% load i18n %}
+{% if change_requests %}
+<div class="list-group list-group-flush">
+  {% for cr in change_requests %}
+  <a href="{{ cr.get_absolute_url }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+    <span>
+      <strong>{{ cr.title }}</strong>
+      <div class="small text-muted">{{ cr.branch_label }} &middot; {% trans "opened by" %} {{ cr.requester }}</div>
+    </span>
+    <span class="badge text-bg-{{ cr.get_priority_color }}">{{ cr.get_priority_display }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% if truncated %}
+<div class="small text-muted px-3 py-2">{% trans "Showing the most recent only." %}</div>
+{% endif %}
+{% else %}
+<div class="text-muted text-center p-3">
+  <i class="mdi mdi-check-circle-outline"></i> {% trans "Nothing is waiting on you." %}
+</div>
+{% endif %}

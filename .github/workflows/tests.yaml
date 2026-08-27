@@ -1,0 +1,113 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      netbox_ref:
+        description: 'NetBox ref to check out (branch, tag or commit)'
+        required: false
+        default: 'v4.6.9'
+        type: string
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: NetBox ${{ matrix.netbox }} on Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor is 4.6.9 because that is what is tested. The initial migration already
+        # rules out anything below 4.6.5: it depends on extras.0140, which 4.6.0 does not
+        # have, and on core.0024 and users.0016, which arrive in 4.6.0.
+        include:
+          - netbox: 'v4.6.9'
+            python: '3.12'
+          - netbox: 'v4.6.9'
+            python: '3.13'
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        # NetBox needs the ICU collation provider, which the official image provides.
+        image: postgres:16
+        env:
+          POSTGRES_USER: netbox
+          POSTGRES_PASSWORD: netbox
+          POSTGRES_DB: netbox
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@v7
+        with:
+          path: netbox-change-control
+
+      - name: Check out NetBox ${{ matrix.netbox }}
+        uses: actions/checkout@v7
+        with:
+          repository: netbox-community/netbox
+          ref: ${{ inputs.netbox_ref || matrix.netbox }}
+          path: netbox
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install NetBox requirements
+        working-directory: netbox
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install netbox-branching and the plugin
+        run: |
+          pip install 'netboxlabs-netbox-branching~=1.1.3'
+          pip install ./netbox-change-control
+
+      - name: Configure NetBox
+        run: |
+          ln -s "$GITHUB_WORKSPACE/netbox-change-control/testing/configuration.py" \
+                "$GITHUB_WORKSPACE/netbox/netbox/netbox/configuration.py"
+
+      - name: Grant the database user permission to create schemas
+        env:
+          PGPASSWORD: netbox
+        run: |
+          # netbox-branching provisions one PostgreSQL schema per branch.
+          psql -h localhost -U netbox -d netbox -c 'GRANT CREATE ON DATABASE netbox TO netbox;'
+
+      - name: Check for missing migrations
+        working-directory: netbox
+        run: python netbox/manage.py makemigrations netbox_change_control --check --dry-run
+
+      - name: Run the test suite
+        working-directory: netbox
+        run: python netbox/manage.py test netbox_change_control --keepdb -v 2

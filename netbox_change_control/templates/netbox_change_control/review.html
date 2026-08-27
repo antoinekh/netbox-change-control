@@ -1,0 +1,34 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+{% load plugins %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Review" %}</h2>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "Change request" %}</th><td>{{ object.change_request|linkify }}</td></tr>
+        <tr><th scope="row">{% trans "Reviewer" %}</th><td>{{ object.reviewer }}</td></tr>
+        <tr><th scope="row">{% trans "Decision" %}</th><td>{% badge object.get_decision_display bg_color=object.get_decision_color %}</td></tr>
+        <tr><th scope="row">{% trans "Submitted" %}</th><td>{{ object.created|isodatetime:"minutes" }}</td></tr>
+      </table>
+    </div>
+    {% plugin_left_page object %}
+  </div>
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Comment" %}</h2>
+      <div class="card-body">
+        {% if object.comment %}{{ object.comment|markdown }}{% else %}<span class="text-muted">{% trans "No comment." %}</span>{% endif %}
+      </div>
+    </div>
+    {% plugin_right_page object %}
+  </div>
+</div>
+<div class="row mb-3">
+  <div class="col col-md-12">
+    {% plugin_full_width_page object %}
+  </div>
+</div>
+{% endblock %}

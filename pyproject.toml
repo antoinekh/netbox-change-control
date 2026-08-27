@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netbox-change-control"
+version = "0.1.0"
+description = "Policy-driven change control and mandatory review for NetBox branches"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Antoine Keranflech", email = "antoine.keranflech@gmail.com" }]
+keywords = ["netbox", "netbox-plugin", "change-management", "change-control", "branching", "approval-workflow", "network-automation"]
+# netbox-branching 1.1.3 is the floor, not a preference. Below it a change made on main
+# does not recompute a diff's conflicts, so a real conflict can go unreported and the
+# no-conflicts check passes on a merge that would overwrite somebody's work.
+dependencies = ["netboxlabs-netbox-branching>=1.1.3,<1.2"]
+classifiers = [
+  "Framework :: Django",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: System Administrators",
+]
+
+[project.urls]
+Homepage = "https://github.com/antoinekh/netbox-change-control"
+Documentation = "https://github.com/antoinekh/netbox-change-control/blob/master/docs/index.md"
+Source = "https://github.com/antoinekh/netbox-change-control"
+Changelog = "https://github.com/antoinekh/netbox-change-control/blob/master/CHANGELOG.md"
+Issues = "https://github.com/antoinekh/netbox-change-control/issues"
+
+[tool.setuptools.packages.find]
+# The test suite ships with the package, as netbox-branching's does, so it can be run
+# against an installed copy. The seed commands do not: they live in dev/ as a separate
+# development-only plugin, so a production install has no way to create demo data.
+include = ["netbox_change_control*"]
+
+[tool.setuptools.package-data]
+netbox_change_control = ["templates/**/*.html"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+# Django writes these; they are not hand-maintained source.
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.ruff.format]
+quote-style = "single"

@@ -1,0 +1,14 @@
+{% extends 'generic/object_children.html' %}
+{% load i18n %}
+
+{% block content %}
+  {{ block.super }}
+  <div class="row mt-3">
+    <div class="col col-md-6">
+      <div class="card">
+        <h2 class="card-header">{% trans "Submit a review" %}</h2>
+        {% include 'netbox_change_control/inc/review_form.html' %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

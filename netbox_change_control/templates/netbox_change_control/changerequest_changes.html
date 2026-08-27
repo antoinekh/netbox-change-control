@@ -1,0 +1,146 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-12">
+    {% if open_threads %}
+    <div class="alert alert-warning">
+      <i class="mdi mdi-comment-alert-outline"></i>
+      {% blocktrans count counter=open_threads %}{{ counter }} unresolved comment thread.{% plural %}{{ counter }} unresolved comment threads.{% endblocktrans %}
+    </div>
+    {% endif %}
+
+    {% for row in rows %}
+    <div class="card mb-3" id="change-{{ row.diff.pk }}">
+      <h2 class="card-header d-flex justify-content-between align-items-center">
+        <span>
+          {% badge row.diff.get_action_display bg_color=row.diff.get_action_color %}
+          {{ row.diff.object_type.name|capfirst }}: <strong>{{ row.diff.object_repr }}</strong>
+        </span>
+        <span>
+          {% if row.diff.conflicts %}<span class="badge text-bg-red">{% trans "Conflict" %}</span>{% endif %}
+          {% if row.open_count %}<span class="badge text-bg-orange">{{ row.open_count }} {% trans "open" %}</span>{% endif %}
+        </span>
+      </h2>
+
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>{% trans "Attribute" %}</th>
+              <th>{% trans "Original" %}</th>
+              <th>{% trans "In this branch" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attr in row.attributes %}
+            <tr>
+              <td><code>{{ attr.field }}</code></td>
+              <td class="text-muted">{{ attr.original_display|default:"-" }}</td>
+              <td><span class="text-success">{{ attr.modified_display|default:"-" }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted">{% trans "No attribute-level changes recorded." %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-body">
+        {% for thread in row.threads %}
+        <div class="border-start border-3 ps-3 mb-3 {% if thread.comment.resolved %}opacity-50{% endif %}" id="comment-{{ thread.comment.pk }}">
+          <div class="d-flex justify-content-between">
+            <div>
+              <strong>{{ thread.comment.author }}</strong>
+              <span class="text-muted small">{{ thread.comment.created }}</span>
+              {% if thread.comment.resolved %}<span class="badge text-bg-green">{% trans "Resolved" %}</span>{% endif %}
+            </div>
+            {% if can_resolve %}
+            <form action="{% url 'plugins:netbox_change_control:changecomment_resolve' pk=thread.comment.pk %}" method="post">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-link p-0">
+                {% if thread.comment.resolved %}{% trans "Reopen" %}{% else %}{% trans "Resolve" %}{% endif %}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+          <div>{{ thread.comment.text|markdown }}</div>
+
+          {% for reply in thread.replies %}
+          <div class="ms-4 mt-2 border-start border-2 ps-3" id="comment-{{ reply.pk }}">
+            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created }}</span></div>
+            <div>{{ reply.text|markdown }}</div>
+          </div>
+          {% endfor %}
+
+          {% if can_comment and not thread.comment.resolved %}
+          <form action="{% url 'plugins:netbox_change_control:changerequest_add_comment' pk=object.pk %}" method="post" class="ms-4 mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="change_diff" value="{{ row.diff.pk }}">
+            <input type="hidden" name="parent" value="{{ thread.comment.pk }}">
+            <textarea name="text" rows="2" class="form-control form-control-sm font-monospace"
+                      placeholder="{% trans 'Reply' %}"></textarea>
+            <button type="submit" class="btn btn-sm btn-outline-secondary mt-1">{% trans "Reply" %}</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if can_comment %}
+        <form action="{% url 'plugins:netbox_change_control:changerequest_add_comment' pk=object.pk %}" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="change_diff" value="{{ row.diff.pk }}">
+          <textarea name="text" rows="3" class="form-control form-control-sm font-monospace"
+                    placeholder="{% trans 'Comment on this change' %}"></textarea>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <span class="form-text">
+              <i class="mdi mdi-information-outline" aria-hidden="true"></i>
+              {% trans "Markdown syntax is supported." %}
+            </span>
+            <button type="submit" class="btn btn-sm btn-outline-primary">{% trans "Comment" %}</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    {% if branch_deleted %}
+    <div class="alert alert-warning">
+      <i class="mdi mdi-archive-outline"></i>
+      {% trans "The branch has been deleted, so the diff is no longer available. The discussion below is kept as part of the record." %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">{% trans "This branch contains no changes." %}</div>
+    {% endif %}
+    {% endfor %}
+
+    {% if orphaned_threads %}
+    <div class="card mb-3">
+      <h2 class="card-header">{% trans "Discussion from the deleted branch" %}</h2>
+      <div class="card-body">
+        {% for thread in orphaned_threads %}
+        <div class="border-start border-3 ps-3 mb-3" id="comment-{{ thread.comment.pk }}">
+          <div>
+            <strong>{{ thread.comment.author }}</strong>
+            <span class="text-muted small">{{ thread.comment.created }}</span>
+            {% if thread.comment.change_label %}
+              <span class="badge text-bg-grey">{{ thread.comment.change_label }}</span>
+            {% endif %}
+            {% if thread.comment.resolved %}<span class="badge text-bg-green">{% trans "Resolved" %}</span>{% endif %}
+          </div>
+          <div>{{ thread.comment.text|markdown }}</div>
+          {% for reply in thread.replies %}
+          <div class="ms-4 mt-2 border-start border-2 ps-3">
+            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created }}</span></div>
+            <div>{{ reply.text|markdown }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% load i18n %}
+{% comment %}
+Review submission form. Shared by the change request detail page and its Reviews tab so a
+reviewer finds it in either place.
+{% endcomment %}
+{% if can_review %}
+<div class="card-footer">
+  <form action="{% url 'plugins:netbox_change_control:changerequest_review' pk=object.pk %}" method="post">
+    {% csrf_token %}
+    <div class="mb-2">
+      <select name="decision" class="form-select">
+        <option value="approve">{% trans "Approve" %}</option>
+        <option value="reject">{% trans "Request changes" %}</option>
+        <option value="comment">{% trans "Comment" %}</option>
+      </select>
+    </div>
+    <div class="mb-2">
+      <textarea name="comment" rows="4" class="form-control font-monospace"
+                placeholder="{% trans 'Comment' %}">{{ own_review.comment|default:'' }}</textarea>
+      <div class="form-text">
+        <i class="mdi mdi-information-outline" aria-hidden="true"></i>
+        {% trans "Markdown syntax is supported: **bold**, `code`, lists, and links." %}
+      </div>
+    </div>
+    <button type="submit" class="btn btn-success">
+      {% if own_review %}{% trans "Replace my review" %}{% else %}{% trans "Submit review" %}{% endif %}
+    </button>
+  </form>
+</div>
+{% else %}
+<div class="card-footer small text-muted">
+  <i class="mdi mdi-information-outline"></i> {{ review_blocked_reason }}
+</div>
+{% endif %}

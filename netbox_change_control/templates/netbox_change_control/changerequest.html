@@ -1,0 +1,274 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+{% load plugins %}
+{% load form_helpers %}
+
+{% block content %}
+{% if conflicts %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="alert alert-danger d-flex justify-content-between align-items-center">
+      <div>
+        <i class="mdi mdi-alert-octagon"></i>
+        <strong>
+          {% blocktrans count counter=conflicts|length %}{{ counter }} object conflicts with main.{% plural %}{{ counter }} objects conflict with main.{% endblocktrans %}
+        </strong>
+        <div class="small">
+          {% trans "Main has changed the same fields as this branch. Merging would discard those changes. Sync the branch to resolve." %}
+        </div>
+        <div class="small mt-1">
+          {% for diff in conflicts %}
+            <span class="badge text-bg-red">{{ diff.object_repr }}: {{ diff.conflicts|join:", " }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <a href="{% url 'plugins:netbox_change_control:changerequest_changes' pk=object.pk %}" class="btn btn-sm btn-outline-danger">
+        {% trans "View changes" %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if reconciled_conflicts %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="alert alert-info">
+      <i class="mdi mdi-information-outline"></i>
+      {% blocktrans count counter=reconciled_conflicts|length %}The branching plugin flags {{ counter }} object as conflicting, but a sync has already reconciled it.{% plural %}The branching plugin flags {{ counter }} objects as conflicting, but a sync has already reconciled them.{% endblocktrans %}
+      <div class="small">
+        {% trans "Main has not changed these objects since this branch last synced, so merging cannot discard anything. The branch page will still ask you to acknowledge them." %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if window_warning %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="alert alert-warning">
+      <i class="mdi mdi-clock-alert-outline"></i>
+      <strong>{% trans "This change may never merge automatically." %}</strong>
+      <div class="small">
+        {% blocktrans with window=window_warning.window_minutes interval=window_warning.interval_minutes %}The change window is {{ window }} minutes long, but automatic merges are only attempted every {{ interval }} minutes, so the window can pass unnoticed. Widen the window, or lower auto_merge_interval.{% endblocktrans %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Change Request" %}</h2>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "Title" %}</th><td>{{ object.title }}</td></tr>
+        <tr>
+          <th scope="row">{% trans "Branch" %}</th>
+          <td>
+            {% if object.branch %}{{ object.branch|linkify }}
+            {% else %}
+              {{ object.branch_name }}
+              <span class="badge text-bg-gray">{% trans "Deleted" %}</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">{% trans "Status" %}</th>
+          <td>
+            {% badge object.get_status_display bg_color=object.get_status_color %}
+            {% if object.is_approved and not object.is_ready_to_merge %}
+              <span class="badge text-bg-orange">{% trans "Blocked" %}</span>
+              <div class="small text-muted mt-1">
+                {% trans "Approved by reviewers, but not yet mergeable." %}
+                {{ object.merge_blocked_reason }}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+        <tr><th scope="row">{% trans "Priority" %}</th><td>{% badge object.get_priority_display bg_color=object.get_priority_color %}</td></tr>
+        <tr><th scope="row">{% trans "Requester" %}</th><td>{{ object.requester }}</td></tr>
+        <tr><th scope="row">{% trans "Description" %}</th><td>{{ object.description|placeholder }}</td></tr>
+        <tr>
+          <th scope="row">{% trans "Change window" %}</th>
+          <td>
+            {% if object.has_window %}
+              {{ object.scheduled_start|placeholder }} &rarr; {{ object.scheduled_end|placeholder }}
+              {% with state=object.window_state %}
+                {% if state == 'open' %}<span class="badge text-bg-green">{% trans "Open" %}</span>
+                {% elif state == 'early' %}<span class="badge text-bg-orange">{% trans "Not yet open" %}</span>
+                {% elif state == 'closed' %}<span class="badge text-bg-red">{% trans "Closed" %}</span>
+                {% endif %}
+              {% endwith %}
+            {% else %}
+              <span class="text-muted">{% trans "Any time" %}</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">{% trans "Merge automatically" %}</th>
+          <td>
+            {% checkmark object.auto_merge %}
+            {% if window_warning %}<span class="badge text-bg-orange">{% trans "Window too short" %}</span>{% endif %}
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header d-flex justify-content-between align-items-center">
+        <span>{% trans "Approval status" %}</span>
+        {% if evaluation.satisfied %}<span class="badge text-bg-green">{% trans "Reviews satisfied" %}</span>{% else %}<span class="badge text-bg-orange">{% trans "Awaiting reviews" %}</span>{% endif %}
+      </h2>
+      <table class="table table-hover attr-table">
+        {% for rule in evaluation.rules %}
+        <tr>
+          <th scope="row" class="w-50">
+            {{ rule.rule.policy }} / {{ rule.rule.name }}
+            <div class="small text-muted fw-normal">
+              {% if rule.required %}
+                {% trans "May approve:" %}
+                {% for user in rule.rule.eligible_users %}{{ user.username }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-danger">{% trans "nobody" %}</span>{% endfor %}
+              {% else %}
+                {% trans "The pre-merge checks are the only gate." %}
+              {% endif %}
+            </div>
+          </th>
+          <td>
+            {% if not rule.required %}
+              <span class="text-success"><i class="mdi mdi-robot-outline"></i> {% trans "No approval required" %}</span>
+            {% elif rule.satisfied %}
+              <span class="text-success"><i class="mdi mdi-check-circle"></i> {{ rule.count }} / {{ rule.required }}</span>
+            {% else %}
+              <span class="text-warning"><i class="mdi mdi-alert-circle"></i> {{ rule.count }} / {{ rule.required }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-muted">{% trans "No policy rules apply yet. Submit the request for review." %}</td></tr>
+        {% endfor %}
+      </table>
+      {% if not evaluation.satisfied %}
+      <div class="card-footer small text-muted">
+        {% for reason in evaluation.reasons %}<div>{{ reason }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="card-footer p-0">
+        <table class="table table-hover attr-table mb-0">
+          <tr><th colspan="2" class="small text-uppercase text-muted">{% trans "Pre-merge checks" %}</th></tr>
+          {% for check in checks %}
+          <tr>
+            <td>
+              {{ check.display_label }}
+              {% if check.required %}<span class="badge text-bg-grey">{% trans "Required" %}</span>{% endif %}
+              {% if check.summary %}<div class="small text-muted">{{ check.summary }}</div>{% endif %}
+            </td>
+            <td class="text-end">
+              {% badge check.get_status_display bg_color=check.get_status_color %}
+              {% if check.details_url %}<a href="{{ check.details_url }}" class="ms-1"><i class="mdi mdi-open-in-new"></i></a>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="text-muted small">{% trans "No checks configured." %}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% if perms.netbox_change_control.change_mergecheck %}
+      <div class="card-footer">
+        <form action="{% url 'plugins:netbox_change_control:changerequest_run_checks' pk=object.pk %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="mdi mdi-refresh"></i> {% trans "Re-run checks" %}
+          </button>
+        </form>
+      </div>
+      {% endif %}
+      <div class="card-footer">
+        {% if object.branch_deleted %}
+          <span class="text-muted">
+            <i class="mdi mdi-archive-outline"></i>
+            {% trans "The branch has been deleted. This record is kept for audit." %}
+          </span>
+        {% elif object.status == 'completed' %}
+          <span class="text-muted"><i class="mdi mdi-check-all"></i> {% trans "This change request has been merged." %}</span>
+        {% elif can_merge and can_merge_perm %}
+          <a href="{% url 'plugins:netbox_branching:branch_merge' pk=object.branch.pk %}" class="btn btn-primary">
+            <i class="mdi mdi-source-merge"></i> {% trans "Merge branch" %}
+          </a>
+        {% elif can_merge %}
+          <span class="small text-muted">
+            <i class="mdi mdi-information-outline"></i>
+            {% trans "Approved. You do not have permission to merge branches." %}
+          </span>
+        {% else %}
+          <button type="button" class="btn btn-primary" disabled>
+            <i class="mdi mdi-source-merge"></i> {% trans "Merge branch" %}
+          </button>
+          <div class="small text-muted mt-1">{{ merge_blocked_reason }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Applied policies" %}</h2>
+      <table class="table table-hover attr-table">
+        {% for binding in bindings %}
+        <tr>
+          <td class="text-nowrap">{{ binding.policy|linkify }}</td>
+          <td>
+            {% if binding.matched %}<span class="badge text-bg-cyan">{% trans "Auto" %}</span>{% endif %}
+            {% for name in binding.matched_object_types %}<span class="badge text-bg-grey">{{ name }}</span> {% endfor %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-muted">{% trans "No policies attached." %}</td></tr>
+        {% endfor %}
+      </table>
+      {% if object.status == 'draft' %}
+      <div class="card-footer">
+        <form action="{% url 'plugins:netbox_change_control:changerequest_submit' pk=object.pk %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary">{% trans "Submit for review" %}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% plugin_left_page object %}
+  </div>
+
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Reviews" %}</h2>
+      <div class="card-body">
+        {% for review in reviews %}
+        <div class="border-start border-3 ps-3 mb-3">
+          <div class="d-flex justify-content-between align-items-baseline">
+            <div class="text-nowrap">
+              <strong>{{ review.reviewer }}</strong>
+              {% badge review.get_decision_display bg_color=review.get_decision_color %}
+              {% if review.stale %}<span class="badge text-bg-yellow">{% trans "Stale" %}</span>{% endif %}
+            </div>
+            <span class="text-muted small text-nowrap ms-2">{{ review.created|isodatetime:"minutes" }}</span>
+          </div>
+          {% if review.comment %}
+            <div class="mt-1">{{ review.comment|markdown }}</div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="text-muted">{% trans "No reviews yet." %}</div>
+        {% endfor %}
+      </div>
+      {% include 'netbox_change_control/inc/review_form.html' %}
+    </div>
+    {% plugin_right_page object %}
+  </div>
+</div>
+<div class="row mb-3">
+  <div class="col col-md-12">
+    {% plugin_full_width_page object %}
+  </div>
+</div>
+{% endblock %}

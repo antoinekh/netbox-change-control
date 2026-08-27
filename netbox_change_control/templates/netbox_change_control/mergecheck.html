@@ -1,0 +1,35 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+{% load plugins %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Merge check" %}</h2>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "Change request" %}</th><td>{{ object.change_request|linkify }}</td></tr>
+        <tr><th scope="row">{% trans "Name" %}</th><td><code>{{ object.name }}</code></td></tr>
+        <tr><th scope="row">{% trans "Label" %}</th><td>{{ object.label|placeholder }}</td></tr>
+        <tr><th scope="row">{% trans "Status" %}</th><td>{% badge object.get_status_display bg_color=object.get_status_color %}</td></tr>
+        <tr><th scope="row">{% trans "Required" %}</th><td>{% checkmark object.required %}</td></tr>
+        <tr><th scope="row">{% trans "Summary" %}</th><td>{{ object.summary|placeholder }}</td></tr>
+        <tr>
+          <th scope="row">{% trans "Details" %}</th>
+          <td>{% if object.details_url %}<a href="{{ object.details_url }}">{{ object.details_url }}</a>{% else %}{{ ''|placeholder }}{% endif %}</td>
+        </tr>
+        <tr><th scope="row">{% trans "Completed" %}</th><td>{{ object.completed|placeholder }}</td></tr>
+      </table>
+    </div>
+    {% plugin_left_page object %}
+  </div>
+  <div class="col col-md-6">
+    {% plugin_right_page object %}
+  </div>
+</div>
+<div class="row mb-3">
+  <div class="col col-md-12">
+    {% plugin_full_width_page object %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+{% load plugins %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Rule" %}</h2>
+      <table class="table table-hover attr-table">
+        <tr><th scope="row">{% trans "Policy" %}</th><td>{{ object.policy|linkify }}</td></tr>
+        <tr><th scope="row">{% trans "Name" %}</th><td>{{ object.name }}</td></tr>
+        <tr>
+          <th scope="row">{% trans "Minimum reviews" %}</th>
+          <td>
+            {{ object.min_reviews }}
+            {% if not object.min_reviews %}
+              <span class="badge text-bg-purple">{% trans "Automatic" %}</span>
+              <div class="small text-muted">{% trans "No human approval. The pre-merge checks are the only gate." %}</div>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+    </div>
+    {% plugin_left_page object %}
+  </div>
+  <div class="col col-md-6">
+    <div class="card">
+      <h2 class="card-header">{% trans "Who may approve" %}</h2>
+      <table class="table table-hover attr-table">
+        <tr>
+          <th scope="row">{% trans "Reviewer groups" %}</th>
+          <td>
+            {% for group in object.groups.all %}<span class="badge text-bg-blue">{{ group }}</span> {% empty %}{{ ''|placeholder }}{% endfor %}
+          </td>
+        </tr>
+        <tr>
+          <th scope="row">{% trans "Reviewers" %}</th>
+          <td>
+            {% for user in object.users.all %}<span class="badge text-bg-purple">{{ user }}</span> {% empty %}{{ ''|placeholder }}{% endfor %}
+          </td>
+        </tr>
+      </table>
+    </div>
+    {% plugin_right_page object %}
+  </div>
+</div>
+<div class="row mb-3">
+  <div class="col col-md-12">
+    {% plugin_full_width_page object %}
+  </div>
+</div>
+{% endblock %}

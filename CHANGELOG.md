@@ -1,18 +1,16 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-
-- Pre-merge checks sat at **pending** until somebody pressed Re-run. A change request is created before its policies are matched, and every built-in check is policy-scoped, so the run at creation found no checks to run. Attaching or detaching a policy now runs them.
-- The approval panel repeated each rule's shortfall in prose below a table that already showed the same counts. The page now shows only what the table cannot: a rejection, stale reviews, or no rules applying at all. The merge gate and the REST API still get the full text, having no table to read.
-- The review form's Markdown hint listed examples the live preview already demonstrates.
-- The check badge in the logo was slightly too large against the branch beside it.
+## 0.2.0 - 2026-08-27
 
 ### Added
 
-- A `ref` field on a change request, for a ticket id or change number. Shown in the list, filterable on a partial match, covered by the general search, and available through the REST API and bulk edit.
-- Policy conditions now read **both sides of a change** by default, so `status == active` catches an object being switched off as well as one being switched on. Previously only the state the branch left was read, which meant a policy guarding live circuits did not attach to one being decommissioned. A new **Condition state** field on the policy narrows this back to `after` or `before` where that is genuinely wanted.
+- A `ref` field on a change request, for a ticket id or change number. Shown in the list, searchable, filterable and in the REST API.
+- **Condition state** on a policy. Conditions now read both sides of a change by default, so `status == active` catches an object being switched off as well as one being switched on. Set it to `after` or `before` to narrow that back.
+
+### Fixed
+
+- Pre-merge checks stayed **pending** until somebody pressed Re-run. Attaching or detaching a policy now runs them.
+- The approval panel repeated in prose what its own table already showed.
 
 ## 0.1.0 - 2026-08-27
 

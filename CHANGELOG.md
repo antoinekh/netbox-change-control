@@ -7,6 +7,7 @@
 - Pre-merge checks sat at **pending** until somebody pressed Re-run. A change request is created before its policies are matched, and every built-in check is policy-scoped, so the run at creation found no checks to run. Attaching or detaching a policy now runs them.
 - The approval panel repeated each rule's shortfall in prose below a table that already showed the same counts. The page now shows only what the table cannot: a rejection, stale reviews, or no rules applying at all. The merge gate and the REST API still get the full text, having no table to read.
 - The review form's Markdown hint listed examples the live preview already demonstrates.
+- The check badge in the logo was slightly too large against the branch beside it.
 
 ## 0.1.0 - 2026-08-27
 

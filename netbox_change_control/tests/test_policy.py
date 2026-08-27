@@ -11,7 +11,7 @@ from users.models import Group, User
 from netbox_change_control.choices import ChangeRequestStatusChoices, ReviewDecisionChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, Review
 from netbox_change_control.policy import evaluate_change_request
-from netbox_change_control.tests.base import add_rule, approve, make_branch, make_policy
+from netbox_change_control.tests.base import ChangeControlTestCase, add_rule, approve, make_branch, make_policy
 
 
 class PolicyRuleEligibilityTest(TestCase):
@@ -246,3 +246,39 @@ class AutomaticApprovalTest(TestCase):
         approve(cr, engineer)
         cr.refresh_from_db()
         self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
+
+
+class ReasonsAudienceTest(ChangeControlTestCase):
+    """
+    The change request page lists every rule with its count, so repeating each shortfall in
+    prose underneath said the same thing twice. The merge gate has no such table, so it still
+    needs the full text.
+    """
+
+    branch_prefix = 'reasons'
+
+    def test_a_plain_shortfall_adds_nothing_to_the_page(self):
+        evaluation = self.cr.evaluate()
+        self.assertEqual(evaluation.other_reasons(), [])
+        self.assertTrue(any('needs 1 more' in r for r in evaluation.reasons()))
+
+    def test_a_rejection_is_shown_because_no_rule_row_carries_it(self):
+        Review.objects.create(
+            change_request=self.cr,
+            reviewer=self.reviewer,
+            decision=ReviewDecisionChoices.REJECT,
+            comment='not yet',
+        )
+        notes = self.cr.evaluate().other_reasons()
+        self.assertEqual(len(notes), 1)
+        self.assertIn('requested changes', notes[0])
+
+    def test_having_no_rules_at_all_is_shown(self):
+        ChangeRequestPolicy.objects.filter(change_request=self.cr).delete()
+        self.cr.refresh_from_db()
+        self.assertIn('No policy rules apply', ' '.join(self.cr.evaluate().other_reasons()))
+
+    def test_the_merge_gate_still_names_every_unmet_rule(self):
+        message = self.cr.merge_blocked_reason
+        self.assertIn('not approved', message)
+        self.assertTrue(any('needs' in r for r in self.cr.evaluate().reasons()))

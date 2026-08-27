@@ -754,3 +754,50 @@ class BuiltinScopeTest(TestCase):
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
         run_checks(cr)
         self.assertTrue(cr.checks.filter(name='threads-resolved').exists())
+
+
+class ChecksRunWhenPoliciesAttachTest(TestCase):
+    """
+    A change request is created before its policies are matched, and every built-in check is
+    policy-scoped. The run at creation therefore sees no policies and no checks, so unless
+    attaching a policy runs them the panel sits at "pending" until somebody presses Re-run.
+    """
+
+    def setUp(self):
+        self._saved = dict(_registry)
+        _registry.clear()
+        from netbox_change_control.checks import register_builtin_checks
+
+        register_builtin_checks(['has-changes'])
+        self.requester = User.objects.create(username='attach-requester')
+        self.policy = Policy.objects.create(name='Wants has-changes', checks=['has-changes'])
+
+    def tearDown(self):
+        _registry.clear()
+        _registry.update(self._saved)
+
+    def test_attaching_a_policy_runs_its_checks(self):
+        cr = ChangeRequest.objects.create(
+            branch=make_branch('attach', self._testMethodName),
+            title='T',
+            requester=self.requester,
+        )
+        self.assertFalse(cr.checks.exists(), 'no policy yet, so no check applies')
+
+        ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+
+        check = cr.checks.get(name='has-changes')
+        self.assertNotEqual(check.status, MergeCheckStatusChoices.PENDING)
+        self.assertIsNotNone(check.completed)
+
+    def test_detaching_the_policy_removes_its_checks(self):
+        cr = ChangeRequest.objects.create(
+            branch=make_branch('detach', self._testMethodName),
+            title='T',
+            requester=self.requester,
+        )
+        ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+        self.assertTrue(cr.checks.filter(name='has-changes').exists())
+
+        ChangeRequestPolicy.objects.filter(change_request=cr).delete()
+        self.assertFalse(cr.checks.filter(name='has-changes').exists())

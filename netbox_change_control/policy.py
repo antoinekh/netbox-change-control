@@ -75,7 +75,24 @@ class PolicyEvaluation:
 
     def reasons(self):
         """
-        Human readable explanations of why the request is not satisfied.
+        Every reason the request is not satisfied, including each rule's shortfall.
+
+        For callers with no rule table in front of them: the merge gate's refusal message,
+        the REST API, a log line.
+        """
+        return self.other_reasons() + [
+            f'Rule "{rule.rule.name}" needs {rule.outstanding} more approval(s) of {rule.required}.'
+            for rule in self.rules
+            if not rule.satisfied
+        ]
+
+    def other_reasons(self):
+        """
+        Only the reasons a rule table does not already show.
+
+        The change request page lists every rule with its count, so repeating "needs 1 more
+        approval of 1" underneath says the same thing twice. A rejection, a stale review or
+        the absence of any rule is not visible in that table, so it belongs here.
         """
         messages = []
         for review in self.rejections:
@@ -85,11 +102,6 @@ class PolicyEvaluation:
             messages.append(f'The branch changed after these reviews were submitted, so they no longer count: {names}.')
         if not self.rules:
             messages.append('No policy rules apply to this change request.')
-        for rule in self.rules:
-            if not rule.satisfied:
-                messages.append(
-                    f'Rule "{rule.rule.name}" needs {rule.outstanding} more approval(s) of {rule.required}.'
-                )
         return messages
 
 

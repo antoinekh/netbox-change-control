@@ -189,7 +189,22 @@ def emit_on_review_submitted(sender, instance, created, **kwargs):
 
 @receiver([post_save, post_delete], sender=ChangeRequestPolicy)
 def refresh_on_policy_binding_change(sender, instance, **kwargs):
-    _refresh(instance.change_request_id)
+    """
+    Attaching or detaching a policy changes which checks apply, not just who must approve.
+
+    Every built-in check is policy-scoped, and a change request is created before its
+    policies are matched, so the run at creation sees no policies and therefore no checks.
+    Without running them here the panel sits at "pending" until somebody presses Re-run.
+    """
+    if _is_being_deleted(instance.change_request_id):
+        return
+    change_request = ChangeRequest.objects.filter(pk=instance.change_request_id).first()
+    if change_request is None:
+        return
+
+    # Status first: run_checks may auto-merge, and it should decide against a current status.
+    refresh_status(change_request)
+    run_checks(change_request)
 
 
 def _refresh(change_request_id):

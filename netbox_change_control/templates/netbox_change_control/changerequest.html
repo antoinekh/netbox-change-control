@@ -147,11 +147,13 @@
         <tr><td colspan="2" class="text-muted">{% trans "No policy rules apply yet. Submit the request for review." %}</td></tr>
         {% endfor %}
       </table>
-      {% if not evaluation.satisfied %}
+      {% with notes=evaluation.other_reasons %}
+      {% if notes %}
       <div class="card-footer small text-muted">
-        {% for reason in evaluation.reasons %}<div>{{ reason }}</div>{% endfor %}
+        {% for note in notes %}<div>{{ note }}</div>{% endfor %}
       </div>
       {% endif %}
+      {% endwith %}
       <div class="card-footer p-0">
         <table class="table table-hover attr-table mb-0">
           <tr><th colspan="2" class="small text-uppercase text-muted">{% trans "Pre-merge checks" %}</th></tr>

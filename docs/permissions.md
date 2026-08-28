@@ -14,7 +14,7 @@ The plugin defines the standard NetBox object permissions for each of its models
 
 ## Granting the exemptions
 
-The two exemptions are **custom actions on an object type**, the same mechanism the commercial product uses for `netbox_changes.bypass_policy`. Grant them under **Administration > Permissions**:
+The two exemptions are **custom actions on an object type**. Grant them under **Administration > Permissions**:
 
 | Exemption | Object type | Action to enter |
 |---|---|---|

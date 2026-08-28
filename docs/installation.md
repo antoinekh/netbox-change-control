@@ -33,7 +33,7 @@ Then run the migrations:
 ```
 
 > [!IMPORTANT]
-> The `exempt_models` entry is not optional. Without it, a change request created while a branch is active is written into that branch's schema and is invisible from main, taking the record of who approved what with it. Upstream branching exempts the commercial `netbox_changes.*` for the same reason.
+> The `exempt_models` entry is not optional. Without it, a change request created while a branch is active is written into that branch's schema and is invisible from main, taking the record of who approved what with it.
 
 ## Configuration
 

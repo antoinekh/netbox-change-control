@@ -22,7 +22,9 @@ The goal is change control that is **policy driven**: who must approve a change 
 It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/docs/changes/)**, for policies and rules governing who must review a branch; from **GitHub**, for status checks that gate a merge independently of human approval and for review comments anchored to a specific change; and from **[Infrahub](https://docs.infrahub.app/topics/proposed-change)** by OpsMill, for treating a proposed change as a first-class object that carries its own validation.
 
 > [!NOTE]
-> This is a community project with no support attached. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
+> **Independent community plugin.** Free, MIT licensed, not official, not certified and not endorsed by NetBox Labs. It bundles no netbox-branching code. You install that package yourself, and its own licence governs how you may use it.
+>
+> No commercial support. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
 
 <p align="center">
   <a href="#how-it-works">How it works</a> |

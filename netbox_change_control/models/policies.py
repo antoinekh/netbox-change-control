@@ -74,7 +74,7 @@ class Policy(PrimaryModel):
         permissions = (
             # NetBox resolves a permission as <app_label>.<action>_<model>, so a custom
             # action must end in a real model name or it can never be granted through an
-            # object permission. Named to match the commercial product's bypass_policy.
+            # object permission.
             ('bypass_policy', 'Can write outside a branch while protect_main is enabled'),
         )
         verbose_name = _('policy')

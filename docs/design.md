@@ -4,7 +4,7 @@ Status: approved, v0.1.0 implemented. Date: 2026-08-25.
 
 ## Problem
 
-NetBox Branching stages changes in a branch and merges them. It has no notion of who is allowed to approve a merge. NetBox Labs sells that capability as NetBox Changes, which is closed source. The only open-source attempt, `netbox-branch-review`, hardcoded one or two approvals, had no reviewer groups, and its repository was deleted some time after August 2025. Its PyPI artifacts remain but are unmaintained.
+NetBox Branching stages changes in a branch and merges them. It has no notion of who is allowed to approve a merge. NetBox Labs sells that capability as NetBox Changes, which is available to their clients only. The only open-source attempt, `netbox-branch-review`, hardcoded one or two approvals, had no reviewer groups, and its repository was deleted some time after August 2025. Its PyPI artifacts remain but are unmaintained.
 
 ## Goal
 
@@ -42,7 +42,7 @@ A change request with no attached rules evaluates as unsatisfied. An unpoliced m
 
 Our models are change-logged, so branching would track them. A change request created while a branch was active was written into the branch schema and became invisible from main.
 
-The fix is `exempt_models: ['netbox_change_control.*']` in the branching config. Upstream branching already exempts `netbox_changes.*` for the same reason. This is a required installation step, not a tuning knob.
+The fix is `exempt_models: ['netbox_change_control.*']` in the branching config. This is a required installation step, not a tuning knob.
 
 ### `protect_main` is off by default
 

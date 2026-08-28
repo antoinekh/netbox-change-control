@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The **Conflicts** column on the change request list now matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
+
 ## 0.2.0 - 2026-08-27
 
 ### Added

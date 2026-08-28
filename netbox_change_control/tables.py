@@ -13,6 +13,24 @@ __all__ = (
 )
 
 
+class ConflictsColumn(tables.TemplateColumn):
+    """
+    Render conflicts the way netbox-branching's own branch list does, so the two pages agree
+    at a glance: a red octagon when there are conflicts, the standard placeholder when not.
+    """
+
+    template_code = """
+    {% if record.has_conflicts %}
+      <span class="text-red"><i class="mdi mdi-alert-octagon"></i></span>
+    {% else %}
+      {{ ''|placeholder }}
+    {% endif %}
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, template_code=self.template_code, **kwargs)
+
+
 class PolicyTable(NetBoxTable):
     name = tables.Column(linkify=True)
     enabled = columns.BooleanColumn(verbose_name=_('Enabled'))
@@ -75,7 +93,7 @@ class ChangeRequestTable(NetBoxTable):
         verbose_name=_('Ready to merge'),
         orderable=False,
     )
-    has_conflicts = columns.BooleanColumn(
+    has_conflicts = ConflictsColumn(
         verbose_name=_('Conflicts'),
         orderable=False,
     )

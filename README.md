@@ -42,10 +42,10 @@ It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/doc
 
 1. Someone creates a branch and makes their changes inside it, as normal for netbox-branching.
 2. They open a **change request** against that branch.
-3. The plugin reads which object types the branch touches and attaches every **policy** whose scope matches. The author cannot remove them.
+3. The plugin reads which object types the branch touches and attaches every **policy** whose scope matches. A policy can narrow further on the values of the objects themselves. The author cannot remove them.
 4. Each policy contains **rules**. A rule says how many approvals it needs and who may give them.
 5. Reviewers **approve**, request changes, or comment. They can also comment on one specific changed object.
-6. Independently, **pre-merge checks** run. A required check that is not passing blocks the merge on its own.
+6. Independently, the **pre-merge checks** named by those policies run. A required check that is not passing blocks the merge on its own.
 7. Once every rule is satisfied and every required check passes, the **merge** button appears.
 8. After the merge, the request is marked completed.
 

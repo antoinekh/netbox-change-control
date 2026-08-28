@@ -5,6 +5,7 @@
 ### Changed
 
 - The **Conflicts** column on the change request list now matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
+- The README now warns that the plugin is below 1.0 and that models, settings and the REST API can still change.
 
 ## 0.2.0 - 2026-08-27
 

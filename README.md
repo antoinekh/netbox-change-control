@@ -26,6 +26,9 @@ It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/doc
 >
 > No commercial support. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
 
+> [!WARNING]
+> **Not stable yet.** The version is below 1.0. Models, settings and the REST API can still change between releases. Read the [changelog](CHANGELOG.md) before you upgrade.
+
 <p align="center">
   <a href="#how-it-works">How it works</a> |
   <a href="#documentation">Documentation</a> |

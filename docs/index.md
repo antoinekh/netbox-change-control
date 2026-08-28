@@ -38,5 +38,5 @@ New here? Read [Installation and configuration](installation.md), then [Policies
 |---|---|
 | [Automatic behaviours and notifications](automation.md) | Stale reviews, policy reevaluation, notifications, the dashboard widget. |
 | [REST API](api.md) | Every endpoint. |
-| [Extending this plugin](extending.md) | Injecting content into these pages, adding tabs, and adding checks. |
+| [Extending this plugin](extending.md) | Injecting content into these pages, and adding checks. |
 | [Design](design.md) | Why the plugin is built the way it is. |

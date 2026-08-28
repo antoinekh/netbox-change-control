@@ -74,7 +74,7 @@ Create a policy with **no object types**, which matches every branch, and name t
 | Registered checks | `has-changes`, `no-conflicts`, `not-stale` |
 
 > [!IMPORTANT]
-> Give that policy a rule as well. A change request is not satisfied while no rule applies to it, so a checks-only policy which is the only one matching a branch leaves the request unable to be approved. The approval panel says "No policy rules apply to this change request" when this happens.
+> A change request is not satisfied while no rule applies to it, so a checks-only policy which is the only one matching a branch leaves the request unable to be approved. The approval panel says "No policy rules apply to this change request" when this happens.
 
 ## Which checks apply, and where
 
@@ -160,6 +160,3 @@ def out_of_hours_signoff(change_request):
 ```
 
 A skipped check clears the gate, so this blocks only the changes it is about. The cost is a visible row on every request carrying the policy, whatever the answer. Use both together: the policy narrows the check to the changes it could apply to, and the skip handles what a policy cannot express.
-
-> [!TIP]
-> `threads-resolved` is the one to consider carefully. It means an open question about any single object blocks the whole merge, which is strict but stops a concern being lost when the branch diff disappears on merge. Name it only on the policies where that strictness is wanted, rather than on your catch-all.

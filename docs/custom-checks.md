@@ -70,7 +70,7 @@ class MyPluginConfig(PluginConfig):
 The check now runs whenever checks are refreshed: when the branch is synced or reverted, when a comment thread changes, and when someone presses **Re-run checks**.
 
 > [!TIP]
-> A check that raises is recorded as `error` with the exception text as its summary. A broken check blocks the merge but never breaks the page, so you can ship one without fear of taking NetBox down.
+> A check that raises is recorded as `error` with the exception text as its summary. A broken check blocks the merge but never breaks the page.
 
 > [!IMPORTANT]
 > `name` is the database key. Renaming it creates a new check and deletes the old one, discarding its history. Change the `label` freely; leave the `name` alone.
@@ -159,13 +159,10 @@ Register it as **advisory**:
 register_check('ai-review', 'AI review', ai_review, required=False)
 ```
 
-> [!CAUTION]
-> Register an AI check with `required=False`. A model's opinion should inform a human reviewer, not silently block a merge, and it will sometimes be wrong in both directions. Make it required only once you have watched its verdicts on real changes for a while.
-
 > [!WARNING]
-> Every check runs on **every** refresh, including each time a comment thread changes. An API call there costs money and adds latency to saving a comment. Before shipping this, consider caching the verdict against the branch's last change time, or moving the call into a background job that reports its result through the REST API like any other external check.
+> Every check runs on **every** refresh, including each time a comment thread changes. An API call there costs money and adds latency to saving a comment.
 
-Two more things worth knowing. The whole diff goes to a third party, so do not use this if your inventory is sensitive without checking that first. And the model sees only what `_summarise` sends: it has no view of the wider network, so it cannot reason about anything outside the diff.
+The whole diff goes to a third party. The model sees only what `_summarise` sends: it has no view of the wider network, so it cannot reason about anything outside the diff.
 
 ## Checks reported by an external system
 

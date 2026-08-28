@@ -36,9 +36,6 @@ A reviewer may edit their own review, to correct a comment or change their decis
 
 The edit form exposes only the decision, the comment and tags. The reviewer and the change request are deliberately not editable, because a review is one person's statement about one change request and reassigning either would forge somebody else's position.
 
-> [!IMPORTANT]
-> This is a real restriction, not a nicety. Without it, anyone holding `change_review` could turn a colleague's "request changes" into an approval and satisfy the policy with a single form post.
-
 The REST API enforces the same thing from the other direction: `reviewer` is read-only and always the caller, so a token cannot post an approval attributed to somebody else. Naming another user is not an error; the review is simply recorded as yours.
 
 Changing the decision through this form counts as a restatement, so it refreshes the branch snapshot the same way submitting the review form does. Editing only the comment does not.
@@ -52,23 +49,3 @@ Every free-text field people write into supports Markdown, rendered with NetBox'
 | Review comment | The review form on the change request and its Reviews tab |
 | Change comment and replies | The Changes tab |
 | Description and comments | The change request and policy forms |
-
-Blank lines separate paragraphs, so a multi-paragraph comment works as you would expect:
-
-```markdown
-**Check the device model.**
-
-Two concerns:
-
-- the `device_type` change looks wrong
-- the platform is being cleared
-
-See [the ticket](https://example.com/T123).
-```
-
-Supported: headings, **bold**, *italic*, ~~strikethrough~~, `inline code`, fenced code blocks, bullet and numbered lists, definition lists, tables, links and block quotes.
-
-The full editing forms use NetBox's Markdown widget, which gives a live preview tab. The quick inline boxes on the change request and the Changes tab are plain text areas, so use the full form if you want a preview.
-
-> [!NOTE]
-> Rendered Markdown is sanitised by NetBox before it is displayed. A `<script>` tag is stripped, event handlers such as `onerror` are removed, and a `javascript:` link is neutered. Only the URL schemes in `ALLOWED_URL_SCHEMES` survive. A comment cannot be used to inject anything into the page.

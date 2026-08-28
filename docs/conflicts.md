@@ -63,6 +63,3 @@ Branching has no merge-conflict editor. It does not blend the two values. Either
 2. **Make the two sides agree.** Edit the object in main to match your branch, or activate the branch and edit it there to match main. Either way the conflict clears on its own, and the banner and the check follow immediately.
 
 Syncing does not resolve a conflict on its own. It applies main's value onto the branch, which clears the flag at that moment, and it only replays changes newer than the last sync. If main has not moved since your last sync, syncing again does nothing.
-
-> [!NOTE]
-> We would rather delete this code. If `netbox-branching` advanced a diff's baseline on sync, the way git moves the merge base, its own flag would be correct and this plugin could simply trust it.

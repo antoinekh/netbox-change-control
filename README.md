@@ -74,7 +74,7 @@ Full documentation is in [`docs/`](docs/index.md).
 | [Automatic behaviours](docs/automation.md) | Stale reviews, reevaluation, notifications. |
 | [Permissions](docs/permissions.md) | What each role needs. |
 | [REST API](docs/api.md) | Every endpoint. |
-| [Extending this plugin](docs/extending.md) | How another plugin adds content, tabs and checks. |
+| [Extending this plugin](docs/extending.md) | How another plugin adds content and checks. |
 | [Design](docs/design.md) | Why it is built this way. |
 
 ## Features

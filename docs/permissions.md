@@ -24,7 +24,7 @@ The two exemptions are **custom actions on an object type**. Grant them under **
 Enter the action in the permission's *additional actions* field, not the view/add/change/delete checkboxes.
 
 > [!NOTE]
-> Superusers hold every permission, so they are always exempt from both. Test an exemption with an ordinary account.
+> Superusers hold every permission, so they are always exempt from both.
 
 > [!IMPORTANT]
 > NetBox resolves a permission name as `<app_label>.<action>_<model>`, splitting on the **last** underscore. A custom permission whose trailing component is not a real model name can never be granted by an object permission, and the exemption silently ends up superuser-only. This is why the bypass lives on `Policy` and the window override on `ChangeRequest`.

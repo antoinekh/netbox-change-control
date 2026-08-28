@@ -79,6 +79,3 @@ Fix it either way round: widen the window, or lower `auto_merge_interval`. Leave
 Setting `enable_auto_merge` to `False` skips registering the job entirely, so a site that does not use auto-merge gets no periodic job and no Job records from this plugin.
 
 The merge runs as the requester. Set `enable_auto_merge` to `False` to disable the feature globally without editing any request.
-
-> [!CAUTION]
-> Auto-merge removes the last human pause before a change reaches production. Pair it with a change window, and consider leaving it off for policies that govern high-risk object types.

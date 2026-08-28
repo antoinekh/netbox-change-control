@@ -17,7 +17,7 @@ A delete shows the same message as an error toast, and the REST API returns 400 
 Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-exemptions). Writes with no request context, such as migrations, scripts and background jobs, are allowed: they are not interactive edits.
 
 > [!NOTE]
-> Superusers hold every permission, so a superuser is never blocked. Test with an ordinary account.
+> Superusers hold every permission, so a superuser is never blocked.
 
 ## Protecting only part of NetBox
 

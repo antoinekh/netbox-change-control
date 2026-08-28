@@ -47,10 +47,10 @@ Three things decide whether the condition matches.
 **Related objects appear as numeric ids**, because the diff stores them that way. So a site is `{"attr": "site", "value": 5}`, not the site's name. Use the object type scope for anything you would otherwise express as a name, and keep conditions for plain values such as status, a boolean flag, or a string.
 
 > [!TIP]
-> A condition naming a field the object does not have simply does not match; it does not error. That means a typo in `attr` silently produces a policy that never applies. Check a new condition against a real branch before relying on it.
+> A condition naming a field the object does not have simply does not match; it does not error. That means a typo in `attr` silently produces a policy that never applies.
 
 > [!NOTE]
-> Conditions cost a scan of the branch diff per condition-bearing policy. Policies scoped only by object type cost nothing extra, so prefer the object type scope where it is sufficient.
+> Conditions cost a scan of the branch diff per condition-bearing policy. Policies scoped only by object type cost nothing extra.
 
 ## Which side a condition reads
 
@@ -70,11 +70,8 @@ The default is **either**, because a policy exists to catch changes. When a cond
 
 A creation has no before, and a deletion has no after, so each of those is matched on the one side it has whatever the setting.
 
-> [!IMPORTANT]
-> `after` and `before` are deliberate narrowings, and getting one wrong fails quietly: no policy attaches, no review is asked for, and nothing on the change request says a protection you expected did not apply. Leave the setting on **either** unless you can say precisely why not.
+### Main is never read directly
 
-### Main is never consulted
+The diff also holds `current`, the object as it stands in main right now. Conditions never read it. A colleague editing that same object on main cannot, on their own, pull your change request into a policy or push it out of one. Which policies govern a change depends on the change.
 
-The diff also holds `current`, the object as it stands in main right now. Conditions never read it.
-
-If they did, a colleague editing the same object on main could pull your change request into a policy, or push it out of one, without touching your branch. Which policies govern a change should depend on the change.
+A sync is different, and deliberately so. Syncing makes main's values your branch's values, and branching writes them into `modified`. A condition then reads them like anything else in the branch. A branch which touches only a device's description will still see `modified` carry `status: offline` once it syncs that change from main, so a policy conditioned on `status == active` and read **after** stops matching. Read against **either** side it keeps matching, because `original` still holds `active`.

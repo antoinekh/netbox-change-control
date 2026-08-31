@@ -30,16 +30,16 @@ from netbox_change_control.models import (
     Review,
 )
 from netbox_change_control.permissions import BYPASS_PERMISSION, current_user_has_perm
-from netbox_change_control.policy import refresh_status, sync_policies
+from netbox_change_control.policy import refresh_cached_state, refresh_status, sync_policies
 
 __all__ = (
-    'auto_merge_on_check_result',
     'complete_on_merge',
     'emit_on_review_submitted',
     'invalidate_approval_on_branch_change',
     'mark_change_request_deleting',
     'protect_main_on_delete',
     'protect_main_on_save',
+    'react_to_check_result',
     'refresh_on_branch_change',
     'refresh_on_group_membership_change',
     'refresh_on_policy_binding_change',
@@ -239,6 +239,10 @@ def complete_on_merge(sender, branch, **kwargs):
     change_request.status = ChangeRequestStatusChoices.COMPLETED
     change_request.save(update_fields=['status'])
 
+    # Completion never passes through refresh_status, so the cached columns the list shows
+    # would otherwise keep reporting a merged request as ready to merge.
+    refresh_cached_state(change_request)
+
     # refresh_status emits the other transitions, but completion is set here and never passes
     # through it, so this is the only place the event can come from.
     from netbox_change_control import events
@@ -385,16 +389,27 @@ def rerun_checks_on_comment_change(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=MergeCheck)
-def auto_merge_on_check_result(sender, instance, **kwargs):
+def react_to_check_result(sender, instance, **kwargs):
     """
-    A passing check can be the last gate a request was waiting on.
+    A check result moves whether the request is ready, and can be the last gate it was
+    waiting on.
+
+    Both halves matter, and they are not the same condition. The cached readiness the change
+    request list shows has to follow a result in either direction: a pipeline reporting
+    success over the REST API is the common way the last gate clears, and it reaches this
+    plugin as a plain save with no other signal behind it. Auto-merge only cares about a
+    result that passes.
     """
-    if not instance.is_passing or _is_being_deleted(instance.change_request_id):
+    if _is_being_deleted(instance.change_request_id):
         return
     change_request = ChangeRequest.objects.filter(pk=instance.change_request_id).first()
     if change_request is None:
         return
-    try_auto_merge(change_request)
+
+    refresh_cached_state(change_request)
+
+    if instance.is_passing:
+        try_auto_merge(change_request)
 
 
 def _scope_may_have_changed(diff):
@@ -479,15 +494,23 @@ def rerun_checks_on_diff_change(sender, instance, **kwargs):
     if change_request is None or _is_being_deleted(change_request.pk):
         return
 
-    stored = change_request.checks.filter(name='no-conflicts').first()
-    if stored is None:
-        return
-
-    # Use the same real-versus-reconciled test the check applies, or this would keep
-    # re-running checks over a flag the check deliberately ignores.
+    # Use the same real-versus-reconciled test the check applies, or this would react to a
+    # flag the check deliberately ignores. Computed once and used for both jobs below, so
+    # this costs no more than the guard it replaced.
     from netbox_change_control.conflicts import conflicting_diffs
 
     conflicted = bool(conflicting_diffs(change_request.branch))
+
+    # The change request list reads a cached conflict flag, and it has to follow the diff
+    # whether or not any policy asked for the no-conflicts check. Only that check creates the
+    # row consulted below, so a request governed by a policy which does not require it had no
+    # path back to the cache at all.
+    if conflicted != change_request.cached_conflicted:
+        ChangeRequest.objects.filter(pk=change_request.pk).update(cached_conflicted=conflicted)
+
+    stored = change_request.checks.filter(name='no-conflicts').first()
+    if stored is None:
+        return
     if conflicted == (stored.status != MergeCheckStatusChoices.SUCCESS):
         # The stored result already agrees with reality.
         return

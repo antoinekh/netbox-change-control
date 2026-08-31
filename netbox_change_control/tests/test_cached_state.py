@@ -172,3 +172,131 @@ class ListCostTest(TestCase):
             0.5,
             f'the change request list costs ~{per_row:.1f} queries per row; the columns are not reading the cache',
         )
+
+
+class CacheFollowsTheSignalsTest(TestCase):
+    """
+    The cache has to be refreshed by the events themselves, not by a caller remembering to.
+
+    Every test here drives a real signal path and then compares the cached answer with the
+    live one. Calling `refresh_cached_state` directly would only prove the function works,
+    which was never the doubt: the risk in a cache is the event nobody wired up.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='requester')
+        cls.group = Group.objects.create(name='Engineers')
+        cls.reviewer = User.objects.create(username='reviewer')
+        cls.reviewer.groups.add(cls.group)
+
+    def make_request(self, checks=(), name='P'):
+        policy = Policy.objects.create(name=f'{name}-{self._testMethodName}'[:100], checks=list(checks))
+        PolicyRule.objects.create(policy=policy, name='One engineer', min_reviews=1).groups.set([self.group])
+        branch = make_branch('signal', self._testMethodName)
+        cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester)
+        ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+        cr.refresh_from_db()
+        return cr, branch
+
+    def assert_agrees(self, cr):
+        cr.refresh_from_db()
+        self.assertEqual(cr.cached_ready_to_merge, cr.is_ready_to_merge)
+        self.assertEqual(cr.cached_conflicted, bool(cr.conflicts))
+
+    def test_an_externally_reported_check_updates_the_cache(self):
+        """
+        A pipeline reporting the last gate reaches this plugin as a plain save on one row,
+        with no other signal behind it. That is the common way a change becomes ready.
+        """
+        cr, _branch = self.make_request(checks=['ci-pipeline'])
+        approve(cr, self.reviewer)
+        cr.refresh_from_db()
+        self.assertFalse(cr.cached_gates_cleared)
+
+        check = cr.checks.get(name='ci-pipeline')
+        check.status = MergeCheckStatusChoices.SUCCESS
+        check.save()
+
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_gates_cleared)
+        self.assert_agrees(cr)
+
+    def test_a_check_going_red_again_updates_the_cache(self):
+        cr, _branch = self.make_request(checks=['ci-pipeline'])
+        approve(cr, self.reviewer)
+        check = cr.checks.get(name='ci-pipeline')
+        check.status = MergeCheckStatusChoices.SUCCESS
+        check.save()
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_gates_cleared)
+
+        check.status = MergeCheckStatusChoices.FAILURE
+        check.save()
+
+        cr.refresh_from_db()
+        self.assertFalse(cr.cached_gates_cleared)
+        self.assert_agrees(cr)
+
+    def test_a_merged_request_is_no_longer_shown_as_ready(self):
+        """
+        Completion is set by the post_merge receiver and never passes through refresh_status,
+        so the list went on offering a merged change as ready to merge.
+        """
+        from netbox_branching.signals import post_merge
+
+        cr, branch = self.make_request()
+        approve(cr, self.reviewer)
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_ready_to_merge)
+
+        post_merge.send(sender=type(branch), branch=branch, user=self.requester)
+
+        cr.refresh_from_db()
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
+        self.assertFalse(cr.cached_ready_to_merge)
+        self.assert_agrees(cr)
+
+    def test_a_conflict_updates_the_cache_without_the_no_conflicts_check(self):
+        """
+        Only the no-conflicts check creates the row the diff receiver used to consult, so a
+        request governed by a policy that does not require it had no path back to the cache.
+        """
+        from unittest.mock import patch
+
+        from django.contrib.contenttypes.models import ContentType
+        from netbox_branching.models import ChangeDiff
+
+        cr, branch = self.make_request(checks=())
+        self.assertFalse(cr.checks.filter(name='no-conflicts').exists())
+
+        diff = ChangeDiff.objects.create(
+            branch=branch,
+            object_type=ContentType.objects.get_for_model(Policy),
+            object_id=1,
+            object_repr='x',
+            action='update',
+        )
+        ChangeDiff.objects.filter(pk=diff.pk).update(conflicts=['name'])
+        diff.refresh_from_db()
+
+        class _Unsynced:
+            def values_list(self, *args, **kwargs):
+                return [(diff.object_type_id, diff.object_id)]
+
+        with patch.object(type(branch), 'get_unsynced_changes', return_value=_Unsynced()):
+            diff.save()
+
+            cr.refresh_from_db()
+            self.assertTrue(cr.cached_conflicted)
+            self.assert_agrees(cr)
+
+    def test_a_review_updates_the_cache(self):
+        cr, _branch = self.make_request()
+        self.assertFalse(cr.cached_gates_cleared)
+
+        approve(cr, self.reviewer)
+
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_gates_cleared)
+        self.assert_agrees(cr)

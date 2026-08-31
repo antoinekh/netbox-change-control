@@ -162,7 +162,7 @@
           <tr>
             <td>
               {{ check.display_label }}
-              {% if check.required %}<span class="badge text-bg-grey">{% trans "Required" %}</span>{% endif %}
+              {% if check.required %}<span class="badge text-bg-gray">{% trans "Required" %}</span>{% endif %}
               {% if check.summary %}<div class="small text-muted">{{ check.summary }}</div>{% endif %}
             </td>
             <td class="text-end">
@@ -223,7 +223,7 @@
           <td class="text-nowrap">{{ binding.policy|linkify }}</td>
           <td>
             {% if binding.matched %}<span class="badge text-bg-cyan">{% trans "Auto" %}</span>{% endif %}
-            {% for name in binding.matched_object_types %}<span class="badge text-bg-grey">{{ name }}</span> {% endfor %}
+            {% for name in binding.matched_object_types %}<span class="badge text-bg-gray">{{ name }}</span> {% endfor %}
           </td>
         </tr>
         {% empty %}

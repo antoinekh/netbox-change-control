@@ -8,10 +8,15 @@ reviewer finds it in either place.
   <form action="{% url 'plugins:netbox_change_control:changerequest_review' pk=object.pk %}" method="post">
     {% csrf_token %}
     <div class="mb-2">
+      {% comment %}
+      Preselect the standing decision. Without it a reviewer editing their own review saw
+      their comment prefilled but the decision reset to Approve, so the form silently offered
+      to turn a "Request changes" into an approval.
+      {% endcomment %}
       <select name="decision" class="form-select">
-        <option value="approve">{% trans "Approve" %}</option>
-        <option value="reject">{% trans "Request changes" %}</option>
-        <option value="comment">{% trans "Comment" %}</option>
+        <option value="approve" {% if own_review.decision == 'approve' %}selected{% endif %}>{% trans "Approve" %}</option>
+        <option value="reject" {% if own_review.decision == 'reject' %}selected{% endif %}>{% trans "Request changes" %}</option>
+        <option value="comment" {% if own_review.decision == 'comment' %}selected{% endif %}>{% trans "Comment" %}</option>
       </select>
     </div>
     <div class="mb-2">

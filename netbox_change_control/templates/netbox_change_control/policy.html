@@ -25,7 +25,7 @@
           <th scope="row">{% trans "Object types" %}</th>
           <td>
             {% for ot in object.object_types.all %}
-              <span class="badge text-bg-grey">{{ ot.app_label }}.{{ ot.model }}</span>
+              <span class="badge text-bg-gray">{{ ot.app_label }}.{{ ot.model }}</span>
             {% empty %}
               <span class="text-muted">{% trans "Every object type" %}</span>
             {% endfor %}

@@ -53,7 +53,7 @@
           <div class="d-flex justify-content-between">
             <div>
               <strong>{{ thread.comment.author }}</strong>
-              <span class="text-muted small">{{ thread.comment.created }}</span>
+              <span class="text-muted small">{{ thread.comment.created|isodatetime:"minutes" }}</span>
               {% if thread.comment.resolved %}<span class="badge text-bg-green">{% trans "Resolved" %}</span>{% endif %}
             </div>
             {% if can_resolve %}
@@ -69,7 +69,7 @@
 
           {% for reply in thread.replies %}
           <div class="ms-4 mt-2 border-start border-2 ps-3" id="comment-{{ reply.pk }}">
-            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created }}</span></div>
+            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created|isodatetime:"minutes" }}</span></div>
             <div>{{ reply.text|markdown }}</div>
           </div>
           {% endfor %}
@@ -123,16 +123,16 @@
         <div class="border-start border-3 ps-3 mb-3" id="comment-{{ thread.comment.pk }}">
           <div>
             <strong>{{ thread.comment.author }}</strong>
-            <span class="text-muted small">{{ thread.comment.created }}</span>
+            <span class="text-muted small">{{ thread.comment.created|isodatetime:"minutes" }}</span>
             {% if thread.comment.change_label %}
-              <span class="badge text-bg-grey">{{ thread.comment.change_label }}</span>
+              <span class="badge text-bg-gray">{{ thread.comment.change_label }}</span>
             {% endif %}
             {% if thread.comment.resolved %}<span class="badge text-bg-green">{% trans "Resolved" %}</span>{% endif %}
           </div>
           <div>{{ thread.comment.text|markdown }}</div>
           {% for reply in thread.replies %}
           <div class="ms-4 mt-2 border-start border-2 ps-3">
-            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created }}</span></div>
+            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created|isodatetime:"minutes" }}</span></div>
             <div>{{ reply.text|markdown }}</div>
           </div>
           {% endfor %}

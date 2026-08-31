@@ -10,7 +10,18 @@
       <table class="table table-hover attr-table">
         <tr><th scope="row">{% trans "Change request" %}</th><td>{{ object.change_request|linkify }}</td></tr>
         <tr><th scope="row">{% trans "Reviewer" %}</th><td>{{ object.reviewer }}</td></tr>
-        <tr><th scope="row">{% trans "Decision" %}</th><td>{% badge object.get_decision_display bg_color=object.get_decision_color %}</td></tr>
+        <tr>
+          <th scope="row">{% trans "Decision" %}</th>
+          <td>
+            {% badge object.get_decision_display bg_color=object.get_decision_color %}
+            {% if object.is_stale %}
+              <span class="badge text-bg-yellow">{% trans "Stale" %}</span>
+              <div class="small text-muted mt-1">
+                {% trans "The branch has changed since this review was submitted, so it no longer counts towards its policy rules. Submit it again to restate it." %}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
         <tr><th scope="row">{% trans "Submitted" %}</th><td>{{ object.created|isodatetime:"minutes" }}</td></tr>
       </table>
     </div>

@@ -36,6 +36,8 @@ A result reflects the last run, so knowing when that happens matters:
 
 Externally reported checks are never overwritten by a run: only the system that reports them knows the answer.
 
+A result that moves is recorded in the object's changelog, so the machine half of a merge decision is auditable alongside the human half. A re-run that finds the same answer writes nothing, which keeps the log to real transitions; `completed` therefore marks when the result last changed, not when a check last ran.
+
 ## Built-in checks
 
 Four ship, available to any policy. Together they catch the merges that damage data rather than merely lack approval. None of them applies until a policy names it.

@@ -395,35 +395,37 @@ class ThreadsCheckAfterBranchDeletionTest(CheckTestCase):
 
 class AutoMergeOnCheckPassTest(CheckTestCase):
     """
-    run_checks writes results with .update(), which fires no post_save. Auto-merge must still
-    fire when an in-process check turns green.
+    An in-process check turning green can be the last gate a request was waiting on.
+
+    These count queued jobs rather than calls to enqueue. A passing check reaches auto-merge
+    twice, once from the MergeCheck receiver and once from run_checks itself, and what must
+    hold is that only one merge ends up queued. Mocking enqueue would remove the very
+    mechanism that deduplicates them and prove nothing.
     """
 
-    def test_a_passing_check_triggers_auto_merge(self):
-        from unittest.mock import patch
-
+    def queued(self):
+        from core.choices import JobStatusChoices
         from netbox_branching.jobs import MergeBranchJob
 
+        return MergeBranchJob.get_jobs(self.branch).filter(status__in=JobStatusChoices.ENQUEUED_STATE_CHOICES)
+
+    def test_a_passing_check_queues_exactly_one_merge(self):
         self.cr.auto_merge = True
         self.cr.save()
         register_check('ok', 'OK', lambda cr: CheckResult.passed())
 
-        with patch.object(MergeBranchJob, 'enqueue') as enqueue:
-            run_checks(self.cr)
-            enqueue.assert_called_once()
+        run_checks(self.cr)
+
+        self.assertEqual(self.queued().count(), 1)
 
     def test_a_failing_check_does_not_trigger_auto_merge(self):
-        from unittest.mock import patch
-
-        from netbox_branching.jobs import MergeBranchJob
-
         self.cr.auto_merge = True
         self.cr.save()
         register_check('bad', 'Bad', lambda cr: CheckResult.failed('no'))
 
-        with patch.object(MergeBranchJob, 'enqueue') as enqueue:
-            run_checks(self.cr)
-            enqueue.assert_not_called()
+        run_checks(self.cr)
+
+        self.assertEqual(self.queued().count(), 0)
 
 
 class ChecksRunOnCreationTest(TestCase):

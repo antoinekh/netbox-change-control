@@ -4,6 +4,8 @@ Once a change request reaches **Approved** and every required check passes, a **
 
 ![Merge button](img/merge-button.png)
 
+The branch page under **Branching > Branches** carries the same information from the other side: the change request governing it, its status, which rules are still short and who may satisfy them, with a link to it. A branch with no change request is told so there, with a button to open one.
+
 While the merge is blocked the button is greyed out and states the reason. If you may approve but not merge, the panel says so rather than hiding the button. The branch page under **Branching > Branches** carries the same button, since the merge itself belongs to the branching plugin.
 
 After a successful merge the change request is marked **Completed**, and it cannot be reopened.

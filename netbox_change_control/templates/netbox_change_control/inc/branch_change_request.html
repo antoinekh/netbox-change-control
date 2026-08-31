@@ -1,0 +1,38 @@
+{% load i18n %}
+{% comment %}
+The change request governing this branch, shown on the branch's own page.
+
+Read against the merge form beside it: branching states the refusal, this states what would
+clear it and links to the place it can be cleared.
+{% endcomment %}
+<div class="alert alert-{% if change_request.is_ready_to_merge %}success{% else %}info{% endif %} d-flex justify-content-between align-items-start">
+  <div>
+    <i class="mdi mdi-clipboard-check-outline" aria-hidden="true"></i>
+    <strong>{% trans "Change request" %}</strong>
+    {% badge change_request.get_status_display bg_color=change_request.get_status_color %}
+    {% if change_request.ref %}<span class="badge text-bg-gray">{{ change_request.ref }}</span>{% endif %}
+
+    <div class="mt-1">{{ change_request.title }}</div>
+
+    {% if change_request.is_ready_to_merge %}
+      <div class="small mt-1">
+        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+        {% trans "Every gate is satisfied. This branch can be merged." %}
+      </div>
+    {% else %}
+      <div class="small text-muted mt-1">{{ blocked_reason }}</div>
+      {% for rule in evaluation.rules %}
+        {% if not rule.satisfied %}
+          <div class="small text-muted">
+            {{ rule.rule.policy }} / {{ rule.rule.name }}: {{ rule.count }} / {{ rule.required }}
+            &middot; {% trans "may approve:" %}
+            {% for user in rule.rule.eligible_users %}{{ user.username }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-danger">{% trans "nobody" %}</span>{% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  </div>
+  <a href="{{ change_request.get_absolute_url }}" class="btn btn-sm btn-outline-primary text-nowrap ms-2">
+    {% trans "Open change request" %}
+  </a>
+</div>

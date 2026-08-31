@@ -1,0 +1,22 @@
+{% load i18n %}
+{% comment %}
+A branch with no change request cannot merge. Saying so here, beside the button that fixes it,
+turns a refusal on the merge form into a next step.
+{% endcomment %}
+{% if branch.ready %}
+<div class="alert alert-warning d-flex justify-content-between align-items-center">
+  <div>
+    <i class="mdi mdi-clipboard-alert-outline" aria-hidden="true"></i>
+    <strong>{% trans "No change request" %}</strong>
+    <div class="small">
+      {% trans "This branch cannot be merged until a change request is opened against it and approved." %}
+    </div>
+  </div>
+  {% if perms.netbox_change_control.add_changerequest %}
+  <a href="{% url 'plugins:netbox_change_control:changerequest_add' %}?branch={{ branch.pk }}"
+     class="btn btn-sm btn-warning text-nowrap ms-2">
+    {% trans "Open a change request" %}
+  </a>
+  {% endif %}
+</div>
+{% endif %}

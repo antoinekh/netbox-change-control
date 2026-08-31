@@ -2,6 +2,13 @@
 
 Another plugin can add content to this plugin's pages, and checks to its merge gate. Nothing special is required of you.
 
+## What this plugin injects elsewhere
+
+The traffic runs both ways. This plugin uses the same hook to put its own content on
+netbox-branching's branch page: the change request governing that branch, its status, what is
+still outstanding and a link to it, or an offer to open one when there is none. See
+`netbox_change_control/template_content.py`.
+
 ## Injecting content into a page
 
 Every model here supports NetBox's standard `PluginTemplateExtension` hooks. This is a NetBox feature, and the [NetBox documentation](https://netboxlabs.com/docs/netbox/en/stable/plugins/development/views/#extra-template-content) is the reference for it.

@@ -7,31 +7,44 @@ def populate_cached_state(apps, schema_editor):
     """
     Fill the new columns for change requests that already exist.
 
-    Without this an upgraded install shows every open request as conflict-free and not ready
-    until something happens to refresh it, which is worse than showing nothing: the columns
-    would be confidently wrong.
+    Without this an upgraded install shows every open request as conflict-free until something
+    happens to refresh it, which is worse than showing nothing: the column would be
+    confidently wrong.
 
-    Only the conflict half is computed. It reads ChangeDiff and the branch's unsynced changes,
-    both of which live in the main schema, so it is safe here. Readiness needs the policy
-    evaluation, which reaches into each branch's own schema, and a migration is the wrong
-    place to go looking for those; it is left at the default and corrects itself the first
-    time anything touches the request.
+    The **live** Branch model is used deliberately. A migration is normally handed historical
+    models, but those carry fields only and no methods, and working out whether a conflict is
+    real needs `Branch.get_unsynced_changes()`. Reading it from the historical model silently
+    did nothing at all, which is the failure this comment exists to prevent repeating.
+
+    Only the conflict half is filled. It reads ChangeDiff and the branch's unsynced changes,
+    both in the main schema, so it is safe here. Readiness needs the policy evaluation, which
+    reaches into each branch's own schema; a migration is the wrong place to go looking for
+    those, so it is left at the default and corrects itself the first time anything touches
+    the request.
     """
     ChangeRequest = apps.get_model('netbox_change_control', 'ChangeRequest')
 
     try:
+        from netbox_branching.models import Branch
         from netbox_change_control.conflicts import conflicting_diffs
     except Exception:
         return
 
-    for change_request in ChangeRequest.objects.filter(branch__isnull=False).select_related('branch'):
-        try:
-            conflicted = bool(conflicting_diffs(change_request.branch))
-        except Exception:
-            # A branch whose schema has gone, or any other surprise, must not stop the upgrade.
+    branches = {b.pk: b for b in Branch.objects.all()}
+    conflicted = []
+    for pk, branch_id in ChangeRequest.objects.filter(branch__isnull=False).values_list('pk', 'branch_id'):
+        branch = branches.get(branch_id)
+        if branch is None:
             continue
-        if conflicted:
-            ChangeRequest.objects.filter(pk=change_request.pk).update(cached_conflicted=True)
+        try:
+            if conflicting_diffs(branch):
+                conflicted.append(pk)
+        except Exception:
+            # A branch whose schema has gone, or any other surprise, must not stop an upgrade.
+            continue
+
+    if conflicted:
+        ChangeRequest.objects.filter(pk__in=conflicted).update(cached_conflicted=True)
 
 
 class Migration(migrations.Migration):

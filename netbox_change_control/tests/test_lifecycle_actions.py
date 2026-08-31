@@ -220,3 +220,33 @@ class SubmitForReviewPermissionTest(TestCase):
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
         self.assertEqual(self.cr.policies.count(), 1)
+
+
+class ReadOnlyTokenTest(APITestCase):
+    """
+    The abandon and reopen actions carry their own permission class, which drops NetBox's
+    blanket `add_<model>` requirement for POST. Everything else it inherits has to keep
+    working, and a read-only token being refused is the part worth pinning: dropping an entry
+    from a perms_map is exactly the kind of change that quietly widens more than intended.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.requester = User.objects.create(username='requester')
+        self.cr = ChangeRequest.objects.create(branch=make_branch('rotoken', 'x'), title='T', requester=self.requester)
+        grant(self.user, ['view', 'abandon'], name='cr-abandon')
+        self.url = f'/api/plugins/change-control/change-requests/{self.cr.pk}/abandon/'
+
+    def test_a_write_token_holding_the_permission_may_abandon(self):
+        response = self.client.post(self.url, **self.header)
+        self.assertEqual(response.status_code, http.HTTP_200_OK)
+
+    def test_a_read_only_token_may_not(self):
+        self.token.write_enabled = False
+        self.token.save()
+
+        response = self.client.post(self.url, **self.header)
+
+        self.assertEqual(response.status_code, http.HTTP_403_FORBIDDEN)
+        self.cr.refresh_from_db()
+        self.assertNotEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)

@@ -6,6 +6,9 @@
 
 - **The policies governing a change request now follow the branch.** They were matched when the request was submitted and never again, except on a sync or a revert. A branch which grew a new object type after submission kept the policies matched against its old contents, so an author could open a request on a low-risk branch, collect the light approval that attracted, then add the real change to the same branch and merge it under that same approval. Policies are now re-matched whenever the branch starts touching something new, and the merge gate re-matches for itself rather than trusting that signal to have fired.
 
+- **The REST API no longer lets a caller forge the author of a change comment.** `author` was writable, so any token holding `add_changecomment` could post a comment attributed to a colleague, faking a sign-off in the discussion a reviewer reads before approving. It is now read-only and always the caller, matching `reviewer` on a review.
+- A change comment can no longer refer to a change in another request's branch. The Changes tab already looked the change up scoped to the branch, but the REST API took both as plain ids, and such a comment was invisible on the tab it belonged to while counting as an open thread on a request it did not describe.
+
 ### Added
 
 - An [administration guide](docs/admin-guide.md): roles, a permission matrix for every model, how to narrow a permission with a constraint, building policies, an end-to-end test procedure and troubleshooting.

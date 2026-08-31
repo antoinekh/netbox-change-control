@@ -95,6 +95,15 @@ class ChangeComment(NetBoxModel):
         if self.change_diff_id is None and self.pk is None:
             raise ValidationError({'change_diff': _('A comment must name the change it refers to.')})
 
+        # The change must be one of this request's own. The Changes tab looks the diff up
+        # scoped to the branch, so the interface could not cross them, but the REST API took
+        # both as plain ids and would happily file a comment on one request against another
+        # request's diff. It would then be invisible on the tab it belongs to and counted as
+        # an open thread on a request it does not describe.
+        if self.change_diff_id and self.change_request_id:
+            if self.change_diff.branch_id != self.change_request.branch_id:
+                raise ValidationError({'change_diff': _('That change belongs to a different branch.')})
+
         if self.parent_id:
             if self.parent_id == self.pk:
                 raise ValidationError({'parent': _('A comment cannot reply to itself.')})

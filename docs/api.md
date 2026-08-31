@@ -114,6 +114,20 @@ Note the absent field. `reviewer` is read-only and always the caller, so a token
 
 Reviews and comments accept Markdown, rendered through NetBox's sanitising filter.
 
+## Commenting on one change
+
+```bash
+curl -X POST "$NETBOX/api/plugins/change-control/change-comments/" \
+  -H "Authorization: Token $TOKEN" -H "Content-Type: application/json" \
+  -d '{"change_request": 42, "change_diff": 907, "text": "Is this the right rack?"}'
+```
+
+`author` is read-only and always the caller, for the same reason `reviewer` is on a review: a comment is part of the record a reviewer reads before approving, so a token must not be able to post one under a colleague's name. Naming somebody else is not an error; the comment is simply recorded as yours.
+
+`change_diff` has to be a change in the request's own branch. Crossing them is refused with a 400, because such a comment would be invisible on the tab it belongs to and counted as an open thread on a request it does not describe.
+
+Reply within a thread by naming its root comment as `parent`. A reply must sit on the same change as its parent, and replies are one level deep: a reply to a reply joins the same thread.
+
 ## Events, the other direction
 
 To be told when something happens rather than polling, use [event rules](event-rules.md).

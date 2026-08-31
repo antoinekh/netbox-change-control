@@ -195,7 +195,33 @@ class MergeCheckSerializer(NetBoxModelSerializer):
 
 
 class ChangeCommentSerializer(NetBoxModelSerializer):
+    """
+    A comment is a personal statement, so the API records it as the caller and never as
+    somebody else.
+
+    `author` is read-only and defaults to the requesting user, for the same reason `reviewer`
+    is on ReviewSerializer. Leaving it writable let any token holding `add_changecomment` post
+    a comment attributed to a colleague, which is enough to fake a sign-off in the discussion
+    a reviewer reads before approving.
+    """
+
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:netbox_change_control-api:changecomment-detail')
+    author = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    def validate(self, attrs):
+        """
+        Attribute a new comment to the caller.
+
+        A read-only field carrying a default is not enough, because DRF leaves a read-only
+        field out of validated_data entirely. The assignment also has to happen before
+        super(), since NetBox's ValidatedModelSerializer builds a model instance from these
+        attributes and calls full_clean() on it, which would reject the missing author.
+        """
+        if self.instance is None:
+            request = self.context.get('request')
+            if request is not None:
+                attrs['author'] = request.user
+        return super().validate(attrs)
 
     class Meta:
         model = ChangeComment

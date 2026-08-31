@@ -45,6 +45,8 @@ It is triggered two ways, because a request can become mergeable either by somet
 
 So a change approved at midday with a window opening at 21:00 does merge at 21:00, with no further human action. Nothing has to happen at 21:00 except the clock reaching it.
 
+Only ever one job per branch. A single write can reach the automatic merge by more than one route, and the request is still Approved at the second arrival because the merge has only been queued and not yet run. A queued, scheduled or running merge for the branch stops another being added.
+
 The merge is **enqueued as a background job**, the same path the branching plugin's own merge button takes. It is never run inline: auto-merge is reached from a signal, so merging directly would run a whole branch merge inside the web request that submitted the final review.
 
 If the branch changes during the wait, the approvals go stale, the status returns to Needs review, and the evening merge does not happen. Approval is only valid for the branch state it was given against.

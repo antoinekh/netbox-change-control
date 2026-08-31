@@ -17,6 +17,7 @@ reports the case where the window is too short for that sweep to be relied on.
 import logging
 from dataclasses import dataclass
 
+from core.choices import JobStatusChoices
 from netbox.plugins import get_plugin_config
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
@@ -105,16 +106,32 @@ def try_auto_merge(change_request):
         return False
 
     branch = change_request.branch
-    indicator = branch.can_merge
-    if not indicator.permitted:
-        logger.debug('Auto-merge skipped for %s: %s', change_request, indicator.message)
-        return False
 
     # Enqueue rather than merge inline. try_auto_merge is reached from a signal, so a direct
     # call would run a whole branch merge inside the web request that submitted the final
     # review, and would bypass the branching plugin's job_timeout handling. This is the same
     # path the branching plugin's own merge button takes.
     from netbox_branching.jobs import MergeBranchJob
+
+    # One merge per branch, however many times this is reached.
+    #
+    # Nothing about becoming mergeable happens once. A single write can arrive here by more
+    # than one route: refreshing the status runs the checks, which try to merge, and a caller
+    # that then runs the checks itself tries again. The status is still Approved at the second
+    # call, because the merge has only been queued and not yet run, so the second call used to
+    # queue a duplicate. The first job merged and the second then failed with "not ready to
+    # merge", which reads as a broken merge on a change that in fact went through.
+    #
+    # Guarding on the queue rather than on the call sites is what makes this hold for routes
+    # nobody has thought of yet. This is the same test NetBox's own enqueue_once applies.
+    if already := MergeBranchJob.get_jobs(branch).filter(status__in=JobStatusChoices.ENQUEUED_STATE_CHOICES).first():
+        logger.debug('Auto-merge for %s already queued as job %s', change_request, already.pk)
+        return False
+
+    indicator = branch.can_merge
+    if not indicator.permitted:
+        logger.debug('Auto-merge skipped for %s: %s', change_request, indicator.message)
+        return False
 
     logger.info('Enqueuing auto-merge for %s', change_request)
     MergeBranchJob.enqueue(

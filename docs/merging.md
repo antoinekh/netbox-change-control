@@ -29,7 +29,7 @@ Either bound may be left empty. A start alone means "not before"; an end alone m
 
 The window is a **third, independent gate**, checked alongside the policies and the checks. When it blocks, the merge button states when the window opens or when it closed.
 
-Users holding `netbox_change_control.override_window_changerequest` may merge outside the window, which is what an incident needs. See [granting the exemptions](permissions.md#granting-the-exemptions).
+Users holding `netbox_change_control.override_window_changerequest` may merge outside the window, which is what an incident needs. See [granting the exemptions](permissions.md#granting-the-custom-actions).
 
 > [!IMPORTANT]
 > The window fails closed when there is no request context. `protect_main` deliberately exempts scripts and background jobs, because those are not interactive edits. A change window is the opposite: a script merging at the wrong hour is exactly what it exists to stop.

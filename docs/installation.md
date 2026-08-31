@@ -32,6 +32,12 @@ Then run the migrations:
 ./manage.py migrate netbox_change_control
 ```
 
+If you are adding this plugin to a NetBox that already holds data, build the search index once so existing objects are findable:
+
+```bash
+./manage.py reindex netbox_change_control
+```
+
 > [!IMPORTANT]
 > The `exempt_models` entry is not optional. Without it, a change request created while a branch is active is written into that branch's schema and is invisible from main, taking the record of who approved what with it.
 

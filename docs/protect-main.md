@@ -14,7 +14,7 @@ A refused write keeps the user on the form they were filling in, with the reason
 
 A delete shows the same message as an error toast, and the REST API returns 400 with it as `detail`. The refusal is raised as NetBox's `AbortRequest`, which is the mechanism a signal receiver is given for exactly this. Raising `PermissionDenied` instead produced a bare **Access Denied** page with the explanation discarded, which reads like a misconfigured permission rather than a deliberate policy.
 
-Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-exemptions). Writes with no request context, such as migrations, scripts and background jobs, are allowed: they are not interactive edits.
+Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-custom-actions). Writes with no request context, such as migrations, scripts and background jobs, are allowed: they are not interactive edits.
 
 > [!NOTE]
 > Superusers hold every permission, so a superuser is never blocked.

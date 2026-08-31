@@ -44,6 +44,17 @@ The change request **list** answers the same question from a cache, because comp
 
 Two consequences worth knowing. The list does not account for merge validators registered by other plugins, which this page does. And the list is what you sort and filter on, which the live version could never support. Where the two could disagree, this page is authoritative, and the merge gate itself never reads the cache at all.
 
+## Finding a change request
+
+Change requests appear in NetBox's global search, and the **reference** is weighted above everything else, so typing a ticket number finds the change it spawned. The title, description, comments and the branch name are searched too.
+
+The branch **name** is what is indexed, not the branch itself, so a change request whose branch has been deleted is still found by the name that branch had. That is the case where search is the only way left to reach it.
+
+Policies, rules, reviews, pre-merge checks and the per-object comments are all searchable as well. A comment keeps the name of the object it was about, so searching for a device finds the discussion about it long after the branch is gone.
+
+> [!NOTE]
+> Search reads an index NetBox maintains as objects are written. Objects that already existed when this plugin was upgraded are indexed by running `./manage.py reindex netbox_change_control` once.
+
 ## The record outlives the branch
 
 A change request is the record of who approved what, so it survives deletion of its branch. The branch link is cleared, the branch **name** is kept and follows the branch through any rename, and the title, description, reviews, comment threads, applied policies and check results all remain. Each comment also keeps the name of the object it was about, so the discussion still makes sense once the diff is gone.

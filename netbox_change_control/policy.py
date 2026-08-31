@@ -425,9 +425,11 @@ def refresh_status(change_request):
             from netbox_change_control.checks import run_checks
 
             run_checks(change_request)
+            # run_checks refreshes the cached columns itself, and recomputing them here would
+            # repeat the whole evaluation for the same answer.
+            return status
 
-    # Last, so it reads the settled status. run_checks refreshes it too, and the guard inside
-    # means the second call writes nothing.
+    # Last, so it reads the settled status.
     refresh_cached_state(change_request)
 
     return status

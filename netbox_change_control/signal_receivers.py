@@ -494,9 +494,15 @@ def rerun_checks_on_diff_change(sender, instance, **kwargs):
     if change_request is None or _is_being_deleted(change_request.pk):
         return
 
+    # A clean diff on a request nothing has ever flagged cannot change the answer. Another
+    # diff turning conflicted arrives as its own save, so it is caught there. This matters:
+    # a bulk edit inside a branch writes one ChangeDiff per object, and without this guard
+    # every one of them pays for the conflict test below.
+    if not instance.conflicts and not change_request.cached_conflicted:
+        return
+
     # Use the same real-versus-reconciled test the check applies, or this would react to a
-    # flag the check deliberately ignores. Computed once and used for both jobs below, so
-    # this costs no more than the guard it replaced.
+    # flag the check deliberately ignores. Computed once and used for both jobs below.
     from netbox_change_control.conflicts import conflicting_diffs
 
     conflicted = bool(conflicting_diffs(change_request.branch))

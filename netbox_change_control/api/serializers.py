@@ -152,7 +152,9 @@ class ReviewSerializer(NetBoxModelSerializer):
         super(), since NetBox's ValidatedModelSerializer builds a model instance from these
         attributes and calls full_clean() on it, which would reject the missing reviewer.
         """
-        if self.instance is None:
+        # `not self.nested` matters: a nested serializer's to_internal_value returns a model
+        # instance rather than a dict, and assigning into it raises TypeError.
+        if self.instance is None and not self.nested:
             request = self.context.get('request')
             if request is not None:
                 attrs['reviewer'] = request.user
@@ -221,7 +223,9 @@ class ChangeCommentSerializer(NetBoxModelSerializer):
         super(), since NetBox's ValidatedModelSerializer builds a model instance from these
         attributes and calls full_clean() on it, which would reject the missing author.
         """
-        if self.instance is None:
+        # `not self.nested` matters: a nested serializer's to_internal_value returns a model
+        # instance rather than a dict, and assigning into it raises TypeError.
+        if self.instance is None and not self.nested:
             request = self.context.get('request')
             if request is not None:
                 attrs['author'] = request.user

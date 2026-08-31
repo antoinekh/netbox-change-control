@@ -72,6 +72,16 @@ class ChangeComment(NetBoxModel):
         return f'{self.author} on {self.change_label or self.change_diff_id}'
 
     def save(self, *args, **kwargs):
+        # One level of nesting only, enforced here rather than only in clean().
+        #
+        # clean() reassigns self.parent, but NetBox's ValidatedModelSerializer runs full_clean()
+        # on a throw-away copy and keeps only the original attributes, so the flattening was
+        # discarded on every REST write. A reply to a reply was then stored as a grandchild,
+        # and the Changes tab builds its threads from roots alone, so the comment rendered
+        # nowhere at all.
+        if self.parent_id and self.parent.parent_id:
+            self.parent = self.parent.parent
+
         # Resolution belongs to a thread, not to an individual comment. Leaving the flag
         # settable on a reply produced rows that looked unresolved while their thread was
         # closed, which is what made the tab badge disagree with the page.
@@ -101,7 +111,15 @@ class ChangeComment(NetBoxModel):
         # request's diff. It would then be invisible on the tab it belongs to and counted as
         # an open thread on a request it does not describe.
         if self.change_diff_id and self.change_request_id:
-            if self.change_diff.branch_id != self.change_request.branch_id:
+            # Fetch rather than dereference. A stale id raises ChangeDiff.DoesNotExist, which
+            # is not a ValidationError and escapes as a server error; a branch deleted
+            # concurrently is the realistic way to reach that.
+            from netbox_branching.models import ChangeDiff
+
+            branch_id = ChangeDiff.objects.filter(pk=self.change_diff_id).values_list('branch_id', flat=True).first()
+            if branch_id is None:
+                raise ValidationError({'change_diff': _('That change no longer exists.')})
+            if branch_id != self.change_request.branch_id:
                 raise ValidationError({'change_diff': _('That change belongs to a different branch.')})
 
         if self.parent_id:

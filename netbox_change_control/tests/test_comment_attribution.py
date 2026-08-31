@@ -137,3 +137,98 @@ class ChangeCommentBranchScopeTest(APITestCase):
         comment = ChangeComment(change_request=self.cr, change_diff=self.other_diff, author=self.user, text='Sneaky')
         with self.assertRaises(ValidationError):
             comment.full_clean()
+
+
+class ChangeCommentThreadDepthTest(APITestCase):
+    """
+    A reply to a reply joins the same thread, on every path.
+
+    The flattening lived in clean(), which reassigns self.parent. NetBox's
+    ValidatedModelSerializer runs full_clean() on a throw-away copy and keeps only the original
+    attributes, so the REST path stored a grandchild instead. The Changes tab builds its
+    threads from roots alone, so such a comment rendered nowhere at all.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.requester = User.objects.create(username='requester')
+        self.branch = make_branch('depth', 'x')
+        self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.requester)
+        self.diff = make_diff(self.branch)
+        self.root = ChangeComment.objects.create(
+            change_request=self.cr, change_diff=self.diff, author=self.user, text='root'
+        )
+        self.reply = ChangeComment.objects.create(
+            change_request=self.cr, change_diff=self.diff, author=self.user, parent=self.root, text='reply'
+        )
+
+        permission = ObjectPermission.objects.create(name='comment', actions=['view', 'add'])
+        permission.object_types.add(ContentType.objects.get_for_model(ChangeComment))
+        permission.users.add(self.user)
+
+    def test_a_reply_to_a_reply_joins_the_same_thread_over_the_api(self):
+        response = self.client.post(
+            '/api/plugins/change-control/change-comments/',
+            {
+                'change_request': self.cr.pk,
+                'change_diff': self.diff.pk,
+                'parent': self.reply.pk,
+                'text': 'grandchild',
+            },
+            format='json',
+            **self.header,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = ChangeComment.objects.get(pk=response.data['id'])
+        self.assertEqual(created.parent_id, self.root.pk)
+
+    def test_a_reply_to_a_reply_joins_the_same_thread_through_the_orm(self):
+        created = ChangeComment.objects.create(
+            change_request=self.cr,
+            change_diff=self.diff,
+            author=self.user,
+            parent=self.reply,
+            text='grandchild',
+        )
+        self.assertEqual(created.parent_id, self.root.pk)
+
+
+class ChangeCommentStaleDiffTest(APITestCase):
+    def test_a_change_that_no_longer_exists_is_a_validation_error(self):
+        """
+        Not a server error. A branch deleted while a comment is in flight is the realistic
+        way to hold an id that has gone.
+        """
+        requester = User.objects.create(username='requester')
+        branch = make_branch('stale', 'x')
+        cr = ChangeRequest.objects.create(branch=branch, title='T', requester=requester)
+        diff = make_diff(branch)
+        comment = ChangeComment(change_request=cr, change_diff_id=diff.pk, author=self.user, text='x')
+        diff.delete()
+
+        with self.assertRaises(ValidationError):
+            comment.full_clean()
+
+
+class ChangeCommentBranchScopeOnUpdateTest(ChangeCommentBranchScopeTest):
+    """
+    The branch rule has to hold on update as well as on create.
+    """
+
+    def test_patching_a_comment_onto_another_branch_is_refused(self):
+        comment = ChangeComment.objects.create(
+            change_request=self.cr, change_diff=self.diff, author=self.user, text='mine'
+        )
+        permission = ObjectPermission.objects.create(name='comment-change', actions=['change'])
+        permission.object_types.add(ContentType.objects.get_for_model(ChangeComment))
+        permission.users.add(self.user)
+
+        response = self.client.patch(
+            f'/api/plugins/change-control/change-comments/{comment.pk}/',
+            {'change_diff': self.other_diff.pk},
+            format='json',
+            **self.header,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        comment.refresh_from_db()
+        self.assertEqual(comment.change_diff_id, self.diff.pk)

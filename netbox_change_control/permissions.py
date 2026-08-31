@@ -8,8 +8,10 @@ that decision is the caller's rather than duplicated in two near-identical helpe
 from netbox.context import current_request
 
 __all__ = (
+    'ABANDON_PERMISSION',
     'BYPASS_PERMISSION',
     'OVERRIDE_WINDOW_PERMISSION',
+    'REOPEN_PERMISSION',
     'current_user_has_perm',
 )
 
@@ -19,6 +21,12 @@ __all__ = (
 # only, which is silently broken rather than merely inconvenient.
 BYPASS_PERMISSION = 'netbox_change_control.bypass_policy'
 OVERRIDE_WINDOW_PERMISSION = 'netbox_change_control.override_window_changerequest'
+
+# Status is derived from the policy evaluation, so it is not an editable field. These two are
+# the transitions a person makes by hand, and each is granted separately: giving up on a change
+# and taking one back up are different decisions from editing its title.
+ABANDON_PERMISSION = 'netbox_change_control.abandon_changerequest'
+REOPEN_PERMISSION = 'netbox_change_control.reopen_changerequest'
 
 
 def current_user_has_perm(permission, *, without_request):

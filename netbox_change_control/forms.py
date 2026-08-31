@@ -381,9 +381,18 @@ class PolicyRuleBulkEditForm(NetBoxModelBulkEditForm):
 
 
 class ChangeRequestBulkEditForm(NetBoxModelBulkEditForm):
+    """
+    `status` is deliberately absent.
+
+    It is a cached view of the policy evaluation, not something to type in. Offering it here
+    let anybody holding change_changerequest set a request to Completed, which is terminal:
+    the merge gate refuses a completed request and nothing reopens one, so the branch was
+    blocked for good. Abandoning and reopening are separate permissioned actions on the
+    change request itself.
+    """
+
     model = ChangeRequest
     ref = forms.CharField(max_length=100, required=False, label=_('Reference'))
-    status = forms.ChoiceField(choices=ChangeRequestStatusChoices, required=False)
     priority = forms.ChoiceField(choices=ChangeRequestPriorityChoices, required=False)
     description = forms.CharField(max_length=200, required=False)
     scheduled_start = forms.DateTimeField(required=False, widget=DateTimePicker())

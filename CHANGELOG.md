@@ -10,8 +10,11 @@
 - **Automatic merge no longer queues two jobs for one branch.** Becoming mergeable can be reached by more than one route in a single write, and the status is still Approved at the second arrival because the merge has only been queued rather than run. The first job merged and the second then failed with "not ready to merge", which read as a broken merge on a change that had in fact gone through. Auto-merge now refuses to queue while a merge for that branch is already pending, scheduled or running.
 - A change comment can no longer refer to a change in another request's branch. The Changes tab already looked the change up scoped to the branch, but the REST API took both as plain ids, and such a comment was invisible on the tab it belonged to while counting as an open thread on a request it did not describe.
 
+- **A change request's status can no longer be set by hand.** It is derived from the policy evaluation, but it was writable on the bulk edit form and over the REST API, and Completed is terminal: the merge gate refuses a completed request and nothing reopens one, so one bulk edit blocked a branch from merging for good with no way back through the interface. `status` is now read-only on the API and gone from the bulk edit form.
+
 ### Added
 
+- **Abandon** and **Reopen** actions on a change request, each behind its own permission (`abandon_changerequest`, `reopen_changerequest`), on the change request page and as `POST /change-requests/{id}/abandon/` and `/reopen/`. These are the two transitions a person legitimately makes now that status is not an editable field. Reopening recomputes rather than restoring, because reviews go stale and policies change while a request is set aside.
 - An [administration guide](docs/admin-guide.md): roles, a permission matrix for every model, how to narrow a permission with a constraint, building policies, an end-to-end test procedure and troubleshooting.
 
 ### Changed

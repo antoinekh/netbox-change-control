@@ -18,6 +18,8 @@ The plugin defines the standard NetBox object permissions for each of its models
 | `netbox_change_control.change_changecomment` | Resolve and reopen threads. |
 | `netbox_change_control.bypass_policy` | Write outside a branch while `protect_main` is enabled. |
 | `netbox_change_control.override_window_changerequest` | Merge a change request outside its change window. |
+| `netbox_change_control.abandon_changerequest` | Give up on an open change request. |
+| `netbox_change_control.reopen_changerequest` | Take an abandoned change request back up. |
 
 ## Granting the exemptions
 

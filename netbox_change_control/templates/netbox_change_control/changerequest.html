@@ -230,12 +230,30 @@
         <tr><td class="text-muted">{% trans "No policies attached." %}</td></tr>
         {% endfor %}
       </table>
-      {% if object.status == 'draft' %}
-      <div class="card-footer">
+      {% if object.status == 'draft' or can_abandon or can_reopen %}
+      <div class="card-footer d-flex gap-2">
+        {% if object.status == 'draft' %}
         <form action="{% url 'plugins:netbox_change_control:changerequest_submit' pk=object.pk %}" method="post">
           {% csrf_token %}
           <button type="submit" class="btn btn-primary">{% trans "Submit for review" %}</button>
         </form>
+        {% endif %}
+        {% if can_abandon %}
+        <form action="{% url 'plugins:netbox_change_control:changerequest_abandon' pk=object.pk %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary">
+            <i class="mdi mdi-archive-arrow-down-outline"></i> {% trans "Abandon" %}
+          </button>
+        </form>
+        {% endif %}
+        {% if can_reopen %}
+        <form action="{% url 'plugins:netbox_change_control:changerequest_reopen' pk=object.pk %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-primary">
+            <i class="mdi mdi-restore"></i> {% trans "Reopen" %}
+          </button>
+        </form>
+        {% endif %}
       </div>
       {% endif %}
     </div>

@@ -77,7 +77,7 @@ The fields worth acting on:
 
 | Field | Meaning |
 |---|---|
-| `status` | `draft`, `needs-review`, `approved`, `rejected` or `completed`. The people gate only. |
+| `status` | `draft`, `needs-review`, `approved`, `rejected`, `completed` or `abandoned`. The people gate only, and **read-only**: it is derived from the policy evaluation. |
 | `approved` | Whether the policies are satisfied. |
 | `ready_to_merge` | Whether it can actually merge now. Approved is not the same thing: a check or the change window can still block. |
 | `merge_blocked_reason` | Why not, in words, when `ready_to_merge` is false. |
@@ -127,6 +127,22 @@ curl -X POST "$NETBOX/api/plugins/change-control/change-comments/" \
 `change_diff` has to be a change in the request's own branch. Crossing them is refused with a 400, because such a comment would be invisible on the tab it belongs to and counted as an open thread on a request it does not describe.
 
 Reply within a thread by naming its root comment as `parent`. A reply must sit on the same change as its parent, and replies are one level deep: a reply to a reply joins the same thread.
+
+## Abandoning and reopening
+
+`status` is read-only, so the two transitions a person makes by hand are actions rather than a field:
+
+```bash
+curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/abandon/" \
+  -H "Authorization: Token $TOKEN"
+
+curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/reopen/" \
+  -H "Authorization: Token $TOKEN"
+```
+
+Each needs its own permission, `abandon_changerequest` and `reopen_changerequest`. Neither needs `add_changerequest`: giving up on a change is not creating one.
+
+Both return the updated change request. A transition that does not apply, such as abandoning a completed request or reopening one that was never abandoned, returns **409** with the reason in `detail`.
 
 ## Events, the other direction
 

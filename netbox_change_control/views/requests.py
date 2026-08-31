@@ -10,16 +10,19 @@ from utilities.views import ViewTab, register_model_view
 from netbox_change_control import events, filtersets, forms, tables
 from netbox_change_control.checks import run_checks, sync_checks
 from netbox_change_control.models import ChangeRequest, Review
+from netbox_change_control.permissions import ABANDON_PERMISSION, REOPEN_PERMISSION
 from netbox_change_control.policy import refresh_status, sync_policies
 
 from .reviews import review_eligibility
 
 __all__ = (
+    'AbandonChangeRequestView',
     'ChangeRequestDeleteView',
     'ChangeRequestEditView',
     'ChangeRequestListView',
     'ChangeRequestReviewsView',
     'ChangeRequestView',
+    'ReopenChangeRequestView',
     'SubmitForReviewView',
     'SubmitReviewView',
 )
@@ -74,6 +77,8 @@ class ChangeRequestView(generic.ObjectView):
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
             'can_merge_perm': request.user.has_perm('netbox_branching.merge_branch'),
+            'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION),
+            'can_reopen': instance.can_be_reopened and request.user.has_perm(REOPEN_PERMISSION),
         }
 
 
@@ -162,6 +167,55 @@ class SubmitReviewView(View):
 
         refresh_status(change_request)
         messages.success(request, _('Review recorded.'))
+        return redirect(change_request.get_absolute_url())
+
+
+class AbandonChangeRequestView(View):
+    """
+    Give up on a change request.
+
+    This exists so `status` does not have to be an editable field. It used to be, on the bulk
+    edit form and over the REST API, which meant anybody holding `change_changerequest` could
+    set a request to Completed. Completed and Abandoned are terminal, the merge gate refuses a
+    completed request, and nothing reopens one, so a slip of the mouse permanently blocked a
+    branch from merging with no way back through the interface.
+    """
+
+    def post(self, request, pk):
+        change_request = get_object_or_404(ChangeRequest, pk=pk)
+
+        if not request.user.has_perm(ABANDON_PERMISSION):
+            messages.error(request, _('You do not have permission to abandon change requests.'))
+        elif change_request.abandon():
+            messages.success(request, _('Change request abandoned.'))
+        else:
+            messages.error(
+                request,
+                _('This change request is %(status)s, so it cannot be abandoned.')
+                % {'status': change_request.get_status_display().lower()},
+            )
+
+        return redirect(change_request.get_absolute_url())
+
+
+class ReopenChangeRequestView(View):
+    """
+    Take an abandoned change request back up.
+
+    Only an abandoned one. A completed request records a merge that actually happened, so
+    reopening it would invite a second merge of a branch already in main.
+    """
+
+    def post(self, request, pk):
+        change_request = get_object_or_404(ChangeRequest, pk=pk)
+
+        if not request.user.has_perm(REOPEN_PERMISSION):
+            messages.error(request, _('You do not have permission to reopen change requests.'))
+        elif change_request.reopen():
+            messages.success(request, _('Change request reopened.'))
+        else:
+            messages.error(request, _('Only an abandoned change request can be reopened.'))
+
         return redirect(change_request.get_absolute_url())
 
 

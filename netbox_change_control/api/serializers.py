@@ -75,6 +75,10 @@ class ChangeRequestSerializer(NetBoxModelSerializer):
     branch_name = serializers.CharField(read_only=True)
     branch_deleted = serializers.BooleanField(read_only=True)
     ready_to_merge = serializers.BooleanField(source='is_ready_to_merge', read_only=True)
+    # Derived from the policy evaluation, so it is reported and never set. A writable status
+    # let a caller mark a request Completed, which is terminal and blocks its branch from ever
+    # merging. Use the abandon and reopen actions for the two transitions a person makes.
+    status = serializers.CharField(read_only=True)
     merge_blocked_reason = serializers.CharField(read_only=True)
     has_conflicts = serializers.BooleanField(read_only=True)
 

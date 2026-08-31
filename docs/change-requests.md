@@ -16,7 +16,18 @@ One change request per branch.
 | Window opens / closes | An optional [change window](merging.md#change-windows). |
 | Merge automatically | Merge without further human action once every gate passes. See [automatic merging](merging.md#automatic-merging). |
 
-Status is derived from the policy evaluation and is refreshed automatically. Completed and Abandoned are terminal and are never reopened.
+Status is derived from the policy evaluation and is refreshed automatically, so it is not a field you set. It is read-only on the REST API and absent from the bulk edit form, because Completed is terminal: the merge gate refuses a completed request and nothing reopens one, so setting it by hand blocked its branch from merging for good.
+
+The two transitions a person makes by hand have an action each, and a permission each.
+
+| Action | Where | Permission | Allowed from |
+|---|---|---|---|
+| **Abandon** | The change request page, or `POST /change-requests/{id}/abandon/` | `netbox_change_control.abandon_changerequest` | Draft, Needs review, Approved, Rejected |
+| **Reopen** | The change request page, or `POST /change-requests/{id}/reopen/` | `netbox_change_control.reopen_changerequest` | Abandoned only |
+
+Reopening returns the request to Draft and then recomputes, rather than restoring the status it held before. Its reviews may have gone stale and its policies may have changed while it was set aside, so the honest answer has to be worked out again.
+
+Completed is never reopened. It records a merge that actually happened, and taking it back up would invite a second merge of a branch already in main.
 
 ## Approved is not the same as mergeable
 

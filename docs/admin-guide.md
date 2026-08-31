@@ -16,7 +16,7 @@ Before granting anything:
 
 ### How permissions work here
 
-This plugin does not invent a permission model. It declares the standard `view`, `add`, `change` and `delete` actions on each of its models, plus two custom actions, and NetBox enforces them.
+This plugin does not invent a permission model. It declares the standard `view`, `add`, `change` and `delete` actions on each of its models, plus four custom actions, and NetBox enforces them.
 
 That has one consequence worth stating plainly, because it decides how you should grant them:
 
@@ -63,8 +63,12 @@ These belong to netbox-branching, not to this plugin, but a change request is wo
 | `netbox_change_control.change_changerequest` | yes | yes | yes |
 | `netbox_change_control.delete_changerequest` | no | no | yes |
 | `netbox_change_control.override_window_changerequest` | no | no | optional |
+| `netbox_change_control.abandon_changerequest` | no | no | yes |
+| `netbox_change_control.reopen_changerequest` | no | no | yes |
 
 Deleting a change request destroys the record of who approved what. Keep it with the administrators.
+
+`status` is not editable, by anybody. It is derived from the policy evaluation, so it is read-only on the REST API and absent from the bulk edit form. **Abandon** and **Reopen** are the two transitions a person makes by hand, and each has its own permission and its own button on the change request page. Grant them to whoever is allowed to call off a change. Contributors do not need them to give up on their own work; they can delete a draft they own, or ask an administrator.
 
 #### Review permissions
 

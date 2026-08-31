@@ -97,7 +97,14 @@ class ChangeRequest(PrimaryModel):
 
     class Meta:
         ordering = ('-created',)
-        permissions = (('override_window_changerequest', 'Can merge a change request outside its change window'),)
+        permissions = (
+            ('override_window_changerequest', 'Can merge a change request outside its change window'),
+            # Status is derived from the policy evaluation, so it is not an editable field.
+            # The two transitions a person legitimately makes by hand get an action each,
+            # rather than leaving the field writable and hoping nobody sets it to completed.
+            ('abandon_changerequest', 'Can abandon a change request'),
+            ('reopen_changerequest', 'Can reopen an abandoned change request'),
+        )
         verbose_name = _('change request')
         verbose_name_plural = _('change requests')
 
@@ -260,6 +267,54 @@ class ChangeRequest(PrimaryModel):
     @property
     def is_open(self):
         return self.status in ChangeRequestStatusChoices.OPEN
+
+    @property
+    def can_be_abandoned(self):
+        """
+        An open request can be given up on. A finished one cannot: abandoning a merged change
+        would claim it never happened.
+        """
+        return self.status in ChangeRequestStatusChoices.OPEN
+
+    @property
+    def can_be_reopened(self):
+        """
+        Only an abandoned request comes back.
+
+        Completed is the record of a merge that actually happened, so reopening it would
+        invite a second merge of a branch that is already in main.
+        """
+        return self.status == ChangeRequestStatusChoices.ABANDONED
+
+    def abandon(self):
+        """
+        Give up on this change request. Returns True if the status moved.
+        """
+        if not self.can_be_abandoned:
+            return False
+        self.status = ChangeRequestStatusChoices.ABANDONED
+        self.save(update_fields=['status'])
+        return True
+
+    def reopen(self):
+        """
+        Bring an abandoned request back, then let the evaluation decide where it lands.
+
+        It returns to Draft rather than to whatever it held before, because the reviews it
+        carried may since have gone stale and the policies may since have changed. Refreshing
+        computes the honest answer instead of restoring a remembered one.
+        """
+        if not self.can_be_reopened:
+            return False
+
+        from netbox_change_control.policy import refresh_status, sync_policies
+
+        self.status = ChangeRequestStatusChoices.DRAFT
+        self.save(update_fields=['status'])
+        if not self.branch_deleted:
+            sync_policies(self)
+        refresh_status(self)
+        return True
 
     def evaluate(self):
         """

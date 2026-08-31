@@ -125,6 +125,14 @@ class WindowGateTest(ApprovedRequestTestCase):
 
 
 class AutoMergeTest(ApprovedRequestTestCase):
+    """
+    These mock MergeBranchJob.enqueue, which is the right thing to mock: the alternative is
+    running a real branch merge. It does mean they cannot see a path that enqueues twice,
+    because the guard against that reads the job queue and a mocked enqueue writes no Job row.
+    test_automerge_once.py covers that with the real enqueue; do not delete it as a duplicate
+    of these.
+    """
+
     def _try(self):
         from netbox_change_control.automerge import try_auto_merge
 

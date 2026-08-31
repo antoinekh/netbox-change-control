@@ -373,8 +373,13 @@ class ChangeRequestPolicy(models.Model):
     """
     Through table binding a policy to a change request.
 
-    `matched` records whether the plugin attached the policy automatically from its scope.
-    Automatically matched policies cannot be removed by the request author.
+    `matched` records whether the plugin attached the policy automatically from its scope, and
+    the sync pass only ever removes bindings it made itself.
+
+    Nothing creates a binding with `matched=False` today: policies are matched from the branch
+    contents and no form, view or API field attaches one by hand. The flag is kept because it
+    is what makes the sync pass safe to run, and because a binding added by some future route
+    has to survive it.
     """
 
     change_request = models.ForeignKey(

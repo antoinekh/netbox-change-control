@@ -115,6 +115,16 @@ A review stores `branch_change_time`, the timestamp of the newest change in its 
 
 This is preferable to a `stale` boolean maintained by signals, because a flag can drift while a derived value cannot. It also means approval invalidation needs no separate mechanism: stale approvals are simply excluded from the evaluation, the rules stop being satisfied, and `refresh_status` returns the request to Needs review.
 
+### `protect_main` listens to every write
+
+`protect_main_on_save` and `protect_main_on_delete` are registered without a sender, so they
+run for every model write anywhere in NetBox. That is deliberate rather than an oversight: the
+set of protected models is not knowable at import time, because it depends on which models
+branching supports and on `protect_main_scope`, which is configuration.
+
+The cost is bounded by ordering the guard cheaply. The first thing each receiver does is read
+`protect_main`, and with it off, which is the default, that is the whole cost of the call.
+
 ### `protect_main_scope`
 
 The commercial product's `protect_main` is all-or-nothing. In practice a team often wants branch discipline on one risky area, such as circuits, without forcing every IPAM edit through review.

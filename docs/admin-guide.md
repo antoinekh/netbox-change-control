@@ -161,7 +161,9 @@ The reviewer groups you name in a **policy rule** are the same NetBox groups. A 
 
 ### Narrowing a permission with a constraint
 
-An object permission can carry a constraint, which is a JSON query applied to every object it covers. This is how you grant an action on your own objects only.
+This is a NetBox feature, not something this plugin adds. Every object permission can carry a **constraint**, a JSON queryset filter applied to the objects it covers, and the token `$user` in one resolves to the signed-in user. NetBox uses it itself: bookmarks and notifications are constrained with `{"user": "$user"}` in its own settings.
+
+What is specific to this plugin is which field name to use for which model. The table below names the real field on each, so the filter matches rather than silently matching nothing.
 
 To let reviewers delete their own reviews and nobody else's, create a permission with the `delete` action on **Change Control > Review** and this constraint:
 

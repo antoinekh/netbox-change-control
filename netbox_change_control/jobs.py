@@ -6,7 +6,6 @@ it in the registry when the class is defined and `rqworker` schedules from that 
 start-up. Changing the setting therefore takes effect on the next worker restart.
 """
 
-from core.choices import JobIntervalChoices
 from django.core.exceptions import ImproperlyConfigured
 from netbox.jobs import JobRunner, system_job
 from netbox.plugins import get_plugin_config
@@ -50,10 +49,3 @@ class AutoMergeJob(JobRunner):
 
         merged = run_due_auto_merges()
         return f'Merged {merged} change request(s).'
-
-
-# Named intervals, re-exported so a configuration file can use them by name rather than by
-# a bare number of minutes.
-INTERVAL_MINUTELY = JobIntervalChoices.INTERVAL_MINUTELY
-INTERVAL_HOURLY = JobIntervalChoices.INTERVAL_HOURLY
-INTERVAL_DAILY = JobIntervalChoices.INTERVAL_DAILY

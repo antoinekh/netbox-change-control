@@ -41,7 +41,8 @@ netbox_change_control = ["templates/**/*.html"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+# Matches requires-python, so the UP rules can use everything the project can.
+target-version = "py312"
 # Django writes these; they are not hand-maintained source.
 extend-exclude = ["*/migrations/*"]
 

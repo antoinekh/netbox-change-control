@@ -27,6 +27,7 @@
 
 ### Added
 
+- A change comment can be **edited and deleted from the interface**. It had no edit or delete view at all, so a typo in a review comment was permanent unless somebody reached for the REST API or the Django admin. Editing is restricted to the author, for the same reason a review is; deleting follows NetBox's plain permission model.
 - **The branch page now shows its change request**, A branch and its change request are two halves of one job and only pointed one way: the branch page said nothing, so somebody who had just finished working in a branch had to leave it and find the request by name in another menu. It now carries the request's status, its reference, what is still outstanding and who can clear it, with a link. A branch with no change request is told that it cannot merge until one is opened, with a button to open it, which is the case netbox-branching's merge form could only refuse.
 - **Global search.** Change requests, policies, rules, reviews, checks and comments now appear in NetBox's search box; none of them did before, because the plugin registered no search index at all. A change request is found by its reference first, so a ticket number typed into the search box finds the change it spawned, which is what the `ref` field exists for. A request whose branch has been deleted is still found by the branch's name, which is when search is the only way left to reach it.
 - [Permissions](docs/permissions.md) is now a complete reference: every permission the plugin defines, in a table per model, with the action to enter on the permission form and what it grants. It previously said "and friends" and left the reader to guess. A test compares the page against the model definitions, so neither can drift from the other.
@@ -35,12 +36,14 @@
 
 ### Removed
 
+- `ReviewBulkEditForm`, which was defined and exported but used by no view, and the `INTERVAL_MINUTELY` / `INTERVAL_HOURLY` / `INTERVAL_DAILY` re-exports in `jobs.py`, which nothing referenced in code or documentation.
 - The `lock_matched_policies` setting, which was documented but read nowhere, so turning it off changed nothing. Policies are matched from the branch contents and there is no interface for attaching or detaching one by hand, which is what it claimed to control.
 
 ### Changed
 
 - **A rule now says who may approve the way it is written, naming its groups, rather than expanding them into every current member.** A group of fifteen printed fifteen usernames, on every rule that group satisfied, on two pages, which buried the approval counts that are the point of the panel. It also went stale as people joined and left while the rule itself had not moved. A group with no members is still called out, by name, because such a rule can never be satisfied.
 - **Abandon** and **Reopen** moved from the footer of the Applied policies card to the page's control bar, beside Edit and Delete. They act on the whole change request, and sitting under the policy list made them read as something to do with the policies. **Submit for review** stays where it is: it is the action that attaches those policies.
+- The **Reviews** column no longer costs a query per row. It declared an accessor that resolved the related manager and called `.count()`, ignoring the annotation the list view had already computed in bulk.
 - Every built-in check now reports **skipped** on a change request whose branch has been deleted. `threads-resolved` failed instead, because comment threads deliberately outlive the branch, so the record of a change nobody can merge any more was marked as blocked for ever.
 - `docs/api.md` gave the wrong filter for finding policies by check (`check`, not `required_checks`) and the wrong value for requesting changes (`request-changes`, not `reject`).
 - `docs/design.md` named a permission that does not exist, was dated at 0.1.0, listed five of the seven models, and pointed readers at a development harness which is not part of this repository.

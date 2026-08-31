@@ -87,7 +87,10 @@ class ChangeRequestTable(NetBoxTable):
     priority = columns.ChoiceFieldColumn()
     requester = tables.Column(linkify=True)
     policies = columns.ManyToManyColumn(verbose_name=_('Policies'))
-    review_count = tables.Column(accessor='reviews__count', verbose_name=_('Reviews'))
+    # No accessor: the name matches the annotation ChangeRequestListView adds, and declaring
+    # `reviews__count` instead resolved the related manager and called .count() per row,
+    # paying for a query the annotation had already done in bulk.
+    review_count = tables.Column(verbose_name=_('Reviews'))
     auto_merge = columns.BooleanColumn(verbose_name=_('Auto merge'))
     # Both read a cached field rather than recomputing per row. Live, they cost about eleven
     # queries each row, which is five hundred for a default page of fifty. Sortable as a

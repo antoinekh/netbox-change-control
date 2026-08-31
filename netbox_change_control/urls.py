@@ -56,6 +56,7 @@ urlpatterns = [
         views.ResolveChangeCommentView.as_view(),
         name='changecomment_resolve',
     ),
+    path('change-comments/<int:pk>/', include(get_model_urls('netbox_change_control', 'changecomment'))),
     path('change-requests/<int:pk>/', include(get_model_urls('netbox_change_control', 'changerequest'))),
     # Merge checks
     path('checks/', views.MergeCheckListView.as_view(), name='mergecheck_list'),

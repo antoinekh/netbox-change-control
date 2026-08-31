@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from netbox_branching.models import ChangeDiff
-from users.models import User
+from users.models import ObjectPermission, User
 
 from netbox_change_control.models import ChangeComment, ChangeRequest, Policy
 from netbox_change_control.tests.base import ChangeControlTestCase, approve, make_branch
@@ -232,3 +232,144 @@ class DeletingARequestWithCommentsTest(ChangeControlTestCase):
         approve(other, self.reviewer)
         other.refresh_from_db()
         self.assertEqual(other.status, ChangeRequestStatusChoices.APPROVED)
+
+
+class CommentEditingTest(TestCase):
+    """
+    A comment can be corrected.
+
+    Until now it could not: ChangeComment had no edit or delete view at all, so a typo in a
+    review comment was permanent unless somebody went to the REST API or the Django admin.
+
+    Editing is restricted to the author, for the same reason a review is: a comment is a
+    statement attributed to a person, and rewriting somebody else's puts words in their mouth
+    in the record a reviewer reads before approving. Deleting follows NetBox's plain model.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='requester')
+        cls.author = User.objects.create(username='author')
+        cls.other = User.objects.create(username='other')
+
+    def setUp(self):
+        from core.choices import ObjectChangeActionChoices
+        from django.contrib.contenttypes.models import ContentType
+        from netbox_branching.models import ChangeDiff
+
+        from netbox_change_control.models import Policy
+
+        self.branch = make_branch('editcomment', self._testMethodName)
+        self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.requester)
+        policy = Policy.objects.create(name=f'P-{self._testMethodName}'[:100])
+        self.diff = ChangeDiff.objects.create(
+            branch=self.branch,
+            object_type=ContentType.objects.get_for_model(Policy),
+            object_id=policy.pk,
+            object_repr='thing',
+            action=ObjectChangeActionChoices.ACTION_UPDATE,
+        )
+        self.comment = ChangeComment.objects.create(
+            change_request=self.cr, change_diff=self.diff, author=self.author, text='orignal typo'
+        )
+        self.url = f'/plugins/change-control/change-comments/{self.comment.pk}/edit/'
+
+    def grant(self, user, actions):
+        from django.contrib.contenttypes.models import ContentType
+
+        permission = ObjectPermission.objects.create(name=f'c-{user.pk}-{actions[0]}', actions=list(actions))
+        permission.object_types.add(ContentType.objects.get_for_model(ChangeComment))
+        permission.users.add(user)
+
+    def grant_tab_access(self, user):
+        """
+        The Changes tab is gated on seeing the request and the branch diff, neither of which
+        is what these tests are about.
+        """
+        from django.contrib.contenttypes.models import ContentType
+
+        permission = ObjectPermission.objects.create(name=f'tab-{user.pk}', actions=['view'])
+        permission.object_types.set(
+            [
+                ContentType.objects.get_for_model(ChangeRequest),
+                ContentType.objects.get_for_model(ChangeDiff),
+            ]
+        )
+        permission.users.add(user)
+
+    def changes_tab(self, user):
+        self.grant_tab_access(user)
+        self.client.force_login(user)
+        response = self.client.get(f'{self.cr.get_absolute_url()}changes/')
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    def test_the_author_can_correct_their_own_comment(self):
+        self.grant(self.author, ['view', 'change'])
+        self.client.force_login(self.author)
+
+        self.client.post(self.url, {'text': 'original, corrected'})
+
+        self.comment.refresh_from_db()
+        self.assertEqual(self.comment.text, 'original, corrected')
+
+    def test_somebody_else_cannot_rewrite_it(self):
+        self.grant(self.other, ['view', 'change'])
+        self.client.force_login(self.other)
+
+        self.client.post(self.url, {'text': 'words I never wrote'})
+
+        self.comment.refresh_from_db()
+        self.assertEqual(self.comment.text, 'orignal typo')
+
+    def test_a_superuser_can(self):
+        admin = User.objects.create(username='admin-editor', is_superuser=True)
+        self.client.force_login(admin)
+
+        self.client.post(self.url, {'text': 'moderated'})
+
+        self.comment.refresh_from_db()
+        self.assertEqual(self.comment.text, 'moderated')
+
+    def test_the_form_cannot_move_or_reattribute_the_comment(self):
+        """
+        Only the text is editable, so a POST naming another author or another change is
+        ignored rather than obeyed.
+        """
+        self.grant(self.author, ['view', 'change'])
+        self.client.force_login(self.author)
+
+        self.client.post(
+            self.url,
+            {'text': 'still mine', 'author': self.other.pk, 'change_request': self.cr.pk, 'change_diff': ''},
+        )
+
+        self.comment.refresh_from_db()
+        self.assertEqual(self.comment.author, self.author)
+        self.assertEqual(self.comment.change_diff_id, self.diff.pk)
+
+    def test_deleting_needs_the_delete_permission(self):
+        self.grant(self.other, ['view', 'change'])
+        self.client.force_login(self.other)
+
+        self.client.post(f'/plugins/change-control/change-comments/{self.comment.pk}/delete/', {'confirm': True})
+
+        self.assertTrue(ChangeComment.objects.filter(pk=self.comment.pk).exists())
+
+    def test_deleting_follows_the_plain_netbox_model(self):
+        self.grant(self.other, ['view', 'delete'])
+        self.client.force_login(self.other)
+
+        self.client.post(f'/plugins/change-control/change-comments/{self.comment.pk}/delete/', {'confirm': True})
+
+        self.assertFalse(ChangeComment.objects.filter(pk=self.comment.pk).exists())
+
+    def test_the_changes_tab_offers_the_author_an_edit_link(self):
+        self.grant(self.author, ['view', 'change'])
+
+        self.assertIn(f'/change-comments/{self.comment.pk}/edit/', self.changes_tab(self.author))
+
+    def test_the_changes_tab_offers_no_edit_link_to_anybody_else(self):
+        self.grant(self.other, ['view', 'change'])
+
+        self.assertNotIn(f'/change-comments/{self.comment.pk}/edit/', self.changes_tab(self.other))

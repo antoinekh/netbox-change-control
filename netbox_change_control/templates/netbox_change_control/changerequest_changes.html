@@ -55,6 +55,7 @@
               <strong>{{ thread.comment.author }}</strong>
               <span class="text-muted small">{{ thread.comment.created|isodatetime:"minutes" }}</span>
               {% if thread.comment.resolved %}<span class="badge text-bg-green">{% trans "Resolved" %}</span>{% endif %}
+              {% include 'netbox_change_control/inc/comment_actions.html' with comment=thread.comment %}
             </div>
             {% if can_resolve %}
             <form action="{% url 'plugins:netbox_change_control:changecomment_resolve' pk=thread.comment.pk %}" method="post">
@@ -69,7 +70,11 @@
 
           {% for reply in thread.replies %}
           <div class="ms-4 mt-2 border-start border-2 ps-3" id="comment-{{ reply.pk }}">
-            <div><strong>{{ reply.author }}</strong> <span class="text-muted small">{{ reply.created|isodatetime:"minutes" }}</span></div>
+            <div>
+              <strong>{{ reply.author }}</strong>
+              <span class="text-muted small">{{ reply.created|isodatetime:"minutes" }}</span>
+              {% include 'netbox_change_control/inc/comment_actions.html' with comment=reply %}
+            </div>
             <div>{{ reply.text|markdown }}</div>
           </div>
           {% endfor %}

@@ -1,0 +1,21 @@
+{% load i18n %}
+{% comment %}
+Edit and delete links for one comment.
+
+Kept small and quiet: this is a discussion, not an object list, so the actions sit beside the
+timestamp rather than as buttons. Expects `comment`.
+{% endcomment %}
+{% if comment.author_id == request.user.pk or perms.netbox_change_control.change_changecomment %}
+  {% if comment.author_id == request.user.pk %}
+    <a href="{% url 'plugins:netbox_change_control:changecomment_edit' pk=comment.pk %}?return_url={{ request.path }}"
+       class="text-muted small ms-2" title="{% trans 'Edit this comment' %}">
+      <i class="mdi mdi-pencil" aria-hidden="true"></i>
+    </a>
+  {% endif %}
+{% endif %}
+{% if perms.netbox_change_control.delete_changecomment %}
+  <a href="{% url 'plugins:netbox_change_control:changecomment_delete' pk=comment.pk %}?return_url={{ request.path }}"
+     class="text-muted small ms-1" title="{% trans 'Delete this comment' %}">
+    <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i>
+  </a>
+{% endif %}

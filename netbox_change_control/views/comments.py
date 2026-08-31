@@ -7,11 +7,14 @@ from django.views.generic import View
 from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
+from netbox_change_control import forms
 from netbox_change_control.diffs import build_change_rows
 from netbox_change_control.models import ChangeComment, ChangeRequest
 
 __all__ = (
     'AddChangeCommentView',
+    'ChangeCommentDeleteView',
+    'ChangeCommentEditView',
     'ChangeRequestChangesView',
     'ResolveChangeCommentView',
 )
@@ -88,6 +91,35 @@ class ChangeRequestChangesView(generic.ObjectView):
             'can_resolve': request.user.has_perm('netbox_change_control.change_changecomment'),
             'open_threads': instance.change_comments.filter(parent__isnull=True, resolved=False).count(),
         }
+
+
+@register_model_view(ChangeComment, 'edit')
+class ChangeCommentEditView(generic.ObjectEditView):
+    """
+    Edit a comment.
+
+    An ordinary user may edit only their own, for the same reason a review may only be edited
+    by its reviewer: a comment is a statement attributed to a person, and rewriting somebody
+    else's puts words in their mouth in the record a reviewer reads before approving. A
+    superuser may edit any.
+
+    Deleting is not narrowed the same way. That follows NetBox's own model, where a permission
+    covers every object of its type unless an object permission constrains it.
+    """
+
+    queryset = ChangeComment.objects.all()
+    form = forms.ChangeCommentForm
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(author=request.user)
+
+
+@register_model_view(ChangeComment, 'delete')
+class ChangeCommentDeleteView(generic.ObjectDeleteView):
+    queryset = ChangeComment.objects.all()
 
 
 class AddChangeCommentView(View):

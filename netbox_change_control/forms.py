@@ -16,12 +16,13 @@ from netbox_change_control.choices import (
     MergeCheckStatusChoices,
     ReviewDecisionChoices,
 )
-from netbox_change_control.models import ChangeRequest, MergeCheck, Policy, PolicyRule, Review
+from netbox_change_control.models import ChangeComment, ChangeRequest, MergeCheck, Policy, PolicyRule, Review
 
 # NetBox renders this next to any Markdown-capable field.
 MARKDOWN_HELP = _('<i class="mdi mdi-information-outline" aria-hidden="true"></i> Markdown syntax is supported')
 
 __all__ = (
+    'ChangeCommentForm',
     'ChangeRequestBulkEditForm',
     'ChangeRequestFilterForm',
     'ChangeRequestForm',
@@ -33,7 +34,6 @@ __all__ = (
     'PolicyRuleBulkEditForm',
     'PolicyRuleFilterForm',
     'PolicyRuleForm',
-    'ReviewBulkEditForm',
     'ReviewEditForm',
     'ReviewFilterForm',
     'ReviewForm',
@@ -229,6 +229,29 @@ class ReviewEditForm(NetBoxModelForm):
         fields = ('decision', 'comment', 'tags')
 
 
+class ChangeCommentForm(NetBoxModelForm):
+    """
+    Edit a comment.
+
+    Only the text. `change_request`, `change_diff`, `parent` and `author` are all absent: a
+    comment is one person's remark about one changed object, so moving it or reattributing it
+    would rewrite a record somebody else is relying on. It is the same reasoning that keeps
+    those fields off ReviewEditForm.
+    """
+
+    text = forms.CharField(
+        widget=MarkdownWidget(attrs={'rows': 6}),
+        label=_('Comment'),
+        help_text=MARKDOWN_HELP,
+    )
+
+    fieldsets = (FieldSet('text', name=_('Comment')),)
+
+    class Meta:
+        model = ChangeComment
+        fields = ('text', 'tags')
+
+
 class MergeCheckForm(NetBoxModelForm):
     change_request = DynamicModelChoiceField(
         queryset=ChangeRequest.objects.all(),
@@ -409,8 +432,3 @@ class ChangeRequestBulkEditForm(NetBoxModelBulkEditForm):
     auto_merge = forms.NullBooleanField(required=False)
 
     nullable_fields = ('ref', 'description', 'scheduled_start', 'scheduled_end')
-
-
-class ReviewBulkEditForm(NetBoxModelBulkEditForm):
-    model = Review
-    decision = forms.ChoiceField(choices=ReviewDecisionChoices, required=False)

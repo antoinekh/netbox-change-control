@@ -222,3 +222,37 @@ class BranchRenameTest(ChangeControlTestCase):
         self.cr.refresh_from_db()
         self.assertTrue(self.cr.branch_deleted)
         self.assertEqual(self.cr.branch_label, 'renamed-in-place')
+
+
+class AllChecksSkipWithoutABranchTest(ChangeControlTestCase):
+    """
+    Every built-in check must skip once the branch is gone, not just most of them.
+
+    The documentation promises a branchless request reports its checks as skipped rather than
+    failing. `threads-resolved` did not: it counted the comment threads, which survive the
+    branch on purpose, and failed on any that were still open. The record of a change nobody
+    can merge any more was then permanently marked as blocked.
+    """
+
+    branch_prefix = 'skipall'
+
+    def test_every_builtin_skips(self):
+        from netbox_change_control.checks import BUILTIN_CHECKS
+        from netbox_change_control.choices import MergeCheckStatusChoices
+        from netbox_change_control.models import ChangeComment
+
+        # An open thread, which is what used to make threads-resolved fail.
+        ChangeComment.objects.create(
+            change_request=self.cr, author=self.requester, text='unresolved', change_label='something'
+        )
+
+        self.branch.delete()
+        self.cr.refresh_from_db()
+
+        for name, (_label, func) in BUILTIN_CHECKS.items():
+            with self.subTest(check=name):
+                self.assertEqual(
+                    func(self.cr).status,
+                    MergeCheckStatusChoices.SKIPPED,
+                    f'{name} does not skip on a request whose branch is gone',
+                )

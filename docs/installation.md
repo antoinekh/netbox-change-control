@@ -44,7 +44,6 @@ Every setting is optional. The defaults are safe to install on an existing NetBo
 | `protect_main` | `False` | Block writes to branching-supported models outside a branch. |
 | `protect_main_scope` | `[]` | Limit `protect_main` to specific models. Empty protects every branching-supported model. |
 | `enforce_merge_gate` | `True` | Refuse to merge a branch without an approved change request. |
-| `lock_matched_policies` | `True` | Automatically matched policies cannot be detached by the author. |
 | `notify_reviewers` | `True` | Raise NetBox notifications on status transitions. |
 | `enable_builtin_checks` | `True` | Which built-in checks are available to policies. `True` for all, `False` for none, or a list of names. A check applies only where a policy names it. |
 | `required_external_checks` | `[]` | Checks reported through the REST API. Each blocks the merge until reported. |

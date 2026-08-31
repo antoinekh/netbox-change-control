@@ -25,9 +25,6 @@ class ChangeControlConfig(PluginConfig):
         # Refuse to merge a branch which has no approved change request. This is the core
         # guarantee of the plugin; disable it only to troubleshoot.
         'enforce_merge_gate': True,
-        # Attach every matching policy to a change request and forbid its author from
-        # detaching them. Turning this off makes policies advisory.
-        'lock_matched_policies': True,
         # Send a NetBox notification to the outstanding reviewers when a change request
         # needs review, and to the requester when it is approved or rejected.
         'notify_reviewers': True,

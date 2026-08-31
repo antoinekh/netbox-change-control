@@ -25,11 +25,20 @@
 
 ### Added
 
+- [Permissions](docs/permissions.md) is now a complete reference: every permission the plugin defines, in a table per model, with the action to enter on the permission form and what it grants. It previously said "and friends" and left the reader to guess. A test compares the page against the model definitions, so neither can drift from the other.
 - **Abandon** and **Reopen** actions on a change request, each behind its own permission (`abandon_changerequest`, `reopen_changerequest`), on the change request page and as `POST /change-requests/{id}/abandon/` and `/reopen/`. These are the two transitions a person legitimately makes now that status is not an editable field. Reopening recomputes rather than restoring, because reviews go stale and policies change while a request is set aside.
 - An [administration guide](docs/admin-guide.md): roles, a permission matrix for every model, how to narrow a permission with a constraint, building policies, an end-to-end test procedure and troubleshooting.
 
+### Removed
+
+- The `lock_matched_policies` setting, which was documented but read nowhere, so turning it off changed nothing. Policies are matched from the branch contents and there is no interface for attaching or detaching one by hand, which is what it claimed to control.
+
 ### Changed
 
+- Every built-in check now reports **skipped** on a change request whose branch has been deleted. `threads-resolved` failed instead, because comment threads deliberately outlive the branch, so the record of a change nobody can merge any more was marked as blocked for ever.
+- `docs/api.md` gave the wrong filter for finding policies by check (`check`, not `required_checks`) and the wrong value for requesting changes (`request-changes`, not `reject`).
+- `docs/design.md` named a permission that does not exist, was dated at 0.1.0, listed five of the seven models, and pointed readers at a development harness which is not part of this repository.
+- `docs/checks.md` was missing two of the moments checks run: a policy attaching or detaching, and a branch diff changing.
 - [Permissions](docs/permissions.md) now states plainly that a NetBox object permission covers every object of its type, so `delete_review` lets a user delete anybody's review, and shows the constraint that narrows it.
 - The **Conflicts** column on the change request list now matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
 - The README now warns that the plugin is below 1.0 and that models, settings and the REST API can still change.

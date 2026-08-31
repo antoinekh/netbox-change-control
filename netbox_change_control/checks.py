@@ -299,6 +299,12 @@ def check_threads_resolved(change_request):
     An open thread is an unanswered concern about a specific object. Merging past one loses
     the discussion, since the branch diff disappears once merged.
     """
+    if change_request.branch_deleted:
+        # Nothing to merge, so nothing to hold up. Its siblings already skipped here, and this
+        # one failing instead made the documented promise that a branchless request skips its
+        # checks true of three checks out of four.
+        return CheckResult.skipped('The branch no longer exists.')
+
     open_threads = change_request.change_comments.filter(parent__isnull=True, resolved=False)
     count = open_threads.count()
     if not count:

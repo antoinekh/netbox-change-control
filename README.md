@@ -84,7 +84,7 @@ Full documentation is in [`docs/`](docs/index.md).
 |---|---|
 | Policies containing rules with a minimum approval count | Done |
 | Rules naming reviewer groups and individual reviewers | Done |
-| Policies attached automatically, scope-matched from the branch contents and locked against the author | Done |
+| Policies attached automatically, scope-matched from the branch contents, following it as it changes, and not selectable by the author | Done |
 | Policy conditions, narrowing a policy on the values of the changed objects | Done |
 | Change requests with status and priority | Done |
 | Reviews with approve, request changes, and comment | Done |

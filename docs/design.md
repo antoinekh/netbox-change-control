@@ -1,6 +1,6 @@
 # Design: NetBox Change Control
 
-Status: approved, v0.1.0 implemented. Date: 2026-08-25.
+Status: approved and implemented. First written 2026-08-25, kept current as the plugin changes.
 
 ## Problem
 
@@ -46,7 +46,7 @@ The fix is `exempt_models: ['netbox_change_control.*']` in the branching config.
 
 ### `protect_main` is off by default
 
-Enabling it by default would break an existing install the moment the plugin is added. It is opt-in. It is implemented as `pre_save` and `pre_delete` receivers which refuse a write when `active_branch` is unset, the model supports branching, and the user lacks `netbox_change_control.bypass_change_control`. Writes with no request context (migrations, scripts, jobs) are allowed, since they are not interactive edits.
+Enabling it by default would break an existing install the moment the plugin is added. It is opt-in. It is implemented as `pre_save` and `pre_delete` receivers which refuse a write when `active_branch` is unset, the model supports branching, and the user lacks `netbox_change_control.bypass_policy`. Writes with no request context (migrations, scripts, jobs) are allowed, since they are not interactive edits.
 
 ## Data model
 
@@ -57,8 +57,10 @@ Enabling it by default would break an existing install the moment the plugin is 
 | `ChangeRequest` | `PrimaryModel` | One per branch (`OneToOneField`). Status, priority, requester. |
 | `ChangeRequestPolicy` | `Model` | Through table. Records `matched` and `matched_object_types`. |
 | `Review` | `NetBoxModel` | One decision per reviewer per request, enforced by constraint. |
+| `MergeCheck` | `NetBoxModel` | One pre-merge check result per request, unique on its name. |
+| `ChangeComment` | `NetBoxModel` | A comment on one changed object, or a reply within that thread. |
 
-`Review` was first a `ChangeLoggedModel`, which has no `tags`. `NetBoxModelFilterSet` filters on `tags__slug`, so it failed at import. All four public models are now `NetBoxModel` or `PrimaryModel`, which keeps the filtersets, serializers and tables uniform.
+`Review` was first a `ChangeLoggedModel`, which has no `tags`. `NetBoxModelFilterSet` filters on `tags__slug`, so it failed at import. Every public model is now `NetBoxModel` or `PrimaryModel`, which keeps the filtersets, serializers and tables uniform.
 
 ## Module layout
 
@@ -79,7 +81,7 @@ The shared fixtures live in `tests/base.py`, so the shape of a change request is
 
 Layer two is the seed command, `seed_change_control`. It creates the reviewer groups and users, the object permissions those users need, five graded policies, a branch with a real change, and an open change request. `--adopt` opens a change request for branches that already exist.
 
-The seed commands live in `dev/` as a separate development-only plugin, and are not part of the published package. A production install therefore has no command that can invent policies, users or permissions.
+The seed commands live in a development-only plugin which is neither published nor committed, so a production install has no command that can invent policies, users or permissions, and a reader of this repository will not find one.
 
 The seed's branch edit must run inside `netbox.context_managers.event_tracking` with a synthetic request. NetBox writes `ObjectChange` records only within a request context; without it the branch records no changes, `ChangeDiff` stays empty, and every scoped policy silently fails to match.
 

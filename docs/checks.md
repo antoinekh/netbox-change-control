@@ -30,7 +30,9 @@ A result reflects the last run, so knowing when that happens matters:
 | The change request is created | So a new request never shows checks stuck on `pending`. |
 | It is submitted for review | The reviewer needs a current answer. |
 | It reaches **Approved** | This is the moment a merge becomes possible, so the results must be current. A branch edit invalidates the reviews but not the stored check results; without this refresh a request could be edited to introduce a conflict, re-approved, and merged against a stale `no-conflicts` result. |
+| A policy attaches or detaches | Which checks apply follows the policies, so the set can change without the branch changing. |
 | The branch is synced or reverted | Its content changed. |
+| A branch diff changes | A conflict can appear with no event on the change request at all, because somebody edited the same object in main. |
 | A comment thread is opened, resolved or removed | `threads-resolved` reads them. |
 | Somebody presses **Re-run checks** | On demand. |
 

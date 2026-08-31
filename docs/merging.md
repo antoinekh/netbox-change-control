@@ -53,7 +53,7 @@ If the branch changes during the wait, the approvals go stale, the status return
 
 ## The sweep interval
 
-The sweep is a NetBox **system job**, `Change control: automatic merges`, run by the worker. It is not an event rule. Each run is one indexed query, and it merges nothing unless a request is genuinely ready.
+The sweep is a NetBox **system job**, `Change control: automatic merges`, run by the worker. It is not an event rule. One indexed query finds the candidates, which are the approved requests that opted in; each candidate then costs a full re-evaluation of its gates. With no opted-in request waiting, a run is a single query and nothing else.
 
 The interval bounds how late a window can fire, and costs one Job record per run:
 

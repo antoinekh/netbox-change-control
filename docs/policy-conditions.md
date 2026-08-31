@@ -50,7 +50,7 @@ Three things decide whether the condition matches.
 > A condition naming a field the object does not have simply does not match; it does not error. That means a typo in `attr` silently produces a policy that never applies.
 
 > [!NOTE]
-> Conditions cost a scan of the branch diff per condition-bearing policy. Policies scoped only by object type cost nothing extra.
+> Conditions cost a scan of the branch diff per condition-bearing policy, evaluated in Python, one condition set per changed object. A policy that matches stops at the first object that satisfies it; one that does not match reads them all. On a branch touching thousands of objects with several conditional policies, this is the slowest thing the plugin does. Policies scoped only by object type cost nothing extra.
 
 ## Which side a condition reads
 

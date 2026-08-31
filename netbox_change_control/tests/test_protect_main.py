@@ -24,7 +24,6 @@ def _plugin_config(name, setting, default=None):
         'protect_main': True,
         'protect_main_scope': [],
         'enforce_merge_gate': True,
-        'lock_matched_policies': True,
     }
     return values.get(setting, default)
 
@@ -39,7 +38,6 @@ def _scoped_config(scope):
             'protect_main': True,
             'protect_main_scope': scope,
             'enforce_merge_gate': True,
-            'lock_matched_policies': True,
         }
         return values.get(setting, default)
 

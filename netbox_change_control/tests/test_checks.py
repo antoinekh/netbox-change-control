@@ -8,6 +8,7 @@ from users.models import User
 from netbox_change_control.checks import (
     CheckResult,
     _registry,
+    check_threads_resolved,
     register_check,
     run_checks,
     sync_checks,
@@ -361,13 +362,11 @@ class ThreadsCheckAfterBranchDeletionTest(CheckTestCase):
     null. Reaching through that relation recorded the check as errored.
     """
 
-    def test_the_check_reports_the_stored_label_not_a_crash(self):
-
+    def _thread(self):
         from core.choices import ObjectChangeActionChoices
         from django.contrib.contenttypes.models import ContentType
         from netbox_branching.models import ChangeDiff
 
-        from netbox_change_control.checks import check_threads_resolved
         from netbox_change_control.models import ChangeComment
 
         diff = ChangeDiff.objects.create(
@@ -377,20 +376,39 @@ class ThreadsCheckAfterBranchDeletionTest(CheckTestCase):
             object_repr='some-object',
             action=ObjectChangeActionChoices.ACTION_UPDATE,
         )
-        comment = ChangeComment.objects.create(
+        return ChangeComment.objects.create(
             change_request=self.cr,
             change_diff=diff,
             author=self.reviewer,
             text='Wait',
         )
-        label = comment.change_label
+
+    def test_an_open_thread_is_named_by_its_stored_label(self):
+        """
+        The original point of this test: the summary comes from `change_label`, not from
+        reaching through `change_diff`, which is what used to record the check as errored.
+        """
+        comment = self._thread()
+
+        result = check_threads_resolved(self.cr)
+
+        self.assertEqual(result.status, MergeCheckStatusChoices.FAILURE)
+        self.assertIn(comment.change_label, result.summary)
+
+    def test_it_skips_once_the_branch_is_gone(self):
+        """
+        Every built-in skips on a request whose branch has been deleted, and this one has to
+        agree with the other three. Such a request can never merge anyway, so failing here
+        marked a historical record as blocked for ever over a thread nobody can act on.
+        """
+        self._thread()
 
         self.branch.delete()
         self.cr.refresh_from_db()
 
         result = check_threads_resolved(self.cr)
-        self.assertEqual(result.status, MergeCheckStatusChoices.FAILURE)
-        self.assertIn(label, result.summary)
+
+        self.assertEqual(result.status, MergeCheckStatusChoices.SKIPPED)
 
 
 class AutoMergeOnCheckPassTest(CheckTestCase):

@@ -48,7 +48,7 @@ Find the policies which already require a given check:
 
 ```bash
 curl -s -H "Authorization: Token $TOKEN" \
-  "$NETBOX/api/plugins/change-control/policies/?check=cab-approval"
+  "$NETBOX/api/plugins/change-control/policies/?required_checks=cab-approval"
 ```
 
 See [checks which do not apply everywhere](checks.md#which-checks-apply-and-where) for what each kind means.
@@ -117,7 +117,7 @@ curl -X POST "$NETBOX/api/plugins/change-control/reviews/" \
 
 Note the absent field. `reviewer` is read-only and always the caller, so a token cannot post an approval attributed to a colleague. Submitting one for somebody else is not an error; it is simply recorded as yours.
 
-`decision` takes `approve`, `request-changes` or `comment`. Requesting changes needs a comment. A user cannot review their own change request, and a second review by the same user is refused: edit the existing one instead.
+`decision` takes `approve`, `reject` or `comment`. `reject` is what the interface labels **Request changes**. Requesting changes needs a comment. A user cannot review their own change request, and a second review by the same user is refused: edit the existing one instead.
 
 Reviews and comments accept Markdown, rendered through NetBox's sanitising filter.
 

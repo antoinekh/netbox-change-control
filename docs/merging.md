@@ -4,7 +4,17 @@ Once a change request reaches **Approved** and every required check passes, a **
 
 ![Merge button](img/merge-button.png)
 
-The branch page under **Branching > Branches** carries the same information from the other side: the change request governing it, its status, which rules are still short and who may satisfy them, with a link to it. A branch with no change request is told so there, with a button to open one.
+The branch page under **Branching > Branches** carries the same information from the other side: the change request governing it, its status, which rules are still short and who may satisfy them, with a link to it.
+
+![The change request shown on its own branch page](img/capture-blocked.png)
+
+A branch nobody has opened a change request against is told so in the same place, with a button to open one. That is the case netbox-branching's merge form can only refuse.
+
+![A branch with no change request](img/capture-unmanaged.png)
+
+Once every gate is satisfied the same alert turns green and says so, which is the signal to use the Merge button beside it.
+
+![A branch whose change request is satisfied](img/capture-ready.png)
 
 While the merge is blocked the button is greyed out and states the reason. If you may approve but not merge, the panel says so rather than hiding the button. The branch page under **Branching > Branches** carries the same button, since the merge itself belongs to the branching plugin.
 

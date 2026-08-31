@@ -62,4 +62,8 @@ The change request page shows the rule as **No approval required**, and the rule
 
 When a change request is opened, the plugin reads `ChangeDiff` for its branch, collects the object types actually touched, and attaches every matching enabled policy. Those bindings are locked against the author.
 
+They also **follow the branch**. A branch is not fixed once its request is submitted: an author can keep editing inside it, and an edit can bring in an object type no attached policy covers. Whenever that happens the policies are matched again, so the new policy attaches and asks for whatever it asks for. The merge gate matches again for itself as well, so the decision never rests on a signal having fired.
+
+That matters because the alternative is a way round the gate. Open a request on a branch touching only low-risk objects, collect the one approval that attracts, then add the real change to the same branch. The approvals go stale and the status returns to Needs review, but a policy that never attached asks for nothing, so the same reviewer could approve a second time and the work would merge unseen by anybody with the authority to judge it.
+
 This is deliberately stricter than the commercial product, where the author picks the policies. Letting the author choose makes the gate advisory: someone who wants a fast merge picks the weakest policy.

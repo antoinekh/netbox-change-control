@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The policies governing a change request now follow the branch.** They were matched when the request was submitted and never again, except on a sync or a revert. A branch which grew a new object type after submission kept the policies matched against its old contents, so an author could open a request on a low-risk branch, collect the light approval that attracted, then add the real change to the same branch and merge it under that same approval. Policies are now re-matched whenever the branch starts touching something new, and the merge gate re-matches for itself rather than trusting that signal to have fired.
+
 ### Changed
 
 - The **Conflicts** column on the change request list now matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.

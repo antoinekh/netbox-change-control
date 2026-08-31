@@ -43,6 +43,29 @@ def require_approved_change_request(branch):
             f'{change_request} is not approved (status: {change_request.get_status_display()}).',
         )
 
+    # Re-match the policies before evaluating them.
+    #
+    # Re-evaluating the stored bindings asks the right question of the wrong set. Which
+    # policies govern a change is decided from the object types in the branch, and a branch
+    # can grow a new one after the request was submitted. A receiver re-matches when that
+    # happens, so this is normally a no-op which writes nothing; it is here so the gate does
+    # not depend on that receiver having fired, because this is the only moment the answer
+    # decides anything.
+    #
+    # Deliberately after the approval test above. An unapproved request is refused either way,
+    # so it does not pay for the match, which keeps the change request list from re-matching
+    # every row it renders.
+    from netbox_change_control.policy import scope_may_have_drifted, sync_policies
+
+    if scope_may_have_drifted(change_request):
+        sync_policies(change_request)
+        change_request.refresh_from_db(fields=['status'])
+        if not change_request.is_approved:
+            return BranchActionIndicator(
+                False,
+                f'{change_request} is not approved (status: {change_request.get_status_display()}).',
+            )
+
     # Re-evaluate rather than trusting the stored status. Policies or group membership may
     # have changed since approval was recorded.
     evaluation = change_request.evaluate()

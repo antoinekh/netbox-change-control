@@ -23,6 +23,7 @@ __all__ = (
     'get_touched_object_types',
     'match_policies',
     'refresh_status',
+    'scope_may_have_drifted',
     'sync_policies',
 )
 
@@ -201,6 +202,41 @@ def match_policies(branch):
         results.append((policy, names))
 
     return results
+
+
+def scope_may_have_drifted(change_request):
+    """
+    Cheap test for whether a full re-match could attach a policy which is not attached yet.
+
+    `match_policies` is not cheap: it reads every enabled policy, prefetches its object types,
+    and scans the branch diff once per policy carrying conditions. The merge gate is read
+    whenever a merge button is rendered, including once per row of the change request list, so
+    it must not pay that on every read.
+
+    A policy can only newly match if it is enabled, is not attached already, and is either
+    unscoped or scoped to an object type the branch actually touches. That is two indexed
+    queries, and it is the whole candidate set, so a False here is a guarantee rather than a
+    guess. Conditions can only narrow a policy further, never widen it, so a conditional
+    policy which this misses could not have matched anyway.
+
+    This deliberately says nothing about policies which should be *detached*. An attached
+    policy that no longer matches asks for approvals the change no longer needs, which is
+    tighter than the truth rather than looser, so the gate does not need to force that.
+    """
+    from django.db.models import Q
+
+    if change_request.branch_deleted:
+        return False
+
+    touched = get_touched_object_types(change_request.branch)
+    attached = ChangeRequestPolicy.objects.filter(change_request=change_request).values_list('policy_id', flat=True)
+
+    return (
+        Policy.objects.filter(enabled=True)
+        .exclude(pk__in=attached)
+        .filter(Q(object_types__in=touched) | Q(object_types__isnull=True))
+        .exists()
+    )
 
 
 def sync_policies(change_request):

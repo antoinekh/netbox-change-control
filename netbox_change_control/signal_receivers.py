@@ -382,6 +382,68 @@ def auto_merge_on_check_result(sender, instance, **kwargs):
     try_auto_merge(change_request)
 
 
+def _scope_may_have_changed(diff):
+    """
+    Cheap test for whether one new ChangeDiff can change which policies match.
+
+    A policy scoped by object type cannot change its answer for the second object of a type
+    the branch already held, so the common case of a bulk edit costs one indexed query per
+    object rather than a full re-match.
+
+    A policy carrying conditions reads the changed objects themselves, so for those any new
+    object can change the answer and the re-match has to run.
+    """
+    first_of_its_type = (
+        not ChangeDiff.objects.filter(branch_id=diff.branch_id, object_type_id=diff.object_type_id)
+        .exclude(pk=diff.pk)
+        .exists()
+    )
+    if first_of_its_type:
+        return True
+    return Policy.objects.filter(enabled=True).exclude(conditions__isnull=True).exists()
+
+
+@receiver(post_save, sender=ChangeDiff)
+def resync_policies_on_new_diff(sender, instance, created, **kwargs):
+    """
+    Re-match the policies when the branch starts touching something new.
+
+    Which policies govern a change request is decided from the object types in its branch.
+    That question used to be asked twice only: when the author pressed Submit for review, and
+    when branching synced or reverted the branch. An ordinary edit inside a branch writes an
+    ObjectChange and a ChangeDiff, and neither re-asked it, so the governing set stayed frozen
+    against the branch as it looked at submission.
+
+    That was a way round the gate. An author could open a request on a branch touching only
+    low-risk objects, collect the light approval that attracted, then add the real change to
+    the same branch. The approvals went stale and the status returned to Needs review, but the
+    policy governing the new object type never attached, so the same reviewer could approve a
+    second time and merge work nobody with the authority to judge it had seen.
+
+    A ChangeDiff is created once per changed object, which makes it the cheapest signal
+    meaning "this branch now holds something it did not before". Reacting to ObjectChange
+    instead would fire on every save of every object for the same answer.
+    """
+    if not created:
+        return
+
+    change_request = ChangeRequest.objects.filter(
+        branch_id=instance.branch_id,
+        status__in=ChangeRequestStatusChoices.OPEN,
+    ).first()
+    if change_request is None or _is_being_deleted(change_request.pk):
+        return
+
+    if not _scope_may_have_changed(instance):
+        return
+
+    sync_policies(change_request)
+    # A newly attached policy brings rules with it, so the request may no longer be satisfied.
+    # sync_policies writes bindings, whose own receiver refreshes the status, but it does
+    # nothing when the matched set is unchanged. Refreshing here covers both paths.
+    refresh_status(change_request)
+
+
 @receiver(post_save, sender=ChangeDiff)
 def rerun_checks_on_diff_change(sender, instance, **kwargs):
     """

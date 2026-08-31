@@ -124,6 +124,7 @@ class WindowIsNotCachedTest(TestCase):
         branch = make_branch('window', 'cached')
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+        cr.submit()
         approve(cr, self.reviewer)
         cr.refresh_from_db()
         self.assertTrue(cr.cached_gates_cleared)
@@ -155,6 +156,7 @@ class ListCostTest(TestCase):
         for i in range(10):
             cr = ChangeRequest.objects.create(branch=make_branch('cost', f'{i}'), title=f'CR {i}', requester=user)
             ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+            cr.submit()
             approve(cr, reviewer)
             kept = kept or cr
 
@@ -196,6 +198,7 @@ class CacheFollowsTheSignalsTest(TestCase):
         branch = make_branch('signal', self._testMethodName)
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+        cr.submit()
         cr.refresh_from_db()
         return cr, branch
 

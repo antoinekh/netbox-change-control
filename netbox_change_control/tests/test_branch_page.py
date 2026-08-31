@@ -54,6 +54,7 @@ class BranchPageTest(TestCase):
         branch = ready_branch('bpage', suffix)
         cr = ChangeRequest.objects.create(branch=branch, requester=self.admin, **kwargs)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+        cr.submit()
         cr.refresh_from_db()
         return branch, cr
 

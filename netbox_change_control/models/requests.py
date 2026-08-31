@@ -313,6 +313,82 @@ class ChangeRequest(PrimaryModel):
         return self.status in ChangeRequestStatusChoices.OPEN
 
     @property
+    def can_be_submitted(self):
+        """
+        A draft is the only thing there is to submit.
+        """
+        return self.status == ChangeRequestStatusChoices.DRAFT
+
+    @property
+    def can_return_to_draft(self):
+        """
+        Anything open and already submitted can be pulled back.
+
+        Including an approved one: an author who spots a problem after approval should be able
+        to take the change off the table rather than race the merge, and pulling it back is
+        the reversible way to do that. Abandoning is the one-way door.
+        """
+        return self.is_open and self.status != ChangeRequestStatusChoices.DRAFT
+
+    def submit(self):
+        """
+        Put a draft into review, matching its policies. Returns True if the status moved.
+
+        The status is set here rather than left to `refresh_status`, because that treats draft
+        as the author's to hold and will not move a request out of it on its own.
+
+        That also means the announcement has to be made here. `refresh_status` tells the
+        reviewers only when it moves a request itself, and by the time it runs the status is
+        already Needs review, so it sees no transition and says nothing. Submitting without
+        telling anybody is the one outcome that makes the whole thing pointless.
+        """
+        if not self.can_be_submitted:
+            return False
+
+        from netbox_change_control.batching import batched, schedule_refresh
+        from netbox_change_control.policy import sync_policies
+
+        self.status = ChangeRequestStatusChoices.NEEDS_REVIEW
+        self.save(update_fields=['status'])
+
+        with batched():
+            sync_policies(self)
+            schedule_refresh(self)
+
+        # The refresh may have carried it further, to Approved on a policy needing no human or
+        # to Rejected on a standing rejection, and it announces those itself. Only the case it
+        # cannot see is left here.
+        self.refresh_from_db()
+        if self.status == ChangeRequestStatusChoices.NEEDS_REVIEW:
+            from netbox_change_control import events
+            from netbox_change_control.notifications import notify_status_change
+
+            notify_status_change(self, ChangeRequestStatusChoices.NEEDS_REVIEW)
+            events.emit(self, events.CHANGE_REQUEST_REVIEW_REQUESTED)
+
+        return True
+
+    def return_to_draft(self):
+        """
+        Pull a submitted request back out of review. Returns True if the status moved.
+
+        The reviews are kept. They may already be stale, and if they are not they still stand:
+        a reviewer's position on the change does not stop being their position because the
+        author wants to work on it some more. What stops is the merge, because a draft is not
+        approved and the gate reads the status.
+        """
+        if not self.can_return_to_draft:
+            return False
+
+        self.status = ChangeRequestStatusChoices.DRAFT
+        self.save(update_fields=['status'])
+
+        from netbox_change_control.policy import refresh_cached_state
+
+        refresh_cached_state(self)
+        return True
+
+    @property
     def can_be_abandoned(self):
         """
         An open request can be given up on. A finished one cannot: abandoning a merged change
@@ -373,13 +449,12 @@ class ChangeRequestPolicy(models.Model):
     """
     Through table binding a policy to a change request.
 
-    `matched` records whether the plugin attached the policy automatically from its scope, and
-    the sync pass only ever removes bindings it made itself.
+    `matched_object_types` records which object types in the branch caused the policy to
+    attach, which is what the change request page shows beside each policy.
 
-    Nothing creates a binding with `matched=False` today: policies are matched from the branch
-    contents and no form, view or API field attaches one by hand. The flag is kept because it
-    is what makes the sync pass safe to run, and because a binding added by some future route
-    has to survive it.
+    There is no "attached by hand" state. Which policies govern a change is decided from the
+    objects its branch touches, and nothing else can attach one, which is the whole point:
+    an author who could choose would choose the weakest.
     """
 
     change_request = models.ForeignKey(
@@ -392,18 +467,11 @@ class ChangeRequestPolicy(models.Model):
         on_delete=models.PROTECT,
         related_name='policy_bindings',
     )
-    matched = models.BooleanField(
-        verbose_name=_('automatically matched'),
-        default=True,
-    )
     matched_object_types = models.JSONField(
         verbose_name=_('matched object types'),
         default=list,
         blank=True,
         help_text=_('The object types in the branch which caused this policy to attach.'),
-    )
-    created = models.DateTimeField(
-        auto_now_add=True,
     )
 
     class Meta:

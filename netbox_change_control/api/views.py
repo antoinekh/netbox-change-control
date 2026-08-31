@@ -17,7 +17,7 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
-from netbox_change_control.permissions import ABANDON_PERMISSION, REOPEN_PERMISSION
+from netbox_change_control.permissions import ABANDON_PERMISSION, CHANGE_PERMISSION, REOPEN_PERMISSION
 
 from .serializers import (
     ChangeCommentSerializer,
@@ -88,6 +88,42 @@ class ChangeRequestViewSet(NetBoxModelViewSet):
     # evaluation. These are the two transitions a person makes by hand, each behind its own
     # permission, so an integration can still give up on a change or take one back up without
     # the field being writable and Completed being one typo away.
+
+    @action(detail=True, methods=['post'], permission_classes=[ObjectActionPermissions])
+    def submit(self, request, pk=None):
+        if not request.user.has_perm(CHANGE_PERMISSION):
+            raise PermissionDenied('You do not have permission to change change requests.')
+
+        change_request = self._restricted(request, 'change', pk)
+        if not change_request.submit():
+            return Response(
+                {'detail': 'Only a draft can be submitted for review.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        from netbox_change_control import events
+
+        events.emit(change_request, events.CHANGE_REQUEST_SUBMITTED)
+        change_request.refresh_from_db()
+        return Response(self.get_serializer(change_request).data)
+
+    @action(detail=True, methods=['post'], url_path='return-to-draft')
+    def return_to_draft(self, request, pk=None):
+        if not request.user.has_perm(CHANGE_PERMISSION):
+            raise PermissionDenied('You do not have permission to change change requests.')
+
+        change_request = self._restricted(request, 'change', pk)
+        if not change_request.return_to_draft():
+            return Response(
+                {
+                    'detail': (
+                        f'A {change_request.get_status_display().lower()} change request cannot be returned to draft.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(self.get_serializer(change_request).data)
 
     @action(detail=True, methods=['post'], permission_classes=[ObjectActionPermissions])
     def abandon(self, request, pk=None):

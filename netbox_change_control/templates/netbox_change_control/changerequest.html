@@ -4,6 +4,22 @@
 {% load form_helpers %}
 
 {% block extra_controls %}
+  {% if can_submit %}
+    <form action="{% url 'plugins:netbox_change_control:changerequest_submit' pk=object.pk %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">
+        <i class="mdi mdi-send-check-outline" aria-hidden="true"></i> {% trans "Submit for review" %}
+      </button>
+    </form>
+  {% endif %}
+  {% if can_return_to_draft %}
+    <form action="{% url 'plugins:netbox_change_control:changerequest_return_to_draft' pk=object.pk %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary">
+        <i class="mdi mdi-undo-variant" aria-hidden="true"></i> {% trans "Return to draft" %}
+      </button>
+    </form>
+  {% endif %}
   {% if can_abandon %}
     <form action="{% url 'plugins:netbox_change_control:changerequest_abandon' pk=object.pk %}" method="post" class="d-inline">
       {% csrf_token %}
@@ -240,22 +256,13 @@
         <tr>
           <td class="text-nowrap">{{ binding.policy|linkify }}</td>
           <td>
-            {% if binding.matched %}<span class="badge text-bg-cyan">{% trans "Auto" %}</span>{% endif %}
             {% for name in binding.matched_object_types %}<span class="badge text-bg-gray">{{ name }}</span> {% endfor %}
           </td>
         </tr>
         {% empty %}
-        <tr><td class="text-muted">{% trans "No policies attached." %}</td></tr>
+        <tr><td class="text-muted">{% trans "No policies attached yet. Submit the request for review to match them." %}</td></tr>
         {% endfor %}
       </table>
-      {% if object.status == 'draft' %}
-      <div class="card-footer">
-        <form action="{% url 'plugins:netbox_change_control:changerequest_submit' pk=object.pk %}" method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-primary">{% trans "Submit for review" %}</button>
-        </form>
-      </div>
-      {% endif %}
     </div>
     {% plugin_left_page object %}
   </div>

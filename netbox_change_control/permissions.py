@@ -10,6 +10,7 @@ from netbox.context import current_request
 __all__ = (
     'ABANDON_PERMISSION',
     'BYPASS_PERMISSION',
+    'CHANGE_PERMISSION',
     'OVERRIDE_WINDOW_PERMISSION',
     'REOPEN_PERMISSION',
     'current_user_has_perm',
@@ -25,6 +26,10 @@ OVERRIDE_WINDOW_PERMISSION = 'netbox_change_control.override_window_changereques
 # Status is derived from the policy evaluation, so it is not an editable field. These two are
 # the transitions a person makes by hand, and each is granted separately: giving up on a change
 # and taking one back up are different decisions from editing its title.
+# Submitting and withdrawing are two halves of one control the author holds over whether the
+# change is under review, so they share the ordinary change permission rather than inventing
+# two more. Abandoning is different: it is a one-way door, and it has its own.
+CHANGE_PERMISSION = 'netbox_change_control.change_changerequest'
 ABANDON_PERMISSION = 'netbox_change_control.abandon_changerequest'
 REOPEN_PERMISSION = 'netbox_change_control.reopen_changerequest'
 

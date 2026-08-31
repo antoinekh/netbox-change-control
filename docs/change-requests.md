@@ -29,6 +29,78 @@ Reopening returns the request to Draft and then recomputes, rather than restorin
 
 Completed is never reopened. It records a merge that actually happened, and taking it back up would invite a second merge of a branch already in main.
 
+## The lifecycle
+
+```mermaid
+stateDiagram-v2
+    direction TB
+
+    [*] --> Draft: opened
+
+    Draft --> NeedsReview: Submit for review
+    NeedsReview --> Draft: Return to draft
+    Approved --> Draft: Return to draft
+    Rejected --> Draft: Return to draft
+
+    NeedsReview --> Approved: every rule satisfied
+    NeedsReview --> Rejected: changes requested
+    Approved --> NeedsReview: approvals went stale
+    Approved --> Rejected: changes requested
+    Rejected --> NeedsReview: rejection withdrawn or stale
+    Rejected --> Approved: rejection cleared, rules satisfied
+
+    Approved --> Completed: branch merged
+
+    Draft --> Abandoned: Abandon
+    NeedsReview --> Abandoned: Abandon
+    Approved --> Abandoned: Abandon
+    Rejected --> Abandoned: Abandon
+    Abandoned --> Draft: Reopen
+
+    Completed --> [*]
+
+    classDef manual fill:#e8f0fe,stroke:#3b6fd4,color:#1a3a6b
+    classDef derived fill:#e9f7ec,stroke:#2f9e44,color:#14532d
+    classDef terminal fill:#f1f3f5,stroke:#868e96,color:#343a40
+
+    class Draft manual
+    class NeedsReview derived
+    class Approved derived
+    class Rejected derived
+    class Completed terminal
+    class Abandoned terminal
+```
+
+Blue is a state a person puts the request into. Green is derived: the plugin computes it from the reviews and moves the request there on its own. Grey is terminal.
+
+### Every transition
+
+| From | To | How it happens | Who or what does it | Permission |
+|---|---|---|---|---|
+| *(none)* | Draft | A change request is opened against a branch | Manual | `add_changerequest` |
+| Draft | Needs review | **Submit for review**, which also matches the policies | Manual | `change_changerequest` |
+| Needs review | Approved | Every rule of every attached policy has its approvals, and nobody has requested changes | Automatic, once the **required human action** of approving has happened | `add_review` to approve |
+| Needs review | Rejected | A reviewer requests changes | Automatic, on the **required human action** | `add_review` |
+| Approved | Needs review | The branch moved, so the approvals went stale; or a policy, rule or group membership changed | Automatic | none |
+| Approved | Rejected | A reviewer requests changes after approval | Automatic | `add_review` |
+| Rejected | Needs review | The rejection was withdrawn, or the branch moved and it went stale | Automatic | none |
+| Rejected | Approved | The rejection cleared and the rules are satisfied | Automatic | none |
+| Needs review, Approved, Rejected | Draft | **Return to draft**, to take the change back off the table | Manual | `change_changerequest` |
+| Approved | Completed | The branch merged | Automatic, on the merge | `merge_branch` to merge |
+| Any open state | Abandoned | **Abandon** | Manual | `abandon_changerequest` |
+| Abandoned | Draft | **Reopen** | Manual | `reopen_changerequest` |
+
+### What the states mean
+
+**Draft** is the author's. The plugin does not move a request out of it, and a review submitted against a draft changes nothing. This is what makes **Return to draft** worth having: a request pulled back stays pulled back while the author works, instead of being pushed straight back into review by the next signal.
+
+**Needs review**, **Approved** and **Rejected** are derived. They are a cached view of the policy evaluation, recomputed whenever anything that could change the answer happens, which is why they are not editable and why the arrows between them carry no permission: nobody sets them, they follow from the reviews.
+
+**Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened, because the branch is already in main. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
+
+> [!NOTE]
+> Only **Approved** opens the merge gate, and even then the checks and the change window are separate gates on top of it. See [approved is not the same as mergeable](#approved-is-not-the-same-as-mergeable).
+
 ## Approved is not the same as mergeable
 
 **Approved** means the people gate is satisfied: every policy rule has its approvals. It does not mean the change can go ahead. Checks and the change window are separate gates, so a request can be approved and still blocked, for example by an unresolved comment thread.

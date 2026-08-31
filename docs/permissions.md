@@ -16,13 +16,22 @@ For roles, groups and how to assemble them, read the [Administration guide](admi
 |---|---|---|
 | `netbox_change_control.view_changerequest` | `view` | See change requests, with their reviews, checks and applied policies. |
 | `netbox_change_control.add_changerequest` | `add` | Open a change request against a branch. |
-| `netbox_change_control.change_changerequest` | `change` | Edit the title, description, reference, priority, change window and auto-merge flag, and press **Submit for review**. |
+| `netbox_change_control.change_changerequest` | `change` | Edit the title, description, reference, priority, change window and auto-merge flag, and move the request between **Draft** and **Needs review** with **Submit for review** and **Return to draft**. |
 | `netbox_change_control.delete_changerequest` | `delete` | Delete a change request, destroying the record of who approved what. |
 | `netbox_change_control.abandon_changerequest` | `abandon` | Give up on an open change request, through the button or `POST /change-requests/{id}/abandon/`. |
 | `netbox_change_control.reopen_changerequest` | `reopen` | Take an abandoned change request back up, through the button or `POST /change-requests/{id}/reopen/`. |
 | `netbox_change_control.override_window_changerequest` | `override_window` | Merge a change request outside its change window. |
 
-`status` is not editable by anybody. It is derived from the policy evaluation, so it is read-only on the REST API and absent from the bulk edit form. Abandon and reopen are the two transitions a person makes by hand.
+`status` is not editable by anybody. It is read-only on the REST API and absent from the bulk edit form. Four actions move it, and [the lifecycle diagram](change-requests.md#the-lifecycle) shows how they fit together:
+
+| Action | Permission |
+|---|---|
+| Submit for review | `change_changerequest` |
+| Return to draft | `change_changerequest` |
+| Abandon | `abandon_changerequest` |
+| Reopen | `reopen_changerequest` |
+
+Everything else is derived: **Needs review**, **Approved** and **Rejected** follow from the reviews, and nobody sets them.
 
 ## Reviews
 
@@ -44,7 +53,7 @@ The per-object discussion on the **Changes** tab.
 | `netbox_change_control.view_changecomment` | `view` | Read the comment threads on a change request. |
 | `netbox_change_control.add_changecomment` | `add` | Comment on one changed object, and reply within a thread. |
 | `netbox_change_control.change_changecomment` | `change` | Resolve and reopen a thread. Anybody who might have to clear the `threads-resolved` check needs this. |
-| `netbox_change_control.delete_changecomment` | `delete` | Delete a comment. There is no button for it; the REST API and the Django admin only. |
+| `netbox_change_control.delete_changecomment` | `delete` | Delete a comment. Also available from the Changes tab. |
 
 ## Merge checks
 

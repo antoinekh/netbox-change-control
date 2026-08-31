@@ -42,6 +42,7 @@ class AbandonAndReopenModelTest(TestCase):
             branch=make_branch('life', self._testMethodName), title='T', requester=self.requester
         )
         ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+        cr.submit()
         cr.refresh_from_db()
         return cr
 
@@ -59,12 +60,19 @@ class AbandonAndReopenModelTest(TestCase):
         cr.refresh_from_db()
         self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
 
-    def test_an_abandoned_request_can_be_reopened(self):
+    def test_an_abandoned_request_reopens_as_a_draft(self):
+        """
+        Back into the author's hands, not straight into somebody's review queue. Its reviews
+        may have gone stale and its policies may have moved while it was set aside, so it is
+        submitted again and the evaluation works out the honest answer then.
+        """
         cr = self.make_request()
         cr.abandon()
+
         self.assertTrue(cr.reopen())
+
         cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.DRAFT)
 
     def test_a_completed_request_cannot_be_reopened(self):
         """
@@ -78,10 +86,9 @@ class AbandonAndReopenModelTest(TestCase):
         cr.refresh_from_db()
         self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
 
-    def test_reopening_recomputes_rather_than_restoring(self):
+    def test_reopening_does_not_restore_a_previous_approval(self):
         """
-        A request approved before it was abandoned must not come back approved if its reviews
-        no longer satisfy the policies.
+        A request approved before it was abandoned must not come back approved.
         """
         cr = self.make_request()
         approve(cr, self.reviewer)
@@ -89,12 +96,15 @@ class AbandonAndReopenModelTest(TestCase):
         self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
 
         cr.abandon()
-        cr.reviews.all().delete()
-        cr.refresh_from_db()
 
         self.assertTrue(cr.reopen())
         cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.DRAFT)
+
+        # Submitting again is what re-runs the evaluation, and it is honest about what it finds.
+        cr.submit()
+        cr.refresh_from_db()
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
 
 
 class AbandonAndReopenViewTest(TestCase):
@@ -315,9 +325,138 @@ class ActionButtonPlacementTest(TestCase):
         self.assertNotIn('Abandon', controls)
         self.assertNotIn('Reopen', controls)
 
-    def test_submit_for_review_stays_with_the_policies(self):
+    def test_submit_is_in_the_control_bar_too(self):
         """
-        Submitting is what attaches the policies, so it is the one action that does belong in
-        that card, directly under the list it populates.
+        All four lifecycle actions live together. Submitting used to sit in the Applied
+        policies card, where it read as something to do with the policies.
         """
-        self.assertIn('Submit for review', self.policies_card())
+        self.assertIn('Submit for review', self.controls())
+        self.assertNotIn('Submit for review', self.policies_card())
+
+
+class DraftIsTheAuthorsTest(TestCase):
+    """
+    Draft is a state a person holds, not one the evaluation computes.
+
+    Without that, **Return to draft** would be a button that does nothing: the next review,
+    policy edit or branch change would push the request straight back into review. It also
+    means submitting has to say so explicitly, and has to do its own announcing.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='requester')
+        cls.group = Group.objects.create(name='Engineers')
+        cls.reviewer = User.objects.create(username='reviewer')
+        cls.reviewer.groups.add(cls.group)
+        cls.policy = Policy.objects.create(name='One review')
+        PolicyRule.objects.create(policy=cls.policy, name='One engineer', min_reviews=1).groups.set([cls.group])
+
+    def setUp(self):
+        self.cr = ChangeRequest.objects.create(
+            branch=make_branch('draft', self._testMethodName), title='T', requester=self.requester
+        )
+
+    def test_a_review_against_a_draft_moves_nothing(self):
+        approve(self.cr, self.reviewer)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+
+    def test_submitting_attaches_the_policies_and_asks_for_review(self):
+        self.assertTrue(self.cr.submit())
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        self.assertEqual(self.cr.policies.count(), 1)
+
+    def test_submitting_notifies_the_reviewers(self):
+        """
+        refresh_status announces only the transitions it makes itself, and by the time it runs
+        the status is already Needs review, so it sees nothing to announce. Submitting in
+        silence is the one outcome that makes the whole thing pointless.
+        """
+        from extras.models import Notification
+
+        self.cr.submit()
+
+        self.assertEqual(Notification.objects.filter(user=self.reviewer).count(), 1)
+
+    def test_a_submitted_request_can_be_pulled_back(self):
+        self.cr.submit()
+
+        self.assertTrue(self.cr.return_to_draft())
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+
+    def test_a_request_pulled_back_stays_pulled_back(self):
+        """
+        The property that makes the button worth having.
+        """
+        self.cr.submit()
+        self.cr.return_to_draft()
+
+        approve(self.cr, self.reviewer)
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+
+        self.policy.description = 'edited, which re-evaluates every bound request'
+        self.policy.save()
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+
+    def test_an_approved_request_can_be_pulled_back(self):
+        """
+        An author who spots a problem after approval takes the change off the table rather
+        than racing the merge. It only ever closes the gate: a draft cannot merge.
+        """
+        self.cr.submit()
+        approve(self.cr, self.reviewer)
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
+
+        self.assertTrue(self.cr.return_to_draft())
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+        self.assertFalse(self.cr.is_ready_to_merge)
+
+    def test_resubmitting_recovers_the_standing_approval(self):
+        """
+        The reviews are kept, so an author who pulls a change back and changes nothing gets
+        the same answer when they submit it again.
+        """
+        self.cr.submit()
+        approve(self.cr, self.reviewer)
+        self.cr.return_to_draft()
+
+        self.cr.submit()
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
+
+    def test_a_draft_cannot_be_returned_to_draft(self):
+        self.assertFalse(self.cr.return_to_draft())
+
+    def test_a_completed_request_cannot_be_returned_to_draft(self):
+        self.cr.submit()
+        self.cr.status = ChangeRequestStatusChoices.COMPLETED
+        self.cr.save(update_fields=['status'])
+
+        self.assertFalse(self.cr.return_to_draft())
+
+    def test_only_a_draft_can_be_submitted(self):
+        self.cr.submit()
+
+        self.assertFalse(self.cr.submit())
+
+    def test_the_cached_columns_still_follow_a_draft(self):
+        """
+        A draft's status is frozen; the branch it points at is not.
+        """
+        self.cr.submit()
+        self.cr.return_to_draft()
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.cached_conflicted, bool(self.cr.conflicts))

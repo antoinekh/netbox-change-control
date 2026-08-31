@@ -21,6 +21,7 @@ __all__ = (
     'make_branch',
     'make_policy',
     'pass_checks',
+    'submit',
 )
 
 
@@ -47,6 +48,18 @@ def make_branch(prefix, suffix):
     return Branch.objects.create(name=f'{prefix}-{suffix}'[:100])
 
 
+def submit(change_request):
+    """
+    Put a change request into review, as its author would.
+
+    Draft is the author's to hold, so a review submitted against a draft moves nothing. A test
+    that is about reviewing has to get past this first.
+    """
+    change_request.submit()
+    change_request.refresh_from_db()
+    return change_request
+
+
 def approve(change_request, reviewer, comment=''):
     return Review.objects.create(
         change_request=change_request,
@@ -69,11 +82,18 @@ class ChangeControlTestCase(TestCase):
     requiring a single review from that group.
 
     Each test gets its own branch and a change request with the policy applied. Set
-    `approved = True` for the review to be given already.
+    `approved = True` for the review to be given already, or `submitted = False` to leave the
+    request as a draft.
     """
 
     branch_prefix = 'cc'
     approved = False
+    #: Whether the request has been submitted for review.
+    #:
+    #: Draft is the author's to hold, so the evaluation does not move a request out of it and
+    #: a review submitted against a draft changes nothing. Nearly every test is about what
+    #: happens after submission, which is also the only state a reviewer ever sees.
+    submitted = True
     #: Checks the fixture policy requires. A built-in is registered but never applied until a
     #: policy names it, so the default mirrors the catch-all policy a real deployment uses to
     #: get the built-ins everywhere. Set it to () where the registry is cleared.
@@ -92,6 +112,8 @@ class ChangeControlTestCase(TestCase):
         self.branch = make_branch(self.branch_prefix, self._testMethodName)
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.requester)
         ChangeRequestPolicy.objects.create(change_request=self.cr, policy=self.policy)
+        if self.submitted:
+            self.cr.submit()
         if self.approved:
             approve(self.cr, self.reviewer)
         self.cr.refresh_from_db()

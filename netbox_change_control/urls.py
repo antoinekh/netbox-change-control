@@ -32,6 +32,11 @@ urlpatterns = [
         name='changerequest_review',
     ),
     path(
+        'change-requests/<int:pk>/return-to-draft/',
+        views.ReturnToDraftView.as_view(),
+        name='changerequest_return_to_draft',
+    ),
+    path(
         'change-requests/<int:pk>/abandon/',
         views.AbandonChangeRequestView.as_view(),
         name='changerequest_abandon',

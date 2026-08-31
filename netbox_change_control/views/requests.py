@@ -9,11 +9,10 @@ from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
 from netbox_change_control import events, filtersets, forms, tables
-from netbox_change_control.batching import batched, schedule_refresh
 from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
-from netbox_change_control.permissions import ABANDON_PERMISSION, REOPEN_PERMISSION
-from netbox_change_control.policy import refresh_status, sync_policies
+from netbox_change_control.permissions import ABANDON_PERMISSION, CHANGE_PERMISSION, REOPEN_PERMISSION
+from netbox_change_control.policy import refresh_status
 
 from .reviews import review_eligibility
 
@@ -25,6 +24,7 @@ __all__ = (
     'ChangeRequestReviewsView',
     'ChangeRequestView',
     'ReopenChangeRequestView',
+    'ReturnToDraftView',
     'SubmitForReviewView',
     'SubmitReviewView',
 )
@@ -82,6 +82,8 @@ class ChangeRequestView(generic.ObjectView):
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
             'can_merge_perm': request.user.has_perm('netbox_branching.merge_branch'),
+            'can_submit': instance.can_be_submitted and request.user.has_perm(CHANGE_PERMISSION),
+            'can_return_to_draft': instance.can_return_to_draft and request.user.has_perm(CHANGE_PERMISSION),
             'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION),
             'can_reopen': instance.can_be_reopened and request.user.has_perm(REOPEN_PERMISSION),
         }
@@ -237,21 +239,41 @@ class SubmitForReviewView(View):
     def post(self, request, pk):
         change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'change'), pk=pk)
 
-        if not request.user.has_perm('netbox_change_control.change_changerequest'):
+        if not request.user.has_perm(CHANGE_PERMISSION):
             messages.error(request, _('You do not have permission to submit change requests for review.'))
-            return redirect(change_request.get_absolute_url())
+        elif change_request.submit():
+            # Distinct from change_request_review_requested, which fires on every entry into
+            # Needs review, including an approval invalidated by a later edit. This one is the
+            # author's deliberate act of asking for review.
+            events.emit(change_request, events.CHANGE_REQUEST_SUBMITTED)
+            messages.success(request, _('Change request submitted for review.'))
+        else:
+            messages.error(request, _('Only a draft can be submitted for review.'))
 
-        # Attaching the policies is one signal per policy. Batching collapses the refresh
-        # and the check run they each trigger into one of each, rather than one per policy
-        # plus another from here.
-        with batched():
-            sync_policies(change_request)
-            schedule_refresh(change_request)
+        return redirect(change_request.get_absolute_url())
 
-        # Distinct from change_request_review_requested, which fires on every entry into
-        # Needs review, including an approval invalidated by a later edit. This one is the
-        # author's deliberate act of asking for review.
-        events.emit(change_request, events.CHANGE_REQUEST_SUBMITTED)
 
-        messages.success(request, _('Change request submitted for review.'))
+class ReturnToDraftView(View):
+    """
+    Pull a submitted change request back out of review.
+
+    The counterpart to submitting, and the reversible alternative to abandoning: an author who
+    finds more to do, or spots a problem after approval, can take the change off the table and
+    put it back when it is ready. A draft is not approved, so the merge gate closes with it.
+    """
+
+    def post(self, request, pk):
+        change_request = get_object_or_404(ChangeRequest, pk=pk)
+
+        if not request.user.has_perm(CHANGE_PERMISSION):
+            messages.error(request, _('You do not have permission to change change requests.'))
+        elif change_request.return_to_draft():
+            messages.success(request, _('Change request returned to draft.'))
+        else:
+            messages.error(
+                request,
+                _('This change request is %(status)s, so it cannot be returned to draft.')
+                % {'status': change_request.get_status_display().lower()},
+            )
+
         return redirect(change_request.get_absolute_url())

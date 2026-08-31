@@ -135,11 +135,17 @@ curl -X POST "$NETBOX/api/plugins/change-control/change-comments/" \
 
 Reply within a thread by naming its root comment as `parent`. A reply must sit on the same change as its parent, and replies are one level deep: a reply to a reply joins the same thread.
 
-## Abandoning and reopening
+## Moving a change request through its lifecycle
 
-`status` is read-only, so the two transitions a person makes by hand are actions rather than a field:
+`status` is read-only, so every transition a person makes is an action rather than a field. See [the lifecycle diagram](change-requests.md#the-lifecycle) for how they fit together.
 
 ```bash
+curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/submit/" \
+  -H "Authorization: Token $TOKEN"
+
+curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/return-to-draft/" \
+  -H "Authorization: Token $TOKEN"
+
 curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/abandon/" \
   -H "Authorization: Token $TOKEN"
 
@@ -147,9 +153,18 @@ curl -X POST "$NETBOX/api/plugins/change-control/change-requests/42/reopen/" \
   -H "Authorization: Token $TOKEN"
 ```
 
-Each needs its own permission, `abandon_changerequest` and `reopen_changerequest`. Neither needs `add_changerequest`: giving up on a change is not creating one.
+| Action | From | Permission |
+|---|---|---|
+| `submit` | Draft | `change_changerequest` |
+| `return-to-draft` | Needs review, Approved, Rejected | `change_changerequest` |
+| `abandon` | any open state | `abandon_changerequest` |
+| `reopen` | Abandoned | `reopen_changerequest` |
 
-Both return the updated change request. A transition that does not apply, such as abandoning a completed request or reopening one that was never abandoned, returns **409** with the reason in `detail`.
+None needs `add_changerequest`: giving up on a change is not creating one.
+
+Each returns the updated change request. A transition that does not apply, such as abandoning a completed request or submitting one that is already under review, returns **409** with the reason in `detail`.
+
+Submitting matches the policies and notifies the outstanding reviewers, exactly as the button does.
 
 ## Events, the other direction
 

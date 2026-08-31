@@ -32,6 +32,7 @@ class NotificationTest(TestCase):
         self.branch = make_branch('notif', self._testMethodName)
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.requester)
         ChangeRequestPolicy.objects.create(change_request=self.cr, policy=self.policy)
+        self.cr.submit()
         self.cr.refresh_from_db()
 
     def _notifications(self, user):
@@ -75,15 +76,17 @@ class NotificationTest(TestCase):
         from django.utils import timezone
         from extras.models import Notification
 
-        refresh_status(self.cr)
+        self.assertEqual(self._notifications(self.eng).count(), 1)
         Notification.objects.filter(user=self.eng).update(read=timezone.now())
 
-        # Force a transition back into needs-review.
-        self.cr.status = ChangeRequestStatusChoices.DRAFT
-        self.cr.save(update_fields=['status'])
-        refresh_status(self.cr)
+        # The real round trip: the author pulls the change back, works on it, and submits it
+        # again. Writing the status by hand no longer does anything, because draft is the
+        # author's to hold and the evaluation will not move a request out of it.
+        self.cr.return_to_draft()
+        self.cr.submit()
 
         self.assertEqual(self._notifications(self.eng).count(), 1)
+        self.assertIsNone(self._notifications(self.eng).first().read)
         self.assertIsNone(self._notifications(self.eng).first().read)
 
 

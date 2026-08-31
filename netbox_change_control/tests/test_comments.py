@@ -225,6 +225,7 @@ class DeletingARequestWithCommentsTest(ChangeControlTestCase):
         other_branch = make_branch('del-other', self._testMethodName)
         other = ChangeRequest.objects.create(branch=other_branch, title='Other', requester=self.requester)
         ChangeRequestPolicy.objects.create(change_request=other, policy=self.policy)
+        other.submit()
 
         self._comment()
         self.cr.delete()

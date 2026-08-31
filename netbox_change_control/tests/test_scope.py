@@ -23,7 +23,7 @@ from users.models import Group, User
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
-from netbox_change_control.policy import refresh_status, sync_policies
+from netbox_change_control.policy import sync_policies
 from netbox_change_control.tests.base import approve, make_branch
 from netbox_change_control.validators import require_approved_change_request
 
@@ -82,8 +82,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         self.branch = make_branch('scope', self._testMethodName)
         touch(self.branch, self.Prefix, 1, '10.0.0.0/24')
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
-        sync_policies(self.cr)
-        refresh_status(self.cr)
+        self.cr.submit()
         self.cr.refresh_from_db()
 
     def attached(self):
@@ -217,7 +216,7 @@ class MergeGateRematchesTest(TestCase):
         self.branch = make_branch('gate', self._testMethodName)
         touch(self.branch, self.Prefix, 1, '10.0.0.0/24')
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
-        sync_policies(self.cr)
+        self.cr.submit()
         approve(self.cr, self.engineer)
         self.cr.refresh_from_db()
         self.cr.checks.update(status='success')

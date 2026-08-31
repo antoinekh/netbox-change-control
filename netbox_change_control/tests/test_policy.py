@@ -182,6 +182,7 @@ class AutomaticApprovalTest(TestCase):
             requester=self.requester,
         )
         ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
+        cr.submit()
         cr.refresh_from_db()
         return cr
 
@@ -236,10 +237,10 @@ class AutomaticApprovalTest(TestCase):
         group = Group.objects.create(name='Engineers')
         engineer = User.objects.create(username='engineer')
         engineer.groups.add(group)
-        strict, _rule = make_policy('Strict', groups=[group], rule_name='One engineer')
+        _strict, _rule = make_policy('Strict', groups=[group], rule_name='One engineer')
 
+        # Both policies are unscoped, so submitting matches them both.
         cr = self._request()
-        ChangeRequestPolicy.objects.create(change_request=cr, policy=strict)
         cr.refresh_from_db()
         self.assertEqual(cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
 

@@ -47,8 +47,9 @@ class AutoMergeIsEnqueuedOnceTest(TestCase):
         PolicyRule.objects.create(policy=policy, name='None needed', min_reviews=0)
         branch = make_branch('once', 'zero')
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester, auto_merge=True)
-
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+
+        cr.submit()
 
         cr.refresh_from_db()
         self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
@@ -60,6 +61,7 @@ class AutoMergeIsEnqueuedOnceTest(TestCase):
         branch = make_branch('once', 'second')
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester, auto_merge=True)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+        cr.submit()
         approve(cr, self.reviewer)
         cr.refresh_from_db()
         cr.checks.update(status=MergeCheckStatusChoices.SUCCESS)
@@ -80,6 +82,7 @@ class AutoMergeIsEnqueuedOnceTest(TestCase):
         branch = make_branch('once', 'finished')
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester, auto_merge=True)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+        cr.submit()
 
         job = queued_merges(branch).get()
         job.status = JobStatusChoices.STATUS_ERRORED
@@ -108,5 +111,6 @@ class AutoMergeIsEnqueuedOnceTest(TestCase):
         branch = make_branch('once', 'mine')
         cr = ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester, auto_merge=True)
         ChangeRequestPolicy.objects.create(change_request=cr, policy=policy)
+        cr.submit()
 
         self.assertEqual(queued_merges(branch).count(), 1)

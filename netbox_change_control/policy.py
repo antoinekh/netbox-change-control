@@ -242,9 +242,7 @@ def scope_may_have_drifted(change_request):
 
 def sync_policies(change_request):
     """
-    Attach every matching policy to the change request and drop stale automatic bindings.
-
-    Bindings the author added by hand (matched=False) are left alone.
+    Attach every matching policy to the change request, and drop the ones that no longer match.
     """
     if change_request.branch_deleted:
         # The diff is gone, so there is nothing left to match against. Existing bindings are
@@ -266,11 +264,10 @@ def sync_policies(change_request):
             ChangeRequestPolicy.objects.create(
                 change_request=change_request,
                 policy_id=policy_id,
-                matched=True,
                 matched_object_types=names,
             )
 
-    stale = [binding.pk for policy_id, binding in existing.items() if binding.matched and policy_id not in matches]
+    stale = [binding.pk for policy_id, binding in existing.items() if policy_id not in matches]
     if stale:
         ChangeRequestPolicy.objects.filter(pk__in=stale).delete()
 
@@ -390,13 +387,24 @@ def refresh_status(change_request, run_checks_on_approval=True):
     can change the outcome: a review added, edited or removed, or a policy attached or
     detached. Signal receivers call this so no caller can forget.
 
-    Terminal statuses are never reopened.
+    Two statuses are the author's to hold rather than the evaluation's to compute, and are
+    left alone here.
+
+    Terminal statuses are never reopened. Draft means "not submitted", so a request the author
+    has pulled back must stay pulled back even while reviews arrive and policies move around
+    it; without this, the first signal after a withdrawal would push it straight back into
+    review. Submitting is what leaves draft, and it says so explicitly.
 
     `run_checks_on_approval` exists for the one caller which runs the checks itself immediately
     afterwards. Reaching Approved normally has to refresh them here, but a caller that is about
     to do it anyway would otherwise put the whole suite through twice.
     """
     if change_request.status in ChangeRequestStatusChoices.TERMINAL:
+        return change_request.status
+
+    if change_request.status == ChangeRequestStatusChoices.DRAFT:
+        # The cached columns still have to follow the branch: a draft can gain a conflict.
+        refresh_cached_state(change_request)
         return change_request.status
 
     evaluation = evaluate_change_request(change_request)

@@ -118,10 +118,6 @@ class Policy(PrimaryModel):
             except (InvalidCondition, ValueError) as e:
                 raise ValidationError({'conditions': str(e)}) from e
 
-    @property
-    def applies_to_all_object_types(self):
-        return not self.object_types.exists()
-
 
 class PolicyRule(NetBoxModel):
     """

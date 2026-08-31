@@ -179,3 +179,44 @@ class StatusIsNotWritableTest(APITestCase):
         grant(self.user, ['view', 'abandon'], name='cr-abandon')
         response = self.client.post(f'/api/plugins/change-control/change-requests/{self.cr.pk}/abandon/', **self.header)
         self.assertEqual(response.status_code, http.HTTP_409_CONFLICT)
+
+
+class SubmitForReviewPermissionTest(TestCase):
+    """
+    Submitting is an edit to the request, so it needs the permission to change one.
+
+    It used to need nothing: any signed-in user could push somebody else's draft into review,
+    attaching its policies and announcing change_request_submitted to every event rule.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='requester')
+        cls.outsider = User.objects.create(username='outsider')
+        cls.group = Group.objects.create(name='Engineers')
+        cls.policy = Policy.objects.create(name='One review')
+        PolicyRule.objects.create(policy=cls.policy, name='One engineer', min_reviews=1).groups.set([cls.group])
+
+    def setUp(self):
+        self.cr = ChangeRequest.objects.create(
+            branch=make_branch('submitperm', self._testMethodName), title='T', requester=self.requester
+        )
+        self.url = f'/plugins/change-control/change-requests/{self.cr.pk}/submit/'
+
+    def test_a_user_with_only_view_cannot_submit(self):
+        grant(self.outsider, ['view'], name='view-only')
+        self.client.force_login(self.outsider)
+        self.client.post(self.url)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.DRAFT)
+        self.assertEqual(self.cr.policies.count(), 0)
+
+    def test_a_user_with_change_can_submit(self):
+        grant(self.requester, ['view', 'change'], name='may-change')
+        self.client.force_login(self.requester)
+        self.client.post(self.url)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        self.assertEqual(self.cr.policies.count(), 1)

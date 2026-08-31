@@ -222,10 +222,20 @@ class ReopenChangeRequestView(View):
 class SubmitForReviewView(View):
     """
     Move a draft change request into review, attaching every matching policy.
+
+    Submitting is an edit to the request, so it needs the permission to change one. It used to
+    need nothing at all: every other action view here checks something, and this one let any
+    signed-in user push somebody else's draft into review, which attaches its policies and
+    announces `change_request_submitted` to every event rule watching for it.
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'change'), pk=pk)
+
+        if not request.user.has_perm('netbox_change_control.change_changerequest'):
+            messages.error(request, _('You do not have permission to submit change requests for review.'))
+            return redirect(change_request.get_absolute_url())
+
         sync_policies(change_request)
         run_checks(change_request)
         refresh_status(change_request)

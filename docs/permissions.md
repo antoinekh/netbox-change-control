@@ -12,6 +12,7 @@ The plugin defines the standard NetBox object permissions for each of its models
 | Permission | Grants |
 |---|---|
 | `netbox_change_control.view_changerequest` and friends | The usual view, add, change and delete on each model. |
+| `netbox_change_control.change_changerequest` | Submit a change request for review, and edit one. |
 | `netbox_change_control.add_review` | Submit a review. |
 | `netbox_change_control.change_mergecheck` | Re-run checks. |
 | `netbox_change_control.add_changecomment` | Comment on a specific change. |

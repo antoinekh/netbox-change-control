@@ -38,7 +38,11 @@ The change request page shows both. The status badge reads `Approved`, and besid
 > **Approved** · **Blocked**
 > Approved by reviewers, but not yet mergeable. Required checks are not passing: Comment threads resolved (failed).
 
-The change request list carries a **Ready to merge** column, and the REST API exposes `ready_to_merge` and `merge_blocked_reason` alongside `approved`. All of them delegate to netbox-branching, so they account for every gate, including validators registered by other plugins.
+The REST API exposes `ready_to_merge` and `merge_blocked_reason` alongside `approved`, and this page's own badge reads the same source. All of them delegate to netbox-branching, so they account for every gate, including validators registered by other plugins.
+
+The change request **list** answers the same question from a cache, because computing it per row cost about eleven queries and a page holds fifty. The cache is refreshed whenever anything that could change the answer happens: a review, a policy, a check, a branch sync, a new change in the branch. The change window is the exception, since a window opens because the clock moved rather than because anything happened, so it is evaluated as the row is rendered from fields already loaded.
+
+Two consequences worth knowing. The list does not account for merge validators registered by other plugins, which this page does. And the list is what you sort and filter on, which the live version could never support. Where the two could disagree, this page is authoritative, and the merge gate itself never reads the cache at all.
 
 ## The record outlives the branch
 

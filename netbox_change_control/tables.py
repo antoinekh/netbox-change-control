@@ -20,7 +20,7 @@ class ConflictsColumn(tables.TemplateColumn):
     """
 
     template_code = """
-    {% if record.has_conflicts %}
+    {% if record.cached_conflicted %}
       <span class="text-red"><i class="mdi mdi-alert-octagon"></i></span>
     {% else %}
       {{ ''|placeholder }}
@@ -89,13 +89,17 @@ class ChangeRequestTable(NetBoxTable):
     policies = columns.ManyToManyColumn(verbose_name=_('Policies'))
     review_count = tables.Column(accessor='reviews__count', verbose_name=_('Reviews'))
     auto_merge = columns.BooleanColumn(verbose_name=_('Auto merge'))
-    is_ready_to_merge = columns.BooleanColumn(
+    # Both read a cached field rather than recomputing per row. Live, they cost about eleven
+    # queries each row, which is five hundred for a default page of fifty. Sortable as a
+    # result, which the live versions could never be.
+    cached_ready_to_merge = columns.BooleanColumn(
         verbose_name=_('Ready to merge'),
-        orderable=False,
+        accessor='cached_ready_to_merge',
+        order_by='cached_gates_cleared',
     )
-    has_conflicts = ConflictsColumn(
+    cached_conflicted = ConflictsColumn(
         verbose_name=_('Conflicts'),
-        orderable=False,
+        order_by='cached_conflicted',
     )
     tags = columns.TagColumn(url_name='plugins:netbox_change_control:changerequest_list')
 
@@ -117,7 +121,8 @@ class ChangeRequestTable(NetBoxTable):
             'scheduled_start',
             'scheduled_end',
             'auto_merge',
-            'is_ready_to_merge',
+            'cached_ready_to_merge',
+            'cached_conflicted',
             'created',
             'tags',
         )
@@ -127,8 +132,8 @@ class ChangeRequestTable(NetBoxTable):
             'description',
             'branch',
             'status',
-            'has_conflicts',
-            'is_ready_to_merge',
+            'cached_conflicted',
+            'cached_ready_to_merge',
             'priority',
             'requester',
             'policies',

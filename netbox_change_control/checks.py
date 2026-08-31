@@ -233,6 +233,10 @@ def run_checks(change_request):
     # saves above reach the MergeCheck receiver, but only when a result actually moved, so this
     # also covers the run where everything was already passing.
     from netbox_change_control.automerge import try_auto_merge
+    from netbox_change_control.policy import refresh_cached_state
+
+    # A check result moves whether the request is ready, which the list reads from a cache.
+    refresh_cached_state(change_request)
 
     try_auto_merge(change_request)
 

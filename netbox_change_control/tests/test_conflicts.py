@@ -74,16 +74,51 @@ class ConflictVisibilityTest(TestCase):
         self.assertEqual(self.cr.conflicts, [])
         self.assertFalse(self.cr.has_conflicts)
 
-    def test_conflicts_are_read_live(self):
+    def test_the_conflict_list_is_read_live(self):
+        """
+        `conflicts` returns the actual objects and is always computed now. It is read once per
+        page, on the change request itself, so the two queries it costs are fine there.
+        """
         # ChangeDiff.save() rewrites object_repr from the live object, so read it back rather
         # than asserting on the value this test passed in.
         diff = self._diff(conflicts=['device_type'])
         with main_moved(self.branch, diff):
-            self.assertTrue(self.cr.has_conflicts)
             self.assertEqual(
                 [(d.object_repr, d.conflicts) for d in self.cr.conflicts],
                 [(diff.object_repr, ['device_type'])],
             )
+
+    def test_the_conflict_flag_is_cached_and_follows_a_refresh(self):
+        """
+        `has_conflicts` reads a cached column, because the change request list shows it once
+        per row and computing it live cost two queries each time.
+
+        It is refreshed by the same events that re-run the checks, which is what the diff
+        receiver does when branching recomputes a diff.
+        """
+        from netbox_change_control.policy import refresh_cached_state
+
+        diff = self._diff(conflicts=['device_type'])
+        with main_moved(self.branch, diff):
+            refresh_cached_state(self.cr)
+
+        self.cr.refresh_from_db()
+        self.assertTrue(self.cr.has_conflicts)
+        self.assertTrue(self.cr.cached_conflicted)
+
+    def test_the_cached_flag_clears_when_the_conflict_goes(self):
+        from netbox_change_control.policy import refresh_cached_state
+
+        diff = self._diff(conflicts=['device_type'])
+        with main_moved(self.branch, diff):
+            refresh_cached_state(self.cr)
+        self.cr.refresh_from_db()
+        self.assertTrue(self.cr.has_conflicts)
+
+        with main_moved(self.branch, diff, moved=False):
+            refresh_cached_state(self.cr)
+        self.cr.refresh_from_db()
+        self.assertFalse(self.cr.has_conflicts)
 
     def test_the_check_reports_a_conflict(self):
         diff = self._diff(conflicts=['device_type'])

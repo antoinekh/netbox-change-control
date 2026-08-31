@@ -312,7 +312,8 @@ class ChangeRequestFilterForm(NetBoxModelFilterSetForm):
         FieldSet('ref', 'status', 'priority', 'requester_id', name=_('Request')),
         FieldSet('branch_id', 'branch', 'branch_deleted', name=_('Branch')),
         FieldSet('policy_id', 'reviewer_id', 'has_reviews', name=_('Review')),
-        FieldSet('check_status', 'has_open_threads', name=_('Checks')),
+        FieldSet('check_status', 'has_open_threads', 'gates_cleared', name=_('Checks')),
+        FieldSet('has_conflicts', name=_('Conflicts')),
         FieldSet('has_window', 'auto_merge', name=_('Scheduling')),
     )
 
@@ -330,6 +331,14 @@ class ChangeRequestFilterForm(NetBoxModelFilterSetForm):
     has_reviews = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
     check_status = forms.MultipleChoiceField(choices=MergeCheckStatusChoices, required=False, label=_('Check status'))
     has_open_threads = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
+    has_conflicts = forms.NullBooleanField(
+        required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES), label=_('Conflicts with main')
+    )
+    gates_cleared = forms.NullBooleanField(
+        required=False,
+        widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES),
+        label=_('Policies and checks satisfied'),
+    )
     has_window = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
     auto_merge = forms.NullBooleanField(required=False, widget=forms.Select(choices=BOOLEAN_WITH_BLANK_CHOICES))
 

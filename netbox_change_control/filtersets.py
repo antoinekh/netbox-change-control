@@ -249,6 +249,14 @@ class ChangeRequestFilterSet(NetBoxModelFilterSet):
         method='filter_has_window',
         label=_('Has a change window'),
     )
+    has_conflicts = django_filters.BooleanFilter(
+        field_name='cached_conflicted',
+        label=_('Conflicts with main'),
+    )
+    gates_cleared = django_filters.BooleanFilter(
+        field_name='cached_gates_cleared',
+        label=_('Policies and checks satisfied'),
+    )
 
     class Meta:
         model = ChangeRequest

@@ -86,7 +86,14 @@ The fields worth acting on:
 | `branch` / `branch_name` | The branch, and its name kept after the branch is deleted. |
 | `branch_deleted` | Whether the branch is gone and the record is history only. |
 
-`ready_to_merge` is computed at read time, from the policies, the checks, the change window and the branch itself, so there is no filter for it. Narrow on what is stored and read the field from the results:
+`ready_to_merge` and `has_conflicts` are computed at read time on this endpoint, from the policies, the checks, the change window and the branch itself, so neither is what the list filters on. Two cached counterparts are, and they are what the change request list displays:
+
+| Filter | Matches |
+|---|---|
+| `gates_cleared` | The policies and every required check were satisfied at the last refresh. Excludes the change window. |
+| `has_conflicts` | The branch conflicted with main at the last refresh. |
+
+Use those to narrow, and read the live fields from the results:
 
 ```bash
 curl -s -H "Authorization: Token $TOKEN" \

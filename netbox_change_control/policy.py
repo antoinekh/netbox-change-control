@@ -22,6 +22,7 @@ __all__ = (
     'evaluate_change_request',
     'get_touched_object_types',
     'match_policies',
+    'refresh_cached_state',
     'refresh_status',
     'scope_may_have_drifted',
     'sync_policies',
@@ -319,6 +320,52 @@ def evaluate_change_request(change_request):
     return evaluation
 
 
+def refresh_cached_state(change_request):
+    """
+    Recompute the two cached columns on a change request. Returns True if either moved.
+
+    The change request list shows whether a branch conflicts with main and whether it is ready
+    to merge. Read live, those cost about eleven queries per row: the conflict test asks the
+    database twice, and the readiness test runs the whole merge gate. Fifty rows is five
+    hundred queries for two columns.
+
+    Both are cached instead, and refreshed on the events that can change them, which is what
+    the callers of this function are. It is the same split the plugin already makes for
+    `status`: a cache for display and filtering, never for a decision.
+
+    `cached_gates_cleared` deliberately excludes the change window. A window opens because the
+    clock moved, not because anything happened, so there is no event on which to refresh it;
+    `cached_ready_to_merge` combines this flag with the window at read time, from fields the
+    row already carries.
+
+    It also computes the plugin's own gates directly rather than through `Branch.can_merge`.
+    Going through the gate would re-enter policy matching, which writes, which lands back
+    here. The cost is that a merge validator registered by another plugin is not reflected in
+    the column; the change request page and the gate itself both still recompute in full.
+    """
+    from netbox_change_control.conflicts import conflicting_diffs
+    from netbox_change_control.validators import blocking_checks
+
+    if change_request.branch_deleted:
+        conflicted = False
+        gates_cleared = False
+    else:
+        conflicted = bool(conflicting_diffs(change_request.branch))
+        gates_cleared = (
+            change_request.status == ChangeRequestStatusChoices.APPROVED
+            and evaluate_change_request(change_request).satisfied
+            and not blocking_checks(change_request)
+        )
+
+    if (change_request.cached_conflicted, change_request.cached_gates_cleared) == (conflicted, gates_cleared):
+        return False
+
+    change_request.cached_conflicted = conflicted
+    change_request.cached_gates_cleared = gates_cleared
+    change_request.save(update_fields=['cached_conflicted', 'cached_gates_cleared'])
+    return True
+
+
 def _emit_lifecycle_event(status, change_request):
     """
     Put the matching lifecycle event through NetBox's event pipeline, so an event rule can
@@ -378,5 +425,9 @@ def refresh_status(change_request):
             from netbox_change_control.checks import run_checks
 
             run_checks(change_request)
+
+    # Last, so it reads the settled status. run_checks refreshes it too, and the guard inside
+    # means the second call writes nothing.
+    refresh_cached_state(change_request)
 
     return status

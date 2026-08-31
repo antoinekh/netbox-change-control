@@ -87,6 +87,24 @@ class ChangeRequest(PrimaryModel):
             'Merge as soon as the change is approved, every required check passes, and the change window is open.'
         ),
     )
+    # Two cached views of the branch, kept so the change request list can show them without
+    # asking the database per row.
+    #
+    # This is the same split the plugin already makes for `status`: a cache for display and
+    # filtering, never for a decision. The merge gate recomputes, and so does the change
+    # request page. Nothing that permits a merge reads these.
+    cached_conflicted = models.BooleanField(
+        verbose_name=_('conflicts with main'),
+        default=False,
+        editable=False,
+        help_text=_('Whether the branch genuinely conflicts with main, as of the last refresh.'),
+    )
+    cached_gates_cleared = models.BooleanField(
+        verbose_name=_('gates cleared'),
+        default=False,
+        editable=False,
+        help_text=_('Whether the policies and the required checks were satisfied at the last refresh.'),
+    )
     policies = models.ManyToManyField(
         to='netbox_change_control.Policy',
         through='netbox_change_control.ChangeRequestPolicy',
@@ -223,7 +241,14 @@ class ChangeRequest(PrimaryModel):
 
     @property
     def has_conflicts(self):
-        return bool(self.conflicts)
+        """
+        The cached answer, so a list of change requests costs no queries for this column.
+
+        Reading it live means one query for the diffs and one against the branch for what main
+        has done since the last sync, per row. Use `conflicts` where the actual objects are
+        wanted, which is a single change request's own page.
+        """
+        return self.cached_conflicted
 
     @property
     def reconciled_conflicts(self):
@@ -249,8 +274,27 @@ class ChangeRequest(PrimaryModel):
 
     @property
     def is_ready_to_merge(self):
+        """
+        The authoritative answer, recomputed now. Used by the change request page and the API.
+        """
         indicator = self.merge_indicator
         return bool(indicator and indicator.permitted)
+
+    @property
+    def cached_ready_to_merge(self):
+        """
+        The cheap answer, for a list of change requests. No queries at all.
+
+        `cached_gates_cleared` covers the policies and the required checks, which only change
+        when something happens and so can be cached on that event. The change window is the
+        one gate that turns on the clock alone, with no event to hang a refresh on, so it is
+        evaluated here from two fields already loaded on the row.
+
+        It does not account for merge validators registered by other plugins, which
+        `is_ready_to_merge` does. The change request page is the authoritative answer, and the
+        merge gate itself never reads this.
+        """
+        return self.cached_gates_cleared and self.window_is_open
 
     @property
     def merge_blocked_reason(self):

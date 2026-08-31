@@ -4,6 +4,7 @@ from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
+from netbox.object_actions import AddObject, BulkDelete, BulkEdit, BulkExport
 from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
@@ -34,6 +35,9 @@ __all__ = (
 
 
 class ChangeRequestListView(generic.ObjectListView):
+    # See the note on PolicyListView: an action with no route renders a button targeting the
+    # string "None".
+    actions = (AddObject, BulkExport, BulkEdit, BulkDelete)
     queryset = ChangeRequest.objects.annotate(review_count=Count('reviews'))
     table = tables.ChangeRequestTable
     filterset = filtersets.ChangeRequestFilterSet

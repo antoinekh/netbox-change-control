@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
+from netbox.object_actions import BulkDelete, BulkExport
 from netbox.views import generic
 from utilities.views import register_model_view
 
@@ -25,6 +26,9 @@ __all__ = (
 
 
 class MergeCheckListView(generic.ObjectListView):
+    # A check row is created by the plugin and reported on through the REST API. There is no
+    # add or bulk edit route, so neither is offered.
+    actions = (BulkExport, BulkDelete)
     queryset = MergeCheck.objects.select_related('change_request')
     table = tables.MergeCheckTable
     filterset = filtersets.MergeCheckFilterSet

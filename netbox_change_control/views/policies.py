@@ -1,4 +1,5 @@
 from django.db.models import Count
+from netbox.object_actions import AddObject, BulkDelete, BulkEdit, BulkExport
 from netbox.views import generic
 from utilities.views import register_model_view
 
@@ -23,6 +24,11 @@ __all__ = (
 
 
 class PolicyListView(generic.ObjectListView):
+    # NetBox offers add, import, export, edit, rename and delete by default, and
+    # ObjectAction.get_url swallows the NoReverseMatch for the ones this plugin does not
+    # route. The button then renders with a literal "None" target and 404s on click, so each
+    # list view states the actions it actually has.
+    actions = (AddObject, BulkExport, BulkEdit, BulkDelete)
     queryset = Policy.objects.annotate(rule_count=Count('rules'))
     table = tables.PolicyTable
     filterset = filtersets.PolicyFilterSet
@@ -57,6 +63,7 @@ class PolicyDeleteView(generic.ObjectDeleteView):
 
 
 class PolicyRuleListView(generic.ObjectListView):
+    actions = (AddObject, BulkExport, BulkEdit, BulkDelete)
     queryset = PolicyRule.objects.all()
     table = tables.PolicyRuleTable
     filterset = filtersets.PolicyRuleFilterSet

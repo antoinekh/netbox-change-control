@@ -1,3 +1,4 @@
+from netbox.object_actions import BulkDelete, BulkExport
 from netbox.views import generic
 
 from netbox_change_control import filtersets, forms, tables
@@ -64,6 +65,9 @@ class ChangeRequestBulkDeleteView(generic.BulkDeleteView):
 
 
 class ReviewListView(generic.ObjectListView):
+    # A review is written by submitting one, not by adding a row, and there is no bulk edit
+    # for it. Offering either rendered a button with a "None" target.
+    actions = (BulkExport, BulkDelete)
     queryset = Review.objects.select_related('reviewer', 'change_request')
     table = tables.ReviewTable
     filterset = filtersets.ReviewFilterSet

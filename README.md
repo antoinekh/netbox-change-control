@@ -72,7 +72,8 @@ Full documentation is in [`docs/`](docs/index.md).
 | [Merging, windows and auto-merge](docs/merging.md) | Change windows and automatic merging. |
 | [Protecting main](docs/protect-main.md) | Requiring a branch, optionally for part of NetBox only. |
 | [Automatic behaviours](docs/automation.md) | Stale reviews, reevaluation, notifications. |
-| [Permissions](docs/permissions.md) | What each role needs. |
+| [Administration guide](docs/admin-guide.md) | Roles, the permission matrix, building policies, troubleshooting. |
+| [Permissions](docs/permissions.md) | The short reference for every permission name. |
 | [REST API](docs/api.md) | Every endpoint. |
 | [Extending this plugin](docs/extending.md) | How another plugin adds content and checks. |
 | [Design](docs/design.md) | Why it is built this way. |

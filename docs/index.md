@@ -9,7 +9,8 @@ New here? Read [Installation and configuration](installation.md), then [Policies
 | Page | Covers |
 |---|---|
 | [Installation and configuration](installation.md) | Requirements, installing the plugin, and every configuration setting. |
-| [Permissions](permissions.md) | The permissions each role needs, and how to grant the two exemptions. |
+| [Administration guide](admin-guide.md) | Setting up roles and groups, the permission matrix, building policies, and troubleshooting. |
+| [Permissions](permissions.md) | The short reference: every permission name and what it grants. |
 
 ## Day to day
 

@@ -1,6 +1,13 @@
 # Permissions
 
+This is the short reference. For roles, a full permission matrix per model, constraint examples and troubleshooting, read the [Administration guide](admin-guide.md).
+
 The plugin defines the standard NetBox object permissions for each of its models, plus one extra.
+
+> [!IMPORTANT]
+> A NetBox object permission applies to **every object of that type** unless you add a constraint. `delete_review` therefore lets a user delete anybody's review, which changes the outcome of the gate: removing a **Request changes** review removes the rejection. Grant it sparingly, or constrain it with `{"reviewer": "$user"}`. See [narrowing a permission with a constraint](admin-guide.md#narrowing-a-permission-with-a-constraint).
+>
+> Editing is the one exception. A reviewer may edit only their own review whatever they hold, because a review is one person's statement and rewriting somebody else's would forge their position.
 
 | Permission | Grants |
 |---|---|

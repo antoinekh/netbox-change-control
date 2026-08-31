@@ -250,3 +250,74 @@ class ReadOnlyTokenTest(APITestCase):
         self.assertEqual(response.status_code, http.HTTP_403_FORBIDDEN)
         self.cr.refresh_from_db()
         self.assertNotEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)
+
+
+class ActionButtonPlacementTest(TestCase):
+    """
+    Abandon and reopen act on the whole change request, so they belong with Edit and Delete in
+    the page's control bar. They were in the footer of the Applied policies card, where they
+    read as something to do with the policies.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.requester = User.objects.create(username='requester')
+        cls.admin = User.objects.create(username='admin-viewer', is_superuser=True)
+
+    def setUp(self):
+        self.cr = ChangeRequest.objects.create(
+            branch=make_branch('placement', self._testMethodName), title='T', requester=self.requester
+        )
+        self.client.force_login(self.admin)
+
+    def controls(self):
+        """
+        The buttons in the page's control bar, which is where object actions live.
+        """
+        import re
+
+        html = self.client.get(self.cr.get_absolute_url()).content.decode()
+        bar = re.search(
+            r'<div class="btn-list justify-content-end mb-2">(.*?)<div class="d-flex justify-content-end">',
+            html,
+            re.S,
+        )
+        self.assertIsNotNone(bar, 'the control bar was not found; the NetBox template may have changed')
+        return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', bar.group(1)))
+
+    def policies_card(self):
+        import re
+
+        html = self.client.get(self.cr.get_absolute_url()).content.decode()
+        card = re.search(r'Applied policies(.*?)Reviews', html, re.S)
+        return card.group(1) if card else ''
+
+    def test_abandon_is_in_the_control_bar(self):
+        self.assertIn('Abandon', self.controls())
+
+    def test_abandon_is_not_in_the_policies_card(self):
+        self.assertNotIn('Abandon', self.policies_card())
+
+    def test_reopen_replaces_it_once_abandoned(self):
+        self.cr.abandon()
+
+        controls = self.controls()
+
+        self.assertIn('Reopen', controls)
+        self.assertNotIn('Abandon', controls)
+
+    def test_a_completed_request_offers_neither(self):
+        self.cr.status = ChangeRequestStatusChoices.COMPLETED
+        self.cr.save(update_fields=['status'])
+
+        controls = self.controls()
+
+        self.assertNotIn('Abandon', controls)
+        self.assertNotIn('Reopen', controls)
+
+    def test_submit_for_review_stays_with_the_policies(self):
+        """
+        Submitting is what attaches the policies, so it is the one action that does belong in
+        that card, directly under the list it populates.
+        """
+        self.assertIn('Submit for review', self.policies_card())

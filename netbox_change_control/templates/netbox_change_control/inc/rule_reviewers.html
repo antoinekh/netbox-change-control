@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+Who may satisfy one rule, written the way the rule is.
+
+Shared by the change request page and the alert on the branch page so the two cannot drift.
+Expects `rule` to be a PolicyRule.
+
+The names are always shown, including when they resolve to nobody: a rule pointing at an empty
+group can never be satisfied, and naming the group is the difference between knowing that and
+knowing what to fix.
+{% endcomment %}
+{% with summary=rule.reviewer_summary %}
+  {% trans "May approve:" %}
+  {% if summary.group_names or summary.user_names %}
+    {% for name in summary.group_names %}{{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    {% if summary.group_names and summary.user_names %}, {% endif %}
+    {% for name in summary.user_names %}{{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    {% if not summary.anybody %}
+      <span class="text-danger">{% trans "(no members, so this rule can never be satisfied)" %}</span>
+    {% endif %}
+  {% else %}
+    <span class="text-danger">{% trans "nobody, so this rule can never be satisfied" %}</span>
+  {% endif %}
+{% endwith %}

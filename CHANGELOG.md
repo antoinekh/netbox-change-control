@@ -39,6 +39,8 @@
 
 ### Changed
 
+- **A rule now says who may approve the way it is written, naming its groups, rather than expanding them into every current member.** A group of fifteen printed fifteen usernames, on every rule that group satisfied, on two pages, which buried the approval counts that are the point of the panel. It also went stale as people joined and left while the rule itself had not moved. A group with no members is still called out, by name, because such a rule can never be satisfied.
+- **Abandon** and **Reopen** moved from the footer of the Applied policies card to the page's control bar, beside Edit and Delete. They act on the whole change request, and sitting under the policy list made them read as something to do with the policies. **Submit for review** stays where it is: it is the action that attaches those policies.
 - Every built-in check now reports **skipped** on a change request whose branch has been deleted. `threads-resolved` failed instead, because comment threads deliberately outlive the branch, so the record of a change nobody can merge any more was marked as blocked for ever.
 - `docs/api.md` gave the wrong filter for finding policies by check (`check`, not `required_checks`) and the wrong value for requesting changes (`request-changes`, not `reject`).
 - `docs/design.md` named a permission that does not exist, was dated at 0.1.0, listed five of the seven models, and pointed readers at a development harness which is not part of this repository.

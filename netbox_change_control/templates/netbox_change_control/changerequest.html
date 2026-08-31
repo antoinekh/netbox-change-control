@@ -3,6 +3,25 @@
 {% load plugins %}
 {% load form_helpers %}
 
+{% block extra_controls %}
+  {% if can_abandon %}
+    <form action="{% url 'plugins:netbox_change_control:changerequest_abandon' pk=object.pk %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary">
+        <i class="mdi mdi-archive-arrow-down-outline" aria-hidden="true"></i> {% trans "Abandon" %}
+      </button>
+    </form>
+  {% endif %}
+  {% if can_reopen %}
+    <form action="{% url 'plugins:netbox_change_control:changerequest_reopen' pk=object.pk %}" method="post" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-primary">
+        <i class="mdi mdi-restore" aria-hidden="true"></i> {% trans "Reopen" %}
+      </button>
+    </form>
+  {% endif %}
+{% endblock extra_controls %}
+
 {% block content %}
 {% if conflicts %}
 <div class="row">
@@ -127,8 +146,7 @@
             {{ rule.rule.policy }} / {{ rule.rule.name }}
             <div class="small text-muted fw-normal">
               {% if rule.required %}
-                {% trans "May approve:" %}
-                {% for user in rule.rule.eligible_users %}{{ user.username }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-danger">{% trans "nobody" %}</span>{% endfor %}
+                {% include 'netbox_change_control/inc/rule_reviewers.html' with rule=rule.rule %}
               {% else %}
                 {% trans "The pre-merge checks are the only gate." %}
               {% endif %}
@@ -230,30 +248,12 @@
         <tr><td class="text-muted">{% trans "No policies attached." %}</td></tr>
         {% endfor %}
       </table>
-      {% if object.status == 'draft' or can_abandon or can_reopen %}
-      <div class="card-footer d-flex gap-2">
-        {% if object.status == 'draft' %}
+      {% if object.status == 'draft' %}
+      <div class="card-footer">
         <form action="{% url 'plugins:netbox_change_control:changerequest_submit' pk=object.pk %}" method="post">
           {% csrf_token %}
           <button type="submit" class="btn btn-primary">{% trans "Submit for review" %}</button>
         </form>
-        {% endif %}
-        {% if can_abandon %}
-        <form action="{% url 'plugins:netbox_change_control:changerequest_abandon' pk=object.pk %}" method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-secondary">
-            <i class="mdi mdi-archive-arrow-down-outline"></i> {% trans "Abandon" %}
-          </button>
-        </form>
-        {% endif %}
-        {% if can_reopen %}
-        <form action="{% url 'plugins:netbox_change_control:changerequest_reopen' pk=object.pk %}" method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-primary">
-            <i class="mdi mdi-restore"></i> {% trans "Reopen" %}
-          </button>
-        </form>
-        {% endif %}
       </div>
       {% endif %}
     </div>

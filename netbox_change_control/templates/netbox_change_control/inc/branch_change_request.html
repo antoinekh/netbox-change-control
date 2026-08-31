@@ -25,8 +25,7 @@ clear it and links to the place it can be cleared.
         {% if not rule.satisfied %}
           <div class="small text-muted">
             {{ rule.rule.policy }} / {{ rule.rule.name }}: {{ rule.count }} / {{ rule.required }}
-            &middot; {% trans "may approve:" %}
-            {% for user in rule.rule.eligible_users %}{{ user.username }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-danger">{% trans "nobody" %}</span>{% endfor %}
+            &middot; {% include 'netbox_change_control/inc/rule_reviewers.html' with rule=rule.rule %}
           </div>
         {% endif %}
       {% endfor %}

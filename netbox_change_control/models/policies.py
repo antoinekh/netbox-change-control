@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -10,7 +12,27 @@ from netbox_change_control.choices import ConditionStateChoices
 __all__ = (
     'Policy',
     'PolicyRule',
+    'ReviewerSummary',
 )
+
+
+@dataclass(frozen=True)
+class ReviewerSummary:
+    """
+    Who may satisfy a rule, described the way the rule is written.
+
+    A rule names groups and individual users. Rendering the people it currently resolves to
+    instead meant a group of fifteen printed fifteen usernames, on every rule it satisfied,
+    on two different pages, which buried the counts that are the point of the panel. It also
+    went stale in a way the policy never does: the list changed as people joined and left,
+    while the rule itself had not moved.
+    """
+
+    group_names: tuple
+    user_names: tuple
+    #: Whether anybody at all is eligible. A rule naming only an empty group can never be
+    #: satisfied, and saying so is the one thing the expanded list did better.
+    anybody: bool
 
 
 class Policy(PrimaryModel):
@@ -164,6 +186,24 @@ class PolicyRule(NetBoxModel):
         if self.users.filter(pk=user.pk).exists():
             return True
         return self.groups.filter(pk__in=user.groups.values_list('pk', flat=True)).exists()
+
+    @property
+    def reviewer_summary(self):
+        """
+        Describe who may satisfy this rule, for display.
+
+        The groups and users are prefetched wherever a rule table is rendered, so this
+        normally costs nothing. The eligibility test is skipped entirely when the rule names
+        somebody directly, since that answer is already known.
+        """
+        group_names = tuple(sorted(group.name for group in self.groups.all()))
+        user_names = tuple(sorted(user.username for user in self.users.all()))
+
+        return ReviewerSummary(
+            group_names=group_names,
+            user_names=user_names,
+            anybody=bool(user_names) or (bool(group_names) and self.eligible_users().exists()),
+        )
 
     def eligible_users(self):
         """

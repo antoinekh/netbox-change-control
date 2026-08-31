@@ -28,6 +28,8 @@ A **rule** is one approval requirement inside a policy.
 
 A user is eligible if they are in **any** listed group **or** are named directly. A policy is satisfied when **every** one of its rules is satisfied.
 
+The change request shows a rule the way you wrote it, naming its groups rather than listing everybody currently in them. A rule pointing at a group with no members is called out by name, because it can never be satisfied.
+
 An approval counts only toward the rules the reviewer is eligible for. A lead approving does not advance a rule that requires engineers. This is the property a naive approval counter gets wrong.
 
 > [!NOTE]

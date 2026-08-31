@@ -9,7 +9,8 @@ from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
 from netbox_change_control import events, filtersets, forms, tables
-from netbox_change_control.checks import run_checks, sync_checks
+from netbox_change_control.batching import batched, schedule_refresh
+from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
 from netbox_change_control.permissions import ABANDON_PERMISSION, REOPEN_PERMISSION
 from netbox_change_control.policy import refresh_status, sync_policies
@@ -240,9 +241,12 @@ class SubmitForReviewView(View):
             messages.error(request, _('You do not have permission to submit change requests for review.'))
             return redirect(change_request.get_absolute_url())
 
-        sync_policies(change_request)
-        run_checks(change_request)
-        refresh_status(change_request)
+        # Attaching the policies is one signal per policy. Batching collapses the refresh
+        # and the check run they each trigger into one of each, rather than one per policy
+        # plus another from here.
+        with batched():
+            sync_policies(change_request)
+            schedule_refresh(change_request)
 
         # Distinct from change_request_review_requested, which fires on every entry into
         # Needs review, including an approval invalidated by a later edit. This one is the

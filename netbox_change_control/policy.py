@@ -382,7 +382,7 @@ def _emit_lifecycle_event(status, change_request):
         events.emit(change_request, event_type)
 
 
-def refresh_status(change_request):
+def refresh_status(change_request, run_checks_on_approval=True):
     """
     Recompute a change request's status from its current policy evaluation.
 
@@ -391,6 +391,10 @@ def refresh_status(change_request):
     detached. Signal receivers call this so no caller can forget.
 
     Terminal statuses are never reopened.
+
+    `run_checks_on_approval` exists for the one caller which runs the checks itself immediately
+    afterwards. Reaching Approved normally has to refresh them here, but a caller that is about
+    to do it anyway would otherwise put the whole suite through twice.
     """
     if change_request.status in ChangeRequestStatusChoices.TERMINAL:
         return change_request.status
@@ -414,7 +418,7 @@ def refresh_status(change_request):
         notify_status_change(change_request, status, evaluation)
         _emit_lifecycle_event(status, change_request)
 
-        if status == ChangeRequestStatusChoices.APPROVED:
+        if status == ChangeRequestStatusChoices.APPROVED and run_checks_on_approval:
             # Reaching Approved is the moment a merge becomes possible, so refresh the checks
             # here. A branch edit invalidates the reviews but not the stored check results, so
             # without this a request could be edited to introduce a conflict, re-approved, and

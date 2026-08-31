@@ -93,6 +93,22 @@ The seed's branch edit must run inside `netbox.context_managers.event_tracking` 
 
 The merge gate does not depend on this cache; it re-evaluates. The cache is for display and filtering only.
 
+### Repeated work is collapsed, not deferred
+
+Refreshing a change request is correct on every event that could change its answer, and doing
+it per event is what keeps the cached status honest without any caller having to remember.
+The cost is that one user action is often many events: attaching policies is one signal each.
+
+`netbox_change_control/batching.py` collapses those bursts. A caller that knows it is about to
+cause one wraps it in `batched()`, and each affected change request is refreshed once when the
+block ends.
+
+It deliberately does not use `transaction.on_commit`. Deferring past the commit would mean a
+request's checks are not yet run when the view that submitted it renders the next page, and it
+would make every test that asserts on a check result depend on `captureOnCommitCallbacks`.
+Outside a block the refresh is immediate, so nothing changes for the callers which are not
+part of a burst.
+
 ### Staleness is derived from a snapshot, not a flag
 
 A review stores `branch_change_time`, the timestamp of the newest change in its branch when the review was submitted. A review is stale when the branch's newest change is later than that snapshot.

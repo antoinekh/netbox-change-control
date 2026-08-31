@@ -38,6 +38,8 @@ A result reflects the last run, so knowing when that happens matters:
 
 Externally reported checks are never overwritten by a run: only the system that reports them knows the answer.
 
+Several of those moments arrive together. Attaching policies is one event per policy, so submitting a request would otherwise run every check once per policy for the same answer; the run is collapsed to one per change request instead. It still happens before the page you submitted from comes back, so a result is never a refresh behind.
+
 A result that moves is recorded in the object's changelog, so the machine half of a merge decision is auditable alongside the human half. A re-run that finds the same answer writes nothing, which keeps the log to real transitions; `completed` therefore marks when the result last changed, not when a check last ran.
 
 ## Built-in checks

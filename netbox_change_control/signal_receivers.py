@@ -18,6 +18,7 @@ from users.models import Group, User
 from utilities.exceptions import AbortRequest
 
 from netbox_change_control.automerge import try_auto_merge
+from netbox_change_control.batching import batched, schedule_refresh
 from netbox_change_control.checks import run_checks
 from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
 from netbox_change_control.models import (
@@ -203,9 +204,10 @@ def refresh_on_policy_binding_change(sender, instance, **kwargs):
     if change_request is None:
         return
 
-    # Status first: run_checks may auto-merge, and it should decide against a current status.
-    refresh_status(change_request)
-    run_checks(change_request)
+    # Scheduled rather than run here. Attaching a policy is one signal per policy, so a
+    # request governed by three of them refreshed three times and ran every check three times
+    # for the same answer. Inside a batched() block this collapses to one.
+    schedule_refresh(change_request)
 
 
 def _refresh(change_request_id):
@@ -276,9 +278,11 @@ def refresh_on_branch_change(sender, branch, **kwargs):
     change_request = ChangeRequest.objects.filter(branch=branch).first()
     if change_request is None:
         return
-    sync_policies(change_request)
-    run_checks(change_request)
-    refresh_status(change_request)
+
+    # sync_policies can attach or detach several policies, each its own signal.
+    with batched():
+        sync_policies(change_request)
+        schedule_refresh(change_request)
 
 
 #
@@ -295,8 +299,11 @@ def _refresh_for_policies(policy_ids):
         policy_bindings__policy_id__in=policy_ids,
         status__in=ChangeRequestStatusChoices.OPEN,
     ).distinct()
-    for change_request in requests:
-        refresh_status(change_request)
+    # One rule edit can reach the same request through more than one policy, so the batch
+    # deduplicates as well as collapsing.
+    with batched():
+        for change_request in requests:
+            schedule_refresh(change_request)
 
 
 @receiver([post_save, post_delete], sender=Policy)
@@ -467,11 +474,12 @@ def resync_policies_on_new_diff(sender, instance, created, **kwargs):
     if not _scope_may_have_changed(instance):
         return
 
-    sync_policies(change_request)
     # A newly attached policy brings rules with it, so the request may no longer be satisfied.
-    # sync_policies writes bindings, whose own receiver refreshes the status, but it does
-    # nothing when the matched set is unchanged. Refreshing here covers both paths.
-    refresh_status(change_request)
+    # sync_policies writes bindings, whose own receiver schedules the refresh; scheduling it
+    # here too covers the case where the matched set turned out to be unchanged.
+    with batched():
+        sync_policies(change_request)
+        schedule_refresh(change_request)
 
 
 @receiver(post_save, sender=ChangeDiff)

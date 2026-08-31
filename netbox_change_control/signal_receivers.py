@@ -12,7 +12,7 @@ from django.db.models.signals import m2m_changed, post_delete, post_save, pre_de
 from django.dispatch import receiver
 from netbox.plugins import get_plugin_config
 from netbox_branching.contextvars import active_branch
-from netbox_branching.models import ChangeDiff
+from netbox_branching.models import Branch, ChangeDiff
 from netbox_branching.signals import post_merge, post_revert, post_sync
 from users.models import Group, User
 from utilities.exceptions import AbortRequest
@@ -49,6 +49,7 @@ __all__ = (
     'rerun_checks_on_comment_change',
     'rerun_checks_on_diff_change',
     'run_checks_for_new_request',
+    'track_branch_name',
     'unmark_change_request_deleting',
 )
 
@@ -243,6 +244,20 @@ def complete_on_merge(sender, branch, **kwargs):
     from netbox_change_control import events
 
     events.emit(change_request, events.CHANGE_REQUEST_COMPLETED)
+
+
+@receiver(post_save, sender=Branch)
+def track_branch_name(sender, instance, **kwargs):
+    """
+    Keep the denormalised branch name in step with the branch.
+
+    The name is stored on the change request so the record stays readable once the branch is
+    deleted, and it was written only when the change request itself was saved. A rename left
+    it behind: the page read the live branch and showed the new name, while the branch filter
+    and the global `q` search read the stored copy and still matched the old one. Searching for
+    a branch by the name on screen found nothing.
+    """
+    ChangeRequest.objects.filter(branch=instance).exclude(branch_name=instance.name).update(branch_name=instance.name)
 
 
 @receiver([post_sync, post_revert])

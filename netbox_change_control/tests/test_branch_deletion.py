@@ -173,3 +173,52 @@ class OrphanedRequestPagesTest(TestCase):
         self.assertIsNone(self.cr.merge_indicator)
         self.assertFalse(self.cr.is_ready_to_merge)
         self.assertIn('deleted', self.cr.merge_blocked_reason)
+
+
+class BranchRenameTest(ChangeControlTestCase):
+    """
+    The stored branch name has to follow the branch.
+
+    It exists so the record stays readable once the branch is gone, but it is also what the
+    branch filter and the global search read. A rename that did not reach it made a change
+    request unfindable by the name shown on its own page.
+    """
+
+    branch_prefix = 'renamed'
+
+    def test_a_rename_reaches_the_change_request(self):
+        self.branch.name = 'renamed-in-place'
+        self.branch.save()
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.branch_name, 'renamed-in-place')
+
+    def test_the_filter_finds_the_new_name(self):
+        from netbox_change_control.filtersets import ChangeRequestFilterSet
+        from netbox_change_control.models import ChangeRequest
+
+        self.branch.name = 'renamed-in-place'
+        self.branch.save()
+
+        found = ChangeRequestFilterSet({'branch': 'renamed-in-place'}, ChangeRequest.objects.all()).qs
+        self.assertIn(self.cr, found)
+
+    def test_the_filter_no_longer_finds_the_old_name(self):
+        from netbox_change_control.filtersets import ChangeRequestFilterSet
+        from netbox_change_control.models import ChangeRequest
+
+        old = self.branch.name
+        self.branch.name = 'renamed-in-place'
+        self.branch.save()
+
+        found = ChangeRequestFilterSet({'branch': old}, ChangeRequest.objects.all()).qs
+        self.assertNotIn(self.cr, found)
+
+    def test_the_name_still_survives_deletion_after_a_rename(self):
+        self.branch.name = 'renamed-in-place'
+        self.branch.save()
+        self.branch.delete()
+
+        self.cr.refresh_from_db()
+        self.assertTrue(self.cr.branch_deleted)
+        self.assertEqual(self.cr.branch_label, 'renamed-in-place')

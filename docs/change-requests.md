@@ -31,47 +31,9 @@ Completed is never reopened. It records a merge that actually happened, and taki
 
 ## The lifecycle
 
-```mermaid
-stateDiagram-v2
-    direction TB
+![Change request lifecycle](img/change-request-lifecycle.svg)
 
-    [*] --> Draft: opened
-
-    Draft --> NeedsReview: Submit for review
-    NeedsReview --> Draft: Return to draft
-    Approved --> Draft: Return to draft
-    Rejected --> Draft: Return to draft
-
-    NeedsReview --> Approved: every rule satisfied
-    NeedsReview --> Rejected: changes requested
-    Approved --> NeedsReview: approvals went stale
-    Approved --> Rejected: changes requested
-    Rejected --> NeedsReview: rejection withdrawn or stale
-    Rejected --> Approved: rejection cleared, rules satisfied
-
-    Approved --> Completed: branch merged
-
-    Draft --> Abandoned: Abandon
-    NeedsReview --> Abandoned: Abandon
-    Approved --> Abandoned: Abandon
-    Rejected --> Abandoned: Abandon
-    Abandoned --> Draft: Reopen
-
-    Completed --> [*]
-
-    classDef manual fill:#e8f0fe,stroke:#3b6fd4,color:#1a3a6b
-    classDef derived fill:#e9f7ec,stroke:#2f9e44,color:#14532d
-    classDef terminal fill:#f1f3f5,stroke:#868e96,color:#343a40
-
-    class Draft manual
-    class NeedsReview derived
-    class Approved derived
-    class Rejected derived
-    class Completed terminal
-    class Abandoned terminal
-```
-
-Blue is a state a person puts the request into. Green is derived: the plugin computes it from the reviews and moves the request there on its own. Grey is terminal.
+A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the request on its own, when it recomputes the policy evaluation.
 
 ### Every transition
 

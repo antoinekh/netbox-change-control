@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- **The lifecycle diagram is a drawn SVG** instead of a Mermaid block, and every arrow now carries the name the plugin itself uses.
+
 ## 0.3.0 - 2026-09-01
 
 ### Added

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="change-request-lifecycle-title change-request-lifecycle-desc">
+  <title id="change-request-lifecycle-title">Change request lifecycle</title>
+  <desc id="change-request-lifecycle-desc">State machine showing a change request opening in Draft, moving through the derived Needs review, Approved and Rejected states that the plugin recomputes on its own, then either merging into the terminal Completed state or being abandoned and reopened back into Draft.</desc>
+  <defs>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+    <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+    <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+  <!-- Zone: the three derived states, painted first so labels may cross its border -->
+  <rect x="392" y="112" width="520" height="376" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+  <text x="408" y="140" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">DERIVED · RECOMPUTED ON EVERY SIGNAL</text>
+
+  <!-- Transitions, drawn before boxes. Solid = a button in the UI. Dashed = the plugin moves it. -->
+  <!-- 1. start -> Draft -->
+  <path d="M 64 208 H 112" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <!-- 2. Draft -> Needs review -->
+  <path d="M 288 192 H 424" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <!-- 3. Needs review -> Approved -->
+  <path d="M 600 192 H 704" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 4. Approved -> Needs review -->
+  <path d="M 704 224 H 600" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 5. Needs review -> Rejected -->
+  <path d="M 472 248 V 376 A 8 8 0 0 0 480 384 H 564" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 6. Rejected -> Needs review -->
+  <path d="M 564 416 H 448 A 8 8 0 0 1 440 408 V 248" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 7. Approved -> Rejected. Nested outside 8 so the two never cross. -->
+  <path d="M 792 248 V 384 A 8 8 0 0 1 784 392 H 740" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 8. Rejected -> Approved. Straight up through the overlap of the two edges. -->
+  <path d="M 720 360 V 248" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+  <!-- 9. Approved -> Completed (focal: the only transition the merge gate opens) -->
+  <path d="M 880 208 H 1000" fill="none" stroke="#eb6c36" stroke-width="1.4" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+  <!-- 10. any derived state -> Draft -->
+  <path d="M 392 224 H 288" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <!-- 11. any open state -> Abandoned -->
+  <path d="M 652 488 V 536" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <!-- 12. Abandoned -> Draft -->
+  <path d="M 564 576 H 208 A 8 8 0 0 1 200 568 V 248" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Transition labels. Muted = a button. Soft = automatic. -->
+  <rect x="68" y="188" width="40" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="88" y="196" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">OPENED</text>
+
+  <rect x="304" y="172" width="104" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="356" y="180" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SUBMIT FOR REVIEW</text>
+
+  <rect x="628" y="172" width="48" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="652" y="180" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">APPROVE</text>
+
+  <rect x="604" y="232" width="96" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="652" y="240" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">APPROVALS STALE</text>
+
+  <rect x="480" y="292" width="96" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="528" y="300" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REQUEST CHANGES</text>
+
+  <rect x="344" y="324" width="88" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="388" y="332" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REJECTION GONE</text>
+
+  <rect x="800" y="292" width="96" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="848" y="300" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REQUEST CHANGES</text>
+
+  <rect x="624" y="292" width="88" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="668" y="300" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REJECTION GONE</text>
+
+  <rect x="900" y="188" width="80" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="940" y="196" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">BRANCH MERGED</text>
+
+  <rect x="292" y="232" width="96" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="340" y="240" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RETURN TO DRAFT</text>
+
+  <rect x="660" y="504" width="40" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="680" y="512" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ABANDON</text>
+
+  <rect x="340" y="556" width="40" height="12" rx="2" fill="#f5f5f5"/>
+  <text x="360" y="564" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">REOPEN</text>
+
+  <!-- Start marker -->
+  <circle cx="56" cy="208" r="6" fill="#2d3142"/>
+
+  <!-- State: Draft (manual) -->
+  <rect x="112" y="168" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="112" y="168" width="176" height="80" rx="8" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+  <rect x="124" y="180" width="56" height="12" rx="4" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+  <text x="152" y="188" fill="#2d3142" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">MANUAL</text>
+  <text x="200" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Draft</text>
+  <text x="200" y="236" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">set by hand</text>
+
+  <!-- State: Needs review (derived) -->
+  <rect x="424" y="168" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="424" y="168" width="176" height="80" rx="8" fill="rgba(45,49,66,0.08)" stroke="#4f5d75" stroke-width="1"/>
+  <rect x="436" y="180" width="56" height="12" rx="4" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+  <text x="464" y="188" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DERIVED</text>
+  <text x="512" y="224" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Needs review</text>
+
+  <!-- State: Approved (focal) -->
+  <rect x="704" y="168" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="704" y="168" width="176" height="80" rx="8" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+  <rect x="716" y="180" width="56" height="12" rx="4" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+  <text x="744" y="188" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DERIVED</text>
+  <text x="792" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Approved</text>
+  <text x="792" y="236" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">people gate met</text>
+
+  <!-- State: Rejected (derived) -->
+  <rect x="564" y="360" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="564" y="360" width="176" height="80" rx="8" fill="rgba(45,49,66,0.08)" stroke="#4f5d75" stroke-width="1"/>
+  <rect x="576" y="372" width="56" height="12" rx="4" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+  <text x="604" y="380" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DERIVED</text>
+  <text x="652" y="416" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Rejected</text>
+
+  <!-- State: Completed (terminal, hollow + dashed) -->
+  <rect x="1000" y="168" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="1000" y="168" width="176" height="80" rx="8" fill="#f5f5f5" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+  <rect x="1012" y="180" width="56" height="12" rx="4" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+  <text x="1040" y="188" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TERMINAL</text>
+  <text x="1088" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Completed</text>
+  <text x="1088" y="236" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">never reopened</text>
+
+  <!-- State: Abandoned (terminal, hollow + dashed) -->
+  <rect x="564" y="536" width="176" height="80" rx="8" fill="#f5f5f5"/>
+  <rect x="564" y="536" width="176" height="80" rx="8" fill="#f5f5f5" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+  <rect x="576" y="548" width="56" height="12" rx="4" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+  <text x="604" y="556" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TERMINAL</text>
+  <text x="652" y="584" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Abandoned</text>
+  <text x="652" y="604" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">from any open state</text>
+
+  <!-- Legend -->
+  <line x1="40" y1="656" x2="1240" y2="656" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+  <text x="40" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+
+  <rect x="136" y="668" width="16" height="12" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+  <text x="160" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">MANUAL</text>
+
+  <rect x="268" y="668" width="16" height="12" rx="4" fill="rgba(45,49,66,0.08)" stroke="#4f5d75" stroke-width="1"/>
+  <text x="292" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">DERIVED · RECOMPUTED</text>
+
+  <rect x="476" y="668" width="16" height="12" rx="4" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+  <text x="500" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">MERGE GATE</text>
+
+  <rect x="632" y="668" width="16" height="12" rx="4" fill="#f5f5f5" stroke="rgba(45,49,66,0.30)" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="656" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">TERMINAL · NOT RECOMPUTED</text>
+
+  <line x1="868" y1="672" x2="892" y2="672" stroke="#4f5d75" stroke-width="1.2"/>
+  <text x="900" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">BUTTON IN THE UI</text>
+
+  <line x1="1064" y1="672" x2="1088" y2="672" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4"/>
+  <text x="1096" y="676" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">AUTOMATIC · NO BUTTON</text>
+</svg>

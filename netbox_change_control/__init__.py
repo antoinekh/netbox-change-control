@@ -28,6 +28,11 @@ class ChangeControlConfig(PluginConfig):
         # Send a NetBox notification to the outstanding reviewers when a change request
         # needs review, and to the requester when it is approved or rejected.
         'notify_reviewers': True,
+        # Where a branch page shows its change request. 'right_page' puts it in a card in
+        # the right-hand column, beside branching's own cards; 'alerts' puts it in a band
+        # across the top of the page, above them. Naming both shows both, and an empty list
+        # shows neither.
+        'branch_page_placement': ['right_page'],
         # Which built-in pre-merge checks to make available. True offers all of them, False
         # none, and a list a subset. Registering only makes a check selectable: a policy
         # decides where it applies, by naming it in its Checks field. Valid names:

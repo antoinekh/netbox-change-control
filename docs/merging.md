@@ -12,7 +12,9 @@ A branch nobody has opened a change request against is told so in the same place
 
 ![A branch with no change request](img/capture-unmanaged.png)
 
-Once every gate is satisfied the same alert turns green and says so, which is the signal to use the Merge button beside it.
+Once every gate is satisfied the same panel turns green and says so, which is the signal to use the Merge button beside it.
+
+Where that panel sits is configuration. `branch_page_placement` takes `right_page` for a card in the right-hand column, beside the branch's own cards, which is the default; `alerts` for a band across the top of the page, above them, which is what the screenshots here show; both to show both, which is how you compare them; or `[]` to leave branching's page as it was. See [Configuration](installation.md#configuration).
 
 ![A branch whose change request is satisfied](img/capture-ready.png)
 

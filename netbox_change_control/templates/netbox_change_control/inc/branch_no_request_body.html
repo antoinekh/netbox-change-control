@@ -1,0 +1,8 @@
+{% load i18n %}
+{% comment %}
+A branch with no change request cannot merge. Saying so here, beside the button that fixes it,
+turns a refusal on the merge form into a next step.
+{% endcomment %}
+<div class="small">
+  {% trans "This branch cannot be merged until a change request is opened against it and approved." %}
+</div>

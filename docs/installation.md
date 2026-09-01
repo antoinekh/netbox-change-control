@@ -51,6 +51,7 @@ Every setting is optional. The defaults are safe to install on an existing NetBo
 | `protect_main_scope` | `[]` | Limit `protect_main` to specific models. Empty protects every branching-supported model. |
 | `enforce_merge_gate` | `True` | Refuse to merge a branch without an approved change request. |
 | `notify_reviewers` | `True` | Raise NetBox notifications on status transitions. |
+| `branch_page_placement` | `['right_page']` | Where a branch page shows its change request. `right_page` puts it in a card in the right-hand column, `alerts` puts it across the top of the page, both shows both, and `[]` shows neither. |
 | `enable_builtin_checks` | `True` | Which built-in checks are available to policies. `True` for all, `False` for none, or a list of names. A check applies only where a policy names it. |
 | `required_external_checks` | `[]` | Checks reported through the REST API. Each blocks the merge until reported. |
 | `enable_auto_merge` | `True` | Allow requests that opt in to merge themselves once every gate passes. When `False`, the periodic job is not registered at all. |

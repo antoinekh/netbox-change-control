@@ -1,0 +1,19 @@
+{% load i18n %}
+{% comment %}
+The same message as the alert, as a card in the right-hand column, coloured the way branching
+colours a card that wants something from you.
+{% endcomment %}
+{% if branch.ready %}
+<div class="card border-yellow">
+  <h5 class="card-header text-yellow">{% trans "No change request" %}</h5>
+  <div class="card-body">
+    {% include 'netbox_change_control/inc/branch_no_request_body.html' %}
+    {% if perms.netbox_change_control.add_changerequest %}
+    <a href="{% url 'plugins:netbox_change_control:changerequest_add' %}?branch={{ branch.pk }}"
+       class="btn btn-sm btn-warning mt-3">
+      {% trans "Open a change request" %}
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

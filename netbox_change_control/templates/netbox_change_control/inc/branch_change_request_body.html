@@ -1,0 +1,23 @@
+{% load i18n %}
+{% comment %}
+What the branch page says about its change request, without the box around it. The alert and
+the card both show this; only the frame differs, so the wording cannot drift between them.
+{% endcomment %}
+<div>{{ change_request.title }}</div>
+
+{% if change_request.is_ready_to_merge %}
+  <div class="small mt-1">
+    <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+    {% trans "Every gate is satisfied. This branch can be merged." %}
+  </div>
+{% else %}
+  <div class="small text-muted mt-1">{{ blocked_reason }}</div>
+  {% for rule in evaluation.rules %}
+    {% if not rule.satisfied %}
+      <div class="small text-muted">
+        {{ rule.rule.policy }} / {{ rule.rule.name }}: {{ rule.count }} / {{ rule.required }}
+        &middot; {% include 'netbox_change_control/inc/rule_reviewers.html' with rule=rule.rule %}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}

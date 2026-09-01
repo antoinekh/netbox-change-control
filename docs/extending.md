@@ -4,10 +4,11 @@ Another plugin can add content to this plugin's pages, and checks to its merge g
 
 ## What this plugin injects elsewhere
 
-The traffic runs both ways. This plugin uses the same hook to put its own content on
+The traffic runs both ways. This plugin uses the same hooks to put its own content on
 netbox-branching's branch page: the change request governing that branch, its status, what is
-still outstanding and a link to it, or an offer to open one when there is none. See
-`netbox_change_control/template_content.py`.
+still outstanding and a link to it, or an offer to open one when there is none. It uses the
+`alerts` and `right_page` hooks, and `branch_page_placement` decides which of them renders, so
+a deployment can compare the two or turn both off. See `netbox_change_control/template_content.py`.
 
 ## Injecting content into a page
 

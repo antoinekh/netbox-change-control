@@ -11,7 +11,8 @@ These pin what the injected content says, because it is the only part of the plu
 renders inside somebody else's template and would break silently if that template moved.
 """
 
-from django.test import TestCase
+from django.conf import settings
+from django.test import TestCase, override_settings
 from netbox_branching.choices import BranchStatusChoices
 from netbox_branching.models import Branch
 from users.models import Group, ObjectPermission, User
@@ -32,7 +33,34 @@ def ready_branch(prefix, suffix):
     return branch
 
 
-class BranchPageTest(TestCase):
+# The alert and the card render the same content in a different frame, so a test has to look
+# at the frame to tell which one it got. These markers are how each wrapper writes its own
+# heading, which the other never does. The icons are no use: the Change Control menu carries
+# the same one on every page.
+ALERT_MARKER = '<strong>Change request</strong>'
+CARD_MARKER = '<span>Change request</span>'
+NO_REQUEST_ALERT_MARKER = '<strong>No change request</strong>'
+NO_REQUEST_CARD_MARKER = '<h5 class="card-header text-yellow">No change request</h5>'
+
+
+def placement(*names):
+    """
+    Run a test with the branch page placed where it says.
+
+    `override_settings` replaces PLUGINS_CONFIG wholesale, and netbox-branching reads its own
+    settings out of that same dictionary, so the override has to carry every plugin's
+    configuration and change one key of it.
+    """
+    config = {plugin: dict(plugin_config) for plugin, plugin_config in settings.PLUGINS_CONFIG.items()}
+    config['netbox_change_control']['branch_page_placement'] = list(names)
+    return override_settings(PLUGINS_CONFIG=config)
+
+
+class BranchPageTestCase(TestCase):
+    """
+    A branch page, a policy nobody has satisfied, and an administrator looking at it.
+    """
+
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create(username='admin', is_superuser=True)
@@ -58,6 +86,8 @@ class BranchPageTest(TestCase):
         cr.refresh_from_db()
         return branch, cr
 
+
+class BranchPageTest(BranchPageTestCase):
     def test_the_branch_page_links_to_its_change_request(self):
         branch, cr = self.with_request('link', title='Upgrade the access switch', ref='CHG0012345')
         html = self.page(branch)
@@ -126,3 +156,82 @@ class BranchPageTest(TestCase):
 
         self.assertIn('No change request', html)
         self.assertNotIn('/change-requests/add/', html)
+
+
+class PlacementTest(BranchPageTestCase):
+    """
+    Where the panel appears is configuration, and the two placements are meant to be compared,
+    so naming both has to show both rather than one winning.
+    """
+
+    def test_the_card_is_what_the_plugin_ships(self):
+        """
+        Read from `default_settings` rather than from the running configuration, which a
+        deployment is free to change, and this one does to compare the two.
+        """
+        from netbox_change_control import ChangeControlConfig
+
+        self.assertEqual(ChangeControlConfig.default_settings['branch_page_placement'], ['right_page'])
+
+    @placement('alerts')
+    def test_the_alert_sits_across_the_top(self):
+        branch, _cr = self.with_request('default')
+
+        html = self.page(branch)
+
+        self.assertIn(ALERT_MARKER, html)
+        self.assertNotIn(CARD_MARKER, html)
+
+    @placement('right_page')
+    def test_the_right_hand_column_replaces_the_alert(self):
+        branch, cr = self.with_request('right')
+
+        html = self.page(branch)
+
+        self.assertIn(CARD_MARKER, html)
+        self.assertNotIn(ALERT_MARKER, html)
+        self.assertIn(cr.get_absolute_url(), html)
+
+    @placement('alerts', 'right_page')
+    def test_naming_both_shows_both(self):
+        branch, _cr = self.with_request('both')
+
+        html = self.page(branch)
+
+        self.assertIn(ALERT_MARKER, html)
+        self.assertIn(CARD_MARKER, html)
+
+    @placement()
+    def test_an_empty_list_leaves_the_branch_page_alone(self):
+        branch, cr = self.with_request('off')
+
+        html = self.page(branch)
+
+        self.assertNotIn(ALERT_MARKER, html)
+        self.assertNotIn(CARD_MARKER, html)
+        self.assertNotIn(cr.get_absolute_url(), html)
+
+    @placement('right_page')
+    def test_the_offer_to_open_one_follows_the_placement(self):
+        branch = ready_branch('bpage', 'right-none')
+
+        html = self.page(branch)
+
+        self.assertIn(NO_REQUEST_CARD_MARKER, html)
+        self.assertNotIn(NO_REQUEST_ALERT_MARKER, html)
+        self.assertIn(f'/change-requests/add/?branch={branch.pk}', html)
+
+    @placement('left_page')
+    def test_a_name_that_is_not_a_placement_is_skipped_rather_than_raising(self):
+        """
+        A typo in configuration must not take the branch page down with it, which is how the
+        built-in check selection behaves as well.
+        """
+        branch, _cr = self.with_request('typo')
+
+        with self.assertLogs('netbox.plugins.netbox_change_control', level='WARNING') as logs:
+            html = self.page(branch)
+
+        self.assertNotIn(ALERT_MARKER, html)
+        self.assertNotIn(CARD_MARKER, html)
+        self.assertIn('left_page', logs.output[0])

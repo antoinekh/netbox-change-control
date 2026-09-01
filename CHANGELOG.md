@@ -38,6 +38,7 @@
 - All four lifecycle actions sit on the control bar beside Edit and Delete. Submit and Abandon sat in the Applied policies card, where they read as something to do with the policies; that card now carries only policies.
 - **Reopening an abandoned request returns it to Draft** rather than straight to review: its reviews may be stale and its policies may have moved while it was set aside.
 - The **Conflicts** column matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
+- Packaging: the build no longer pulls `setuptools-scm`, which it never read because the version is written by hand, and the package declares `Development Status :: 4 - Beta`, which is what the README says in prose.
 - [Permissions](docs/permissions.md) is a complete reference, with a test comparing it against the models, and there is an [administration guide](docs/admin-guide.md). The README warns that the plugin is below 1.0. `docs/api.md`, `docs/design.md` and `docs/checks.md` are corrected: a wrong policy filter, a wrong value for requesting changes, a permission that does not exist, and two of the moments checks run.
 
 ### Removed

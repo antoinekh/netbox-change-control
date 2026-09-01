@@ -67,11 +67,15 @@
 {% if reconciled_conflicts %}
 <div class="row">
   <div class="col col-md-12">
-    <div class="alert alert-info">
-      <i class="mdi mdi-information-outline"></i>
-      {% blocktrans count counter=reconciled_conflicts|length %}The branching plugin flags {{ counter }} object as conflicting, but a sync has already reconciled it.{% plural %}The branching plugin flags {{ counter }} objects as conflicting, but a sync has already reconciled them.{% endblocktrans %}
-      <div class="small">
-        {% trans "Main has not changed these objects since this branch last synced, so merging cannot discard anything. The branch page will still ask you to acknowledge them." %}
+    {# An alert lays its direct children out in a row, so the second line has to sit inside #}
+    {# the text block. As a sibling of the sentence it reads beside it, not under it. #}
+    <div class="alert alert-info d-flex align-items-start">
+      <i class="mdi mdi-information-outline me-2" aria-hidden="true"></i>
+      <div>
+        {% blocktrans count counter=reconciled_conflicts|length %}The branching plugin flags {{ counter }} object as conflicting, but a sync has already reconciled it.{% plural %}The branching plugin flags {{ counter }} objects as conflicting, but a sync has already reconciled them.{% endblocktrans %}
+        <div class="small">
+          {% trans "Main has not changed these objects since this branch last synced, so merging cannot discard anything. The branch page will still ask you to acknowledge them." %}
+        </div>
       </div>
     </div>
   </div>
@@ -80,11 +84,13 @@
 {% if window_warning %}
 <div class="row">
   <div class="col col-md-12">
-    <div class="alert alert-warning">
-      <i class="mdi mdi-clock-alert-outline"></i>
-      <strong>{% trans "This change may never merge automatically." %}</strong>
-      <div class="small">
-        {% blocktrans with window=window_warning.window_minutes interval=window_warning.interval_minutes %}The change window is {{ window }} minutes long, but automatic merges are only attempted every {{ interval }} minutes, so the window can pass unnoticed. Widen the window, or lower auto_merge_interval.{% endblocktrans %}
+    <div class="alert alert-warning d-flex align-items-start">
+      <i class="mdi mdi-clock-alert-outline me-2" aria-hidden="true"></i>
+      <div>
+        <strong>{% trans "This change may never merge automatically." %}</strong>
+        <div class="small">
+          {% blocktrans with window=window_warning.window_minutes interval=window_warning.interval_minutes %}The change window is {{ window }} minutes long, but automatic merges are only attempted every {{ interval }} minutes, so the window can pass unnoticed. Widen the window, or lower auto_merge_interval.{% endblocktrans %}
+        </div>
       </div>
     </div>
   </div>

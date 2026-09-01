@@ -1,5 +1,7 @@
 # Automatic behaviours and notifications
 
+## Automatic behaviours
+
 - **Stale reviews.** Each review records the timestamp of the newest change in its branch at the moment it was submitted. A review is stale when the branch has moved on since. Stale approvals and stale rejections are excluded from the evaluation, so an approval can never cover work the reviewer did not see. Stale reviews carry a badge.
 - **Approval invalidation.** This falls out of staleness. When a branch is synced, reverted, or edited, its existing approvals go stale, the rules stop being satisfied, and the status returns to Needs review on its own.
 - **Policy reevaluation.** Signal receivers watch policies, rules, the rule's group and user lists, and user group membership. Any change re-evaluates every open change request bound to the affected policy. Raising a rule's minimum, or removing a reviewer from a group, revokes an approval that depended on it.

@@ -21,7 +21,7 @@ Whether a check is required comes from the registry, the plugin configuration an
 
 Checks appear on the change request page with a **Re-run checks** button, and in a list under **Change Control > Merge Checks**.
 
-### When checks run
+## When checks run
 
 A result reflects the last run, so knowing when that happens matters:
 

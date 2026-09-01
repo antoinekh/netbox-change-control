@@ -24,7 +24,7 @@ After a successful merge the change request is marked **Completed**, and it cann
 
 The gate is implemented as a netbox-branching pre-action validator, so a blocked branch also hides its merge button rather than failing after the click. It re-evaluates the policies at merge time instead of trusting the stored status.
 
-### When there is no change request
+## When there is no change request
 
 A branch with no change request cannot merge at all. The branching plugin's own merge form carries the reason, and offers only a dry run:
 

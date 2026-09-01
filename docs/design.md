@@ -1,4 +1,4 @@
-# Design: NetBox Change Control
+# Design
 
 Status: approved and implemented. First written 2026-08-25, kept current as the plugin changes.
 
@@ -84,6 +84,8 @@ Layer two is the seed command, `seed_change_control`. It creates the reviewer gr
 The seed commands live in a development-only plugin which is neither published nor committed, so a production install has no command that can invent policies, users or permissions, and a reader of this repository will not find one.
 
 The seed's branch edit must run inside `netbox.context_managers.event_tracking` with a synthetic request. NetBox writes `ObjectChange` records only within a request context; without it the branch records no changes, `ChangeDiff` stays empty, and every scoped policy silently fails to match.
+
+## Implementation notes
 
 ### Status is derived, so it is refreshed by signal
 

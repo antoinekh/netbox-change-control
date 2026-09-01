@@ -2,6 +2,8 @@
 
 A check is a function that takes a `ChangeRequest` and returns a `CheckResult`. Register it once at startup.
 
+## What a check returns
+
 `CheckResult` has three constructors:
 
 | Constructor | Result |
@@ -11,6 +13,8 @@ A check is a function that takes a `ChangeRequest` and returns a `CheckResult`. 
 | `CheckResult.skipped(summary='')` | `skipped` |
 
 Each accepts a `summary` shown next to the check. For a link to a build log or report, construct it directly: `CheckResult('success', 'All good', 'https://ci/build/99')`.
+
+## Writing and registering one
 
 Put the function in your own plugin, then register it from that plugin's `ready()`:
 
@@ -64,6 +68,8 @@ class MyPluginConfig(PluginConfig):
             required=True,             # False makes it advisory
         )
 ```
+
+## Where the check applies
 
 `scope` decides where the check applies. The default, `CheckScope.ALWAYS`, puts it on every change request. Pass `scope=CheckScope.POLICY` to make it opt-in, so it appears in the **Registered checks** list on the policy form and runs only where a policy asks for it. The built-in checks all use `POLICY`. See [which checks apply, and where](checks.md#which-checks-apply-and-where).
 

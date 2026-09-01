@@ -36,7 +36,7 @@ An approval counts only toward the rules the reviewer is eligible for. A lead ap
 
     A change request with no rules at all is never satisfied. An unpoliced merge is exactly what this plugin exists to prevent, so an empty rule set fails closed.
 
-### Changes which need no human
+## Changes which need no human
 
 Set **Minimum reviews** to `0`. The rule is satisfied the moment the change request exists, so it is approved without anybody acting, and the [pre-merge checks](checks.md) become the only gate.
 

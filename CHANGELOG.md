@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- **The documentation pages carry the headings the site needs.** `design.md` filed six implementation sections under Testing, and four pages jumped from their title straight to a sub-heading, so the contents on each described the page wrongly or left its subject out. `custom-checks.md` gained headings over the half that had none.
+
+### Fixed
+
+- **The plugin reports the version it was packaged as.** `__version__` is bumped by hand alongside `pyproject.toml` and was missed at 0.4.0, so that release reports 0.3.0 to NetBox while its package metadata says 0.4.0. A test now compares the two.
+
 ## 0.4.0 - 2026-09-01
 
 ### Changed

@@ -7,17 +7,17 @@
   <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.1.3-00857d" alt="netbox-branching compatibility" />
   <img src="https://img.shields.io/badge/python-%3E%3D%203.12-blue" alt="Python version" />
   <p>
-    <strong><a href="docs/index.md">Documentation</a></strong> |
-    <strong><a href="docs/installation.md">Install</a></strong> |
-    <strong><a href="docs/policies.md">Policies</a></strong> |
-    <strong><a href="docs/checks.md">Checks</a></strong> |
-    <strong><a href="CHANGELOG.md">Changelog</a></strong>
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/">Documentation</a></strong> |
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/installation/">Install</a></strong> |
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/policies/">Policies</a></strong> |
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/checks/">Checks</a></strong> |
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/changelog/">Changelog</a></strong>
   </p>
 </div>
 
 This plugin builds on [netbox-branching](https://github.com/netboxlabs/netbox-branching). A branch stages your changes; this plugin decides who must approve them and refuses the merge until they have.
 
-The goal is change control that is **policy driven**: who must approve a change is decided by the objects it touches, not by whoever opened it. Around that sit two extension points, so the same gate can be driven by more than people. Pre-merge **checks** are pluggable, and an event fires on every status change, so a change request can call an external system, wait for a CI result, or ask a model to review the diff before anyone merges it. See [writing your own checks](docs/custom-checks.md), which includes an AI reviewer and a CI reporter.
+The goal is change control that is **policy driven**: who must approve a change is decided by the objects it touches, not by whoever opened it. Around that sit two extension points, so the same gate can be driven by more than people. Pre-merge **checks** are pluggable, and an event fires on every status change, so a change request can call an external system, wait for a CI result, or ask a model to review the diff before anyone merges it. See [writing your own checks](https://antoinekh.github.io/netbox-change-control/custom-checks/), which includes an AI reviewer and a CI reporter.
 
 It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/docs/changes/)**, for policies and rules governing who must review a branch; from **GitHub**, for status checks that gate a merge independently of human approval and for review comments anchored to a specific change; and from **[Infrahub](https://docs.infrahub.app/topics/proposed-change)** by OpsMill, for treating a proposed change as a first-class object that carries its own validation.
 
@@ -56,27 +56,29 @@ Two gates guard the merge and they are independent: the people gate (policies an
 
 ## Documentation
 
-Full documentation is in [`docs/`](docs/index.md).
+The documentation is a website: **[antoinekh.github.io/netbox-change-control](https://antoinekh.github.io/netbox-change-control/)**. Its sources are the Markdown files in [`docs/`](docs/), built with [Zensical](https://zensical.org/) and published by GitHub Actions on every push to `master`.
 
 | Page | Covers |
 |---|---|
-| [Installation and configuration](docs/installation.md) | Requirements, installing, and every setting. |
-| [Policies and rules](docs/policies.md) | Scoping a policy and writing rules. |
-| [Policy conditions](docs/policy-conditions.md) | Narrowing a policy on object values. |
-| [Conflicts with main](docs/conflicts.md) | What counts as a real conflict, and how to resolve one. |
-| [Change requests](docs/change-requests.md) | The lifecycle, and what survives a branch deletion. |
-| [Reviews](docs/reviews.md) | Submitting reviews and commenting on individual changes. |
-| [Pre-merge checks](docs/checks.md) | What checks are and which ship built in. |
-| [Writing your own checks](docs/custom-checks.md) | The registry, an AI reviewer, and reporting from CI. |
-| [Event rules](docs/event-rules.md) | Firing a webhook or a script on a change request. |
-| [Merging, windows and auto-merge](docs/merging.md) | Change windows and automatic merging. |
-| [Protecting main](docs/protect-main.md) | Requiring a branch, optionally for part of NetBox only. |
-| [Automatic behaviours](docs/automation.md) | Stale reviews, reevaluation, notifications. |
-| [Administration guide](docs/admin-guide.md) | Roles, the permission matrix, building policies, troubleshooting. |
-| [Permissions](docs/permissions.md) | The short reference for every permission name. |
-| [REST API](docs/api.md) | Every endpoint. |
-| [Extending this plugin](docs/extending.md) | How another plugin adds content and checks. |
-| [Design](docs/design.md) | Why it is built this way. |
+| [Installation and configuration](https://antoinekh.github.io/netbox-change-control/installation/) | Requirements, installing, and every setting. |
+| [Policies and rules](https://antoinekh.github.io/netbox-change-control/policies/) | Scoping a policy and writing rules. |
+| [Policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/) | Narrowing a policy on object values. |
+| [Conflicts with main](https://antoinekh.github.io/netbox-change-control/conflicts/) | What counts as a real conflict, and how to resolve one. |
+| [Change requests](https://antoinekh.github.io/netbox-change-control/change-requests/) | The lifecycle, and what survives a branch deletion. |
+| [Reviews](https://antoinekh.github.io/netbox-change-control/reviews/) | Submitting reviews and commenting on individual changes. |
+| [Pre-merge checks](https://antoinekh.github.io/netbox-change-control/checks/) | What checks are and which ship built in. |
+| [Writing your own checks](https://antoinekh.github.io/netbox-change-control/custom-checks/) | The registry, an AI reviewer, and reporting from CI. |
+| [Event rules](https://antoinekh.github.io/netbox-change-control/event-rules/) | Firing a webhook or a script on a change request. |
+| [Merging, windows and auto-merge](https://antoinekh.github.io/netbox-change-control/merging/) | Change windows and automatic merging. |
+| [Protecting main](https://antoinekh.github.io/netbox-change-control/protect-main/) | Requiring a branch, optionally for part of NetBox only. |
+| [Automatic behaviours](https://antoinekh.github.io/netbox-change-control/automation/) | Stale reviews, reevaluation, notifications. |
+| [Administration guide](https://antoinekh.github.io/netbox-change-control/admin-guide/) | Roles, the permission matrix, building policies, troubleshooting. |
+| [Permissions](https://antoinekh.github.io/netbox-change-control/permissions/) | The short reference for every permission name. |
+| [REST API](https://antoinekh.github.io/netbox-change-control/api/) | Every endpoint. |
+| [Extending this plugin](https://antoinekh.github.io/netbox-change-control/extending/) | How another plugin adds content and checks. |
+| [Design](https://antoinekh.github.io/netbox-change-control/design/) | Why it is built this way. |
+
+To read the site on your own machine, install [Zensical](https://zensical.org/) and run `zensical serve` at the root of a checkout.
 
 ## Features
 
@@ -132,4 +134,4 @@ PLUGINS_CONFIG = {
 ./manage.py migrate netbox_change_control
 ```
 
-See [Installation and configuration](docs/installation.md) for the detail, including why `exempt_models` is not optional.
+See [Installation and configuration](https://antoinekh.github.io/netbox-change-control/installation/) for the detail, including why `exempt_models` is not optional.

@@ -1,0 +1,154 @@
+[project]
+site_name = "NetBox Change Control"
+site_url = "https://antoinekh.github.io/netbox-change-control/"
+site_description = "Policy-driven change control and mandatory review for NetBox branches"
+site_author = "Antoine Keranflech"
+copyright = "Copyright &copy; 2026 Antoine Keranflech &middot; MIT licensed"
+
+repo_url = "https://github.com/antoinekh/netbox-change-control"
+repo_name = "antoinekh/netbox-change-control"
+edit_uri = "edit/master/docs/"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Setting up" = [
+    "installation.md",
+    "admin-guide.md",
+    "permissions.md",
+  ] },
+  { "Day to day" = [
+    "policies.md",
+    "policy-conditions.md",
+    "change-requests.md",
+    "reviews.md",
+    "conflicts.md",
+  ] },
+  { "Gating a merge" = [
+    "checks.md",
+    "custom-checks.md",
+    "event-rules.md",
+    "merging.md",
+    "protect-main.md",
+  ] },
+  { "Reference" = [
+    "automation.md",
+    "api.md",
+    "extending.md",
+    "design.md",
+    "changelog.md",
+  ] },
+]
+
+extra_css = ["stylesheets/extra.css"]
+
+# Anchors are checked too, so a heading renamed in one page cannot leave a dead link in
+# another. The documentation workflow builds with --strict, which turns these into a failure.
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+
+[project.theme]
+language = "en"
+# The header is light in light mode and dark in dark mode, so the mark is a theme icon rather
+# than an image: an icon is inlined and drawn in currentColor, and follows the header either way.
+custom_dir = "overrides"
+favicon = "img/favicon.svg"
+features = [
+  "announce.dismiss",
+  "content.action.edit",
+  "content.action.view",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+# The palette is a list, so a reader can switch between following the system and pinning a
+# scheme. `custom` hands the primary and accent colours to docs/stylesheets/extra.css.
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.theme.icon]
+logo = "netbox-change-control/wordmark"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/antoinekh/netbox-change-control"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/python"
+link = "https://pypi.org/project/netbox-change-control/"
+
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+toc.permalink = true
+pymdownx.arithmatex.generic = true
+pymdownx.betterem = {}
+pymdownx.caret = {}
+pymdownx.details = {}
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+# The wordmark is one file, drawn in currentColor so it follows the theme. The header reads it
+# as theme.icon.logo and the home page as `:netbox-change-control-wordmark:`, so there is no
+# second copy to keep in step.
+pymdownx.emoji.options.custom_icons = ["overrides/.icons"]
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.magiclink = {}
+pymdownx.mark = {}
+pymdownx.smartsymbols = {}
+# The changelog page pulls in the CHANGELOG.md kept at the root of the repository, so there is
+# one changelog rather than a copy that drifts.
+pymdownx.snippets.base_path = ["."]
+pymdownx.snippets.check_paths = true
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tabbed.combine_header_slug = true
+pymdownx.tasklist.custom_checkbox = true
+pymdownx.tilde = {}
+# The pages are mostly screenshots of a dense interface, so every image opens full screen on a
+# click, captioned with its alt text.
+zensical.extensions.glightbox.auto_caption = true

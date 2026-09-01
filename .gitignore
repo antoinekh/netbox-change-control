@@ -18,3 +18,7 @@ Makefile
 # `uv run` inside the repo treats it as a uv project and writes a lock file the plugin does
 # not use. The dev tools run with --no-project, but keep this as a guard.
 uv.lock
+
+# Zensical builds the site here, and caches beside it.
+site/
+.zensical/

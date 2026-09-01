@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="change-request-lifecycle-title change-request-lifecycle-desc">
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="change-request-lifecycle-title change-request-lifecycle-desc">
   <title id="change-request-lifecycle-title">Change request lifecycle</title>
   <desc id="change-request-lifecycle-desc">State machine showing a change request opening in Draft, moving through the derived Needs review, Approved and Rejected states that the plugin recomputes on its own, then either merging into the terminal Completed state or being abandoned and reopened back into Draft.</desc>
   <defs>

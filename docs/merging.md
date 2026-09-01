@@ -45,8 +45,9 @@ The window is a **third, independent gate**, checked alongside the policies and 
 
 Users holding `netbox_change_control.override_window_changerequest` may merge outside the window, which is what an incident needs. See [granting the exemptions](permissions.md#granting-the-custom-actions).
 
-> [!IMPORTANT]
-> The window fails closed when there is no request context. `protect_main` deliberately exempts scripts and background jobs, because those are not interactive edits. A change window is the opposite: a script merging at the wrong hour is exactly what it exists to stop.
+!!! info "Important"
+
+    The window fails closed when there is no request context. `protect_main` deliberately exempts scripts and background jobs, because those are not interactive edits. A change window is the opposite: a script merging at the wrong hour is exactly what it exists to stop.
 
 ## Automatic merging
 
@@ -79,8 +80,9 @@ The interval bounds how late a window can fire, and costs one Job record per run
 
 Ten minutes is the default: close enough for a normal change window, without a Job record every minute. Go down to 1 if you need a window to fire on the exact minute, or up to 60 if you only use whole-hour windows and the Job records are noise. A value that is not a whole number of minutes, or is below 1, raises `ImproperlyConfigured` on boot rather than silently scheduling nothing.
 
-> [!NOTE]
-> The interval is read when the plugin loads and the worker schedules from that, so a change takes effect after a **worker restart**, not on the next sweep.
+!!! note
+
+    The interval is read when the plugin loads and the worker schedules from that, so a change takes effect after a **worker restart**, not on the next sweep.
 
 ### Keep the window longer than the interval
 

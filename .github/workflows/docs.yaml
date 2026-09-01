@@ -1,0 +1,58 @@
+name: Documentation
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Only one deployment at a time, and never cancel one halfway: an interrupted publish leaves
+# the site partly replaced.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Check out the plugin
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install zensical
+        # Pinned so a new zensical release cannot change the published site on its own.
+        run: pip install 'zensical==0.0.57'
+
+      - name: Build the site
+        # --strict turns a broken internal link or anchor into a failed build, so a dead link
+        # cannot be published. No cache: zensical's caching is still being reworked and is not
+        # recommended on CI.
+        run: zensical build --clean --strict
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy
+        uses: actions/deploy-pages@v5
+        id: deployment

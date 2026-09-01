@@ -4,11 +4,13 @@ Every permission this plugin defines, and what each one grants. Nothing here is 
 
 For roles, groups and how to assemble them, read the [Administration guide](admin-guide.md).
 
-> [!IMPORTANT]
-> A NetBox object permission applies to **every object of that type** unless you add a constraint. `delete_review` therefore lets a user delete anybody's review, which changes the outcome of the gate: removing a **Request changes** review removes the rejection. Grant it sparingly, or constrain it with `{"reviewer": "$user"}`. See [narrowing a permission with a constraint](admin-guide.md#narrowing-a-permission-with-a-constraint).
+!!! info "Important"
 
-> [!NOTE]
-> NetBox reads a permission name as `<app_label>.<action>_<model>`, splitting on the **last** underscore. The **Action** column below is what you tick, or type into *additional actions*, on the permission form. The full name is what code and the REST API use.
+    A NetBox object permission applies to **every object of that type** unless you add a constraint. `delete_review` therefore lets a user delete anybody's review, which changes the outcome of the gate: removing a **Request changes** review removes the rejection. Grant it sparingly, or constrain it with `{"reviewer": "$user"}`. See [narrowing a permission with a constraint](admin-guide.md#narrowing-a-permission-with-a-constraint).
+
+!!! note
+
+    NetBox reads a permission name as `<app_label>.<action>_<model>`, splitting on the **last** underscore. The **Action** column below is what you tick, or type into *additional actions*, on the permission form. The full name is what code and the REST API use.
 
 ## Change requests
 
@@ -64,8 +66,9 @@ The per-object discussion on the **Changes** tab.
 | `netbox_change_control.change_mergecheck` | `change` | Press **Re-run checks**, and report a result over the REST API. This is what a CI token needs. |
 | `netbox_change_control.delete_mergecheck` | `delete` | Delete a check row. Deleting one does not open the gate: a required check with no result counts as not run, and blocks. |
 
-> [!TIP]
-> A reporting token cannot weaken the gate even with `change_mergecheck`. `required` is read-only on the REST API, and the gate reads requiredness from the configuration and the policies rather than from the stored row.
+!!! tip
+
+    A reporting token cannot weaken the gate even with `change_mergecheck`. `required` is read-only on the REST API, and the gate reads requiredness from the configuration and the policies rather than from the stored row.
 
 ## Policies
 
@@ -90,8 +93,9 @@ The per-object discussion on the **Changes** tab.
 
 The table recording which policies govern which change request **defines no permissions at all**. The plugin maintains it, no page exposes it, and the four Django creates for every model are switched off.
 
-> [!NOTE]
-> There is therefore nothing to grant in order to detach a policy from a change request. Which policies govern a change is decided from the objects its branch touches, and they are re-matched as the branch moves, so a binding removed by hand comes back. Change the policy's scope instead.
+!!! note
+
+    There is therefore nothing to grant in order to detach a policy from a change request. Which policies govern a change is decided from the objects its branch touches, and they are re-matched as the branch moves, so a binding removed by hand comes back. Change the policy's scope instead.
 
 ## Permissions from netbox-branching
 
@@ -121,8 +125,10 @@ Four actions are not the usual view, add, change and delete. Grant them under **
 | Abandoning a change request | Change Control > Change Request | `abandon` |
 | Reopening an abandoned change request | Change Control > Change Request | `reopen` |
 
-> [!IMPORTANT]
-> The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy`: `bypass_change_control` would resolve to a model called `control`, which does not exist, so the permission could never be granted through an object permission at all and the exemption would silently be superuser-only.
+!!! info "Important"
 
-> [!NOTE]
-> Superusers hold every permission, so they are exempt from `protect_main` and from every change window without being granted anything.
+    The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy`: `bypass_change_control` would resolve to a model called `control`, which does not exist, so the permission could never be granted through an object permission at all and the exemption would silently be superuser-only.
+
+!!! note
+
+    Superusers hold every permission, so they are exempt from `protect_main` and from every change window without being granted anything.

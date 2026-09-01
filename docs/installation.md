@@ -38,8 +38,9 @@ If you are adding this plugin to a NetBox that already holds data, build the sea
 ./manage.py reindex netbox_change_control
 ```
 
-> [!IMPORTANT]
-> The `exempt_models` entry is not optional. Without it, a change request created while a branch is active is written into that branch's schema and is invisible from main, taking the record of who approved what with it.
+!!! info "Important"
+
+    The `exempt_models` entry is not optional. Without it, a change request created while a branch is active is written into that branch's schema and is invisible from main, taking the record of who approved what with it.
 
 ## Configuration
 

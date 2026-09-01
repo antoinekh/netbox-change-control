@@ -57,14 +57,19 @@ class RegisteredCheckTest(CheckTestCase):
 
     def test_a_raising_check_is_recorded_as_errored(self):
         """
-        A broken check must not take the page down with it.
+        A broken check must not take the page down with it, and must say so in the log.
+
+        The log is captured rather than left to print: the traceback is deliberate, and on a
+        green CI run it is read as a failure by whoever sees it.
         """
 
         def boom(cr):
             raise RuntimeError('exploded')
 
         register_check('broken', 'Broken', boom)
-        run_checks(self.cr)
+        with self.assertLogs('netbox.plugins.netbox_change_control.checks', level='ERROR') as logs:
+            run_checks(self.cr)
+        self.assertIn('Merge check broken raised', logs.output[0])
         check = MergeCheck.objects.get(change_request=self.cr, name='broken')
         self.assertEqual(check.status, MergeCheckStatusChoices.ERROR)
         self.assertIn('exploded', check.summary)

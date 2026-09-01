@@ -6,7 +6,7 @@
 
 ### Changed
 
-- Documentation moved ton Zensical
+- Documentation moved to Zensical
 
 ## 0.3.0 - 2026-09-01
 

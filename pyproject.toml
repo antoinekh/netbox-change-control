@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netbox-change-control"
-version = "0.3.0"
+version = "0.4.0"
 description = "Policy-driven change control and mandatory review for NetBox branches"
 readme = "README.md"
 requires-python = ">=3.12"

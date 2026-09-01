@@ -30,9 +30,9 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/antoinekh/netbox-change-control"
-Documentation = "https://github.com/antoinekh/netbox-change-control/blob/master/docs/index.md"
+Documentation = "https://antoinekh.github.io/netbox-change-control/"
 Source = "https://github.com/antoinekh/netbox-change-control"
-Changelog = "https://github.com/antoinekh/netbox-change-control/blob/master/CHANGELOG.md"
+Changelog = "https://antoinekh.github.io/netbox-change-control/changelog/"
 Issues = "https://github.com/antoinekh/netbox-change-control/issues"
 
 [tool.setuptools.packages.find]

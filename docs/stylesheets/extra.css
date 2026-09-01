@@ -1,0 +1,81 @@
+/*
+ * The brand teal is the accent NetBox itself uses, and the logo is drawn in it, so the site
+ * takes it as its primary rather than one of the theme's named palettes.
+ */
+:root > * {
+  --md-primary-fg-color:        #00857d;
+  --md-primary-fg-color--light: #4dada7;
+  --md-primary-fg-color--dark:  #005f5a;
+  --md-accent-fg-color:         #00857d;
+}
+
+[data-md-color-scheme="slate"] > * {
+  --md-accent-fg-color: #2bb3aa;
+}
+
+/* The pictures are of a boxed interface, and the diagram paints its own light plate, so both
+   want an edge to keep them from bleeding into the page. */
+.md-typeset img[src*="/img/"] {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: .2rem;
+}
+
+/*
+ * The home page opens on the wordmark rather than a heading, so the three lines are centred and
+ * sized here. The wordmark is the same icon the header uses, drawn in currentColor.
+ */
+.ncc-hero {
+  text-align: center;
+  margin: 1.6rem 0 2.4rem;
+}
+
+/* The icon shortcode wraps the wordmark in an inline, square-ish box; it needs to be a wide
+   block instead, and the SVG inside it has to be free to keep its own aspect ratio. */
+.md-typeset .ncc-hero__logo {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  margin: 0 auto 1rem;
+}
+
+.md-typeset .ncc-hero__logo svg {
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+
+.md-typeset .ncc-hero__tagline {
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.md-typeset .ncc-hero__meta {
+  margin: .4rem 0 0;
+  font-size: .72rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* A wordmark needs more height than the mark the theme sizes for, and more width than the
+   drawer's square box would give it. The header keeps its 2.4rem: the padding gives back what
+   the taller wordmark takes. */
+.md-header__button.md-logo {
+  padding: .25rem;
+}
+
+.md-header__button.md-logo svg {
+  height: 1.5rem;
+}
+
+.md-nav .md-nav__title[for="__drawer"] .md-logo {
+  width: auto;
+  height: 1.4rem;
+}
+
+/* The wordmark already says the site name, so the header does not repeat it in text. The
+   second topic, the title of the page you are on, still appears once you scroll. */
+.md-header__title .md-header__topic:first-child {
+  display: none;
+}

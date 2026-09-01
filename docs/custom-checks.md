@@ -69,11 +69,13 @@ class MyPluginConfig(PluginConfig):
 
 The check now runs whenever checks are refreshed: when the branch is synced or reverted, when a comment thread changes, and when someone presses **Re-run checks**.
 
-> [!TIP]
-> A check that raises is recorded as `error` with the exception text as its summary. A broken check blocks the merge but never breaks the page.
+!!! tip
 
-> [!IMPORTANT]
-> `name` is the database key. Renaming it creates a new check and deletes the old one, discarding its history. Change the `label` freely; leave the `name` alone.
+    A check that raises is recorded as `error` with the exception text as its summary. A broken check blocks the merge but never breaks the page.
+
+!!! info "Important"
+
+    `name` is the database key. Renaming it creates a new check and deletes the old one, discarding its history. Change the `label` freely; leave the `name` alone.
 
 ## Example: an AI reviewer
 
@@ -159,8 +161,9 @@ Register it as **advisory**:
 register_check('ai-review', 'AI review', ai_review, required=False)
 ```
 
-> [!WARNING]
-> Every check runs on **every** refresh, including each time a comment thread changes. An API call there costs money and adds latency to saving a comment.
+!!! warning
+
+    Every check runs on **every** refresh, including each time a comment thread changes. An API call there costs money and adds latency to saving a comment.
 
 The whole diff goes to a third party. The model sees only what `_summarise` sends: it has no view of the wider network, so it cannot reason about anything outside the diff.
 

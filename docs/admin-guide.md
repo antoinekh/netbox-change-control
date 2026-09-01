@@ -20,13 +20,15 @@ This plugin does not invent a permission model. It declares the standard `view`,
 
 That has one consequence worth stating plainly, because it decides how you should grant them:
 
-> [!IMPORTANT]
-> A NetBox object permission applies to **every object of that type**. Granting `netbox_change_control.delete_review` lets that user delete **any** review, not only their own. This is standard NetBox behaviour, not a quirk of this plugin. If you want a narrower grant, add a **constraint** to the permission. See [narrowing a permission with a constraint](#narrowing-a-permission-with-a-constraint).
+!!! info "Important"
+
+    A NetBox object permission applies to **every object of that type**. Granting `netbox_change_control.delete_review` lets that user delete **any** review, not only their own. This is standard NetBox behaviour, not a quirk of this plugin. If you want a narrower grant, add a **constraint** to the permission. See [narrowing a permission with a constraint](#narrowing-a-permission-with-a-constraint).
 
 Deleting somebody's review changes the outcome of the gate: removing a **Request changes** review removes the rejection, and the request moves off Rejected. So `delete_review` is a privileged grant. Treat it the way you would treat the ability to close a ticket on someone else's behalf.
 
-> [!NOTE]
-> Editing a review is different, and deliberately so. A reviewer may edit only their own review whatever permissions they hold; a superuser may edit any. A review is one person's statement about one change, so reassigning or rewriting somebody else's would forge their position. Only the delete action follows the plain NetBox model.
+!!! note
+
+    Editing a review is different, and deliberately so. A reviewer may edit only their own review whatever permissions they hold; a superuser may edit any. A review is one person's statement about one change, so reassigning or rewriting somebody else's would forge their position. Only the delete action follows the plain NetBox model.
 
 ### Permission matrix
 
@@ -49,8 +51,9 @@ These belong to netbox-branching, not to this plugin, but a change request is wo
 | `netbox_branching.merge_branch` | no | no | yes |
 | `netbox_branching.view_changediff` | yes | yes | yes |
 
-> [!NOTE]
-> NetBox reads a permission name as `<app_label>.<action>_<model>`, splitting on the **last** underscore. So branching's `merge` action on the `Branch` model is written `netbox_branching.merge_branch`, and its `sync` action is `netbox_branching.sync_branch`. The action you tick in the permission form is `merge`, not `merge_branch`.
+!!! note
+
+    NetBox reads a permission name as `<app_label>.<action>_<model>`, splitting on the **last** underscore. So branching's `merge` action on the `Branch` model is written `netbox_branching.merge_branch`, and its `sync` action is `netbox_branching.sync_branch`. The action you tick in the permission form is `merge`, not `merge_branch`.
 
 `view_changediff` is what gates the **Changes** tab. Without it a reviewer cannot see what they are being asked to approve.
 
@@ -107,8 +110,9 @@ Deleting a change request destroys the record of who approved what. Keep it with
 
 `change_mergecheck` does two things: it shows the **Re-run checks** button, and it is what a CI token needs to report a result over the REST API. Give the token its own user and its own permission, constrained if you can, rather than reusing a person's.
 
-> [!TIP]
-> A reporting token cannot weaken the gate even with this permission. `required` is read-only on the API, and the gate reads requiredness from the configuration and the policies rather than from the stored row.
+!!! tip
+
+    A reporting token cannot weaken the gate even with this permission. `required` is read-only on the API, and the gate reads requiredness from the configuration and the policies rather than from the stored row.
 
 #### Policy permissions
 
@@ -144,11 +148,13 @@ To grant them, go to **Administration > Permissions > Add**, and enter the actio
 | Write directly to main | Change Control > Policy | `bypass` |
 | Merge outside the change window | Change Control > Change Request | `override_window` |
 
-> [!IMPORTANT]
-> The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy` and the window override on `ChangeRequest`, rather than on names that would read better.
+!!! info "Important"
 
-> [!NOTE]
-> Superusers hold every permission, so they are exempt from `protect_main` and from every change window without being granted anything.
+    The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy` and the window override on `ChangeRequest`, rather than on names that would read better.
+
+!!! note
+
+    Superusers hold every permission, so they are exempt from `protect_main` and from every change window without being granted anything.
 
 ### Setting up groups
 
@@ -180,8 +186,9 @@ To let reviewers delete their own reviews and nobody else's, create a permission
 | Manage only my own change requests | Change Request | `{"requester": "$user"}` |
 | Report results for one check only | Merge Check | `{"name": "ci-pipeline"}` |
 
-> [!TIP]
-> The last one is the right shape for a CI token. It can report the check it owns and touch nothing else.
+!!! tip
+
+    The last one is the right shape for a CI token. It can report the check it owns and touch nothing else.
 
 ## Configuring policies
 
@@ -265,8 +272,9 @@ Set `enforce_merge_gate` to `False` only to troubleshoot. It turns off the reaso
 | Registered checks | `has-changes`, `no-conflicts`, `not-stale` |
 | Rule | `No approval required`, minimum reviews 0 |
 
-> [!WARNING]
-> A zero rule removes the human requirement **of its own policy only**. If your baseline policy also matches the branch and asks for an engineer, the change still waits for that engineer. Scope the automatic policy so it is the only one matching, or narrow the baseline with conditions.
+!!! warning
+
+    A zero rule removes the human requirement **of its own policy only**. If your baseline policy also matches the branch and asks for an engineer, the change still waits for that engineer. Scope the automatic policy so it is the only one matching, or narrow the baseline with conditions.
 
 ## Testing the workflow
 

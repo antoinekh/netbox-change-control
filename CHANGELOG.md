@@ -2,16 +2,18 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-09-01
+
 ### Changed
 
-- **The lifecycle diagram is a drawn SVG** instead of a Mermaid block, and every arrow now carries the name the plugin itself uses.
+- Documentation moved ton Zensical
 
 ## 0.3.0 - 2026-09-01
 
 ### Added
 
 - **Return to draft.** A submitted change request can be pulled back out of review, by its author or anybody holding `change_changerequest`, from the page or `POST /change-requests/{id}/return-to-draft/`. The reviews are kept, and resubmitting picks up where it left off. Allowed from Approved too, so an author who spots a problem after approval need not race the merge; it only ever closes the merge gate.
-- **Abandon** and **Reopen**, each behind its own permission (`abandon_changerequest`, `reopen_changerequest`), on the page and as `POST /change-requests/{id}/abandon/` and `/reopen/`. With **Submit for review** and **Return to draft** these are the four transitions a person makes; everything else is derived. `submit` is a REST action too, so an integration can drive the whole lifecycle now that `status` is read-only. [The lifecycle diagram](docs/change-requests.md#the-lifecycle) shows the rest.
+- **Abandon** and **Reopen**, each behind its own permission (`abandon_changerequest`, `reopen_changerequest`), on the page and as `POST /change-requests/{id}/abandon/` and `/reopen/`. With **Submit for review** and **Return to draft** these are the four transitions a person makes; everything else is derived. `submit` is a REST action too, so an integration can drive the whole lifecycle now that `status` is read-only. [The lifecycle diagram](https://antoinekh.github.io/netbox-change-control/change-requests/#the-lifecycle) shows the rest.
 - **Draft is a state the author holds** rather than one the evaluation computes. A review submitted against a draft moves nothing, and a request pulled back stays pulled back; without this, **Return to draft** would be undone by the next signal. Submitting is what leaves draft, matches the policies and notifies the reviewers.
 - **The branch page shows its change request**: status, reference, what is outstanding and who can clear it, with a link. A branch with no change request is told it cannot merge until one is opened, with a button to open it, which is the case netbox-branching's merge form could only refuse.
 - `branch_page_placement` decides where that panel sits: `right_page` for a card in the right-hand column, which is the default, `alerts` for a band across the top, both for both, `[]` for neither. Both render the same wording, so they cannot drift apart.
@@ -46,7 +48,7 @@
 - The **Conflicts** column matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
 - Packaging: the build no longer pulls `setuptools-scm`, which it never read because the version is written by hand, and the package declares `Development Status :: 4 - Beta`, which is what the README says in prose.
 - CI installs the plugin editable, so the tests that compare a documentation page against the code can find that page. A plain install copies the package into `site-packages` with no `docs/` beside it, and those tests could only error there.
-- [Permissions](docs/permissions.md) is a complete reference, with a test comparing it against the models, and there is an [administration guide](docs/admin-guide.md). The README warns that the plugin is below 1.0. `docs/api.md`, `docs/design.md` and `docs/checks.md` are corrected: a wrong policy filter, a wrong value for requesting changes, a permission that does not exist, and two of the moments checks run.
+- [Permissions](https://antoinekh.github.io/netbox-change-control/permissions/) is a complete reference, with a test comparing it against the models, and there is an [administration guide](https://antoinekh.github.io/netbox-change-control/admin-guide/). The README warns that the plugin is below 1.0. `docs/api.md`, `docs/design.md` and `docs/checks.md` are corrected: a wrong policy filter, a wrong value for requesting changes, a permission that does not exist, and two of the moments checks run.
 
 ### Removed
 
@@ -86,4 +88,4 @@ First release. Policy-driven change control and mandatory review for NetBox bran
 - Change requests that outlive their branch, keeping the reviews, threads and results.
 - Six lifecycle events on NetBox's event pipeline, reviewer notifications, and a **My Reviews** dashboard widget.
 
-See [`docs/`](docs/index.md) for how any of it works.
+See [the documentation](https://antoinekh.github.io/netbox-change-control/) for how any of it works.

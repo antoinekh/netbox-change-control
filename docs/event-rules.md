@@ -26,8 +26,9 @@ A `review_submitted` event carries the **change request**, not the review, becau
 
 The ordinary object events (`object_created`, `object_updated`, `object_deleted`) fire as well, because a change request is a normal object. The two are independent: an approval produces both `object_updated` and `change_request_approved`, and a rule on either works.
 
-> [!NOTE]
-> The commercial NetBox Changes plugin registers similar lifecycle types but does not put them through the pipeline. Its [documentation](https://netboxlabs.com/docs/changes/event-rules/) says: "An event rule configured to trigger on one of these types will silently never fire. Use the standard object event types described below instead." Here both routes work, so a rule can name the transition it means.
+!!! note
+
+    The commercial NetBox Changes plugin registers similar lifecycle types but does not put them through the pipeline. Its [documentation](https://netboxlabs.com/docs/changes/event-rules/) says: "An event rule configured to trigger on one of these types will silently never fire. Use the standard object event types described below instead." Here both routes work, so a rule can name the transition it means.
 
 ## A rule on a lifecycle event
 
@@ -112,14 +113,15 @@ A webhook is fire-and-forget, so a failed delivery is only visible in the worker
 docker compose logs netbox-worker
 ```
 
-> [!IMPORTANT]
-> **Behind a corporate proxy, a webhook to an internal address fails.** NetBox resolves a proxy for every outgoing webhook through `PROXY_ROUTERS` and hands it to `requests.Session.send()`. requests only honours `no_proxy` when it builds the request itself, so setting `no_proxy` changes nothing here: the delivery goes to the proxy, which cannot route to a private address, and fails with a 502.
->
-> `resolve_proxies` returns the first truthy result and a router cannot veto a later one, so the fix is a single router which declines to proxy private destinations and defers to the configured proxy for everything else:
->
-> ```python
-> PROXY_ROUTERS = ['my_config.PrivateBypassProxyRouter']
-> ```
+!!! info "Important"
+
+    **Behind a corporate proxy, a webhook to an internal address fails.** NetBox resolves a proxy for every outgoing webhook through `PROXY_ROUTERS` and hands it to `requests.Session.send()`. requests only honours `no_proxy` when it builds the request itself, so setting `no_proxy` changes nothing here: the delivery goes to the proxy, which cannot route to a private address, and fails with a 502.
+
+    `resolve_proxies` returns the first truthy result and a router cannot veto a later one, so the fix is a single router which declines to proxy private destinations and defers to the configured proxy for everything else:
+
+    ```python
+    PROXY_ROUTERS = ['my_config.PrivateBypassProxyRouter']
+    ```
 
 ## Reporting a check back
 

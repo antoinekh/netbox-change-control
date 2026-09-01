@@ -60,8 +60,9 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 
 **Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened, because the branch is already in main. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
 
-> [!NOTE]
-> Only **Approved** opens the merge gate, and even then the checks and the change window are separate gates on top of it. See [approved is not the same as mergeable](#approved-is-not-the-same-as-mergeable).
+!!! note
+
+    Only **Approved** opens the merge gate, and even then the checks and the change window are separate gates on top of it. See [approved is not the same as mergeable](#approved-is-not-the-same-as-mergeable).
 
 ## Approved is not the same as mergeable
 
@@ -86,8 +87,9 @@ The branch **name** is what is indexed, not the branch itself, so a change reque
 
 Policies, rules, reviews, pre-merge checks and the per-object comments are all searchable as well. A comment keeps the name of the object it was about, so searching for a device finds the discussion about it long after the branch is gone.
 
-> [!NOTE]
-> Search reads an index NetBox maintains as objects are written. Objects that already existed when this plugin was upgraded are indexed by running `./manage.py reindex netbox_change_control` once.
+!!! note
+
+    Search reads an index NetBox maintains as objects are written. Objects that already existed when this plugin was upgraded are indexed by running `./manage.py reindex netbox_change_control` once.
 
 ## The record outlives the branch
 

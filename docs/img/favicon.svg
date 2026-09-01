@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="31 19 275 328" role="img" aria-labelledby="favicon-title">
+  <title id="favicon-title">netbox change control</title>
+  <g fill="none" stroke="#00857d" stroke-width="24" stroke-linecap="round">
+    <path d="M72 60 V306"/>
+    <path d="M72 190 H214 a32 32 0 0 0 32 -32 V91"/>
+  </g>
+  <g fill="#00857d">
+    <circle cx="72" cy="60" r="32"/>
+    <circle cx="72" cy="190" r="32"/>
+    <circle cx="72" cy="306" r="32"/>
+    <circle cx="246" cy="62" r="32"/>
+    <circle cx="242" cy="258" r="58"/>
+  </g>
+  <path d="M216 258 L236 278 L270 238" fill="none" stroke="#ffffff" stroke-width="18"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

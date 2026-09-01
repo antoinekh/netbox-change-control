@@ -79,8 +79,9 @@ Create a policy with **no object types**, which matches every branch, and name t
 | Object types | *(empty)* |
 | Registered checks | `has-changes`, `no-conflicts`, `not-stale` |
 
-> [!IMPORTANT]
-> A change request is not satisfied while no rule applies to it, so a checks-only policy which is the only one matching a branch leaves the request unable to be approved. The approval panel says "No policy rules apply to this change request" when this happens.
+!!! info "Important"
+
+    A change request is not satisfied while no rule applies to it, so a checks-only policy which is the only one matching a branch leaves the request unable to be approved. The approval panel says "No policy rules apply to this change request" when this happens.
 
 ## Which checks apply, and where
 

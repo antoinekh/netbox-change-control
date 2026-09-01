@@ -32,8 +32,9 @@ The change request shows a rule the way you wrote it, naming its groups rather t
 
 An approval counts only toward the rules the reviewer is eligible for. A lead approving does not advance a rule that requires engineers. This is the property a naive approval counter gets wrong.
 
-> [!NOTE]
-> A change request with no rules at all is never satisfied. An unpoliced merge is exactly what this plugin exists to prevent, so an empty rule set fails closed.
+!!! note
+
+    A change request with no rules at all is never satisfied. An unpoliced merge is exactly what this plugin exists to prevent, so an empty rule set fails closed.
 
 ### Changes which need no human
 

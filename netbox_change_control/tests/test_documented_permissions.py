@@ -9,7 +9,6 @@ This compares the page against the model definitions, so neither can move withou
 """
 
 import re
-from pathlib import Path
 
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
@@ -23,8 +22,8 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
+from netbox_change_control.tests.base import docs_page
 
-DOCS = Path(__file__).resolve().parent.parent.parent / 'docs'
 MODELS = (ChangeComment, ChangeRequest, ChangeRequestPolicy, MergeCheck, Policy, PolicyRule, Review)
 
 
@@ -42,7 +41,7 @@ def declared_permissions():
 
 
 def documented_permissions(page):
-    return set(re.findall(r'`(netbox_change_control\.[a-z_]+)`', (DOCS / page).read_text()))
+    return set(re.findall(r'`(netbox_change_control\.[a-z_]+)`', docs_page(page)))
 
 
 class PermissionsPageTest(TestCase):
@@ -69,7 +68,7 @@ class PermissionsPageTest(TestCase):
         Listing a name in prose is not documenting it. Each has to be a row carrying the
         action to enter on the permission form and what it grants.
         """
-        text = (DOCS / self.page).read_text()
+        text = docs_page(self.page)
         rows = {
             m.group(1)
             for m in re.finditer(r'^\| `(netbox_change_control\.[a-z_]+)` \| `[a-z_]+` \| .+ \|$', text, re.M)

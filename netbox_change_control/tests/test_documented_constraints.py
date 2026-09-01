@@ -12,7 +12,6 @@ the constraint matches on, so these check each one the guide prints.
 """
 
 import re
-from pathlib import Path
 
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
@@ -21,9 +20,7 @@ from users.models import ObjectPermission, User
 
 from netbox_change_control.choices import MergeCheckStatusChoices, ReviewDecisionChoices
 from netbox_change_control.models import ChangeComment, ChangeRequest, MergeCheck, Policy, Review
-from netbox_change_control.tests.base import make_branch
-
-DOCS = Path(__file__).resolve().parent.parent.parent / 'docs'
+from netbox_change_control.tests.base import docs_page, make_branch
 
 
 def constrain(user, model, actions, constraints):
@@ -124,7 +121,7 @@ class DocumentedConstraintFieldsExistTest(TestCase):
     def test_each_constraint_field_resolves(self):
         table = re.search(
             r'\| Goal \| Object type \| Constraint \|(.*?)\n\n',
-            (DOCS / 'admin-guide.md').read_text(),
+            docs_page('admin-guide.md'),
             re.S,
         )
         self.assertIsNotNone(table, 'the constraint table is no longer in the administration guide')

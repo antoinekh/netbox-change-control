@@ -90,7 +90,11 @@ jobs:
       - name: Install netbox-branching and the plugin
         run: |
           pip install 'netboxlabs-netbox-branching~=1.1.3'
-          pip install ./netbox-change-control
+          # Editable, so the tests run from the checkout. Several of them read the pages in
+          # docs/ and compare them against the code, and a plain install copies the package
+          # into site-packages without the documentation beside it, where those tests can
+          # only fail. The release workflow builds and checks the real distribution.
+          pip install -e ./netbox-change-control
 
       - name: Configure NetBox
         run: |

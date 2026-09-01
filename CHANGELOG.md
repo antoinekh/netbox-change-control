@@ -39,6 +39,7 @@
 - **Reopening an abandoned request returns it to Draft** rather than straight to review: its reviews may be stale and its policies may have moved while it was set aside.
 - The **Conflicts** column matches netbox-branching: a red octagon when there are conflicts, a dash when there are none.
 - Packaging: the build no longer pulls `setuptools-scm`, which it never read because the version is written by hand, and the package declares `Development Status :: 4 - Beta`, which is what the README says in prose.
+- CI installs the plugin editable, so the tests that compare a documentation page against the code can find that page. A plain install copies the package into `site-packages` with no `docs/` beside it, and those tests could only error there.
 - [Permissions](docs/permissions.md) is a complete reference, with a test comparing it against the models, and there is an [administration guide](docs/admin-guide.md). The README warns that the plugin is below 1.0. `docs/api.md`, `docs/design.md` and `docs/checks.md` are corrected: a wrong policy filter, a wrong value for requesting changes, a permission that does not exist, and two of the moments checks run.
 
 ### Removed

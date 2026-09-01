@@ -8,13 +8,12 @@ compared against the models.
 """
 
 import re
-from pathlib import Path
 
 from django.test import TestCase
 
 from netbox_change_control import ChangeControlConfig
+from netbox_change_control.tests.base import docs_page
 
-DOCS = Path(__file__).resolve().parent.parent.parent / 'docs'
 PAGE = 'installation.md'
 
 # A row of the configuration table: the setting, its default, and what it means.
@@ -22,7 +21,7 @@ ROW = re.compile(r'^\| `([a-z_]+)` \| `(.+?)` \| .+ \|$', re.M)
 
 
 def documented_settings():
-    return {name: default for name, default in ROW.findall((DOCS / PAGE).read_text())}
+    return {name: default for name, default in ROW.findall(docs_page(PAGE))}
 
 
 class DocumentedSettingsTest(TestCase):

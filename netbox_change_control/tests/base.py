@@ -6,6 +6,8 @@ for its fixture: Python re-runs every one of those tests under the subclass, whi
 the count without covering anything new.
 """
 
+from pathlib import Path
+
 from django.test import TestCase
 from netbox_branching.models import Branch
 from users.models import Group, User
@@ -15,14 +17,34 @@ from netbox_change_control.choices import MergeCheckStatusChoices, ReviewDecisio
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule, Review
 
 __all__ = (
+    'DOCS',
     'ChangeControlTestCase',
     'add_rule',
     'approve',
+    'docs_page',
     'make_branch',
     'make_policy',
     'pass_checks',
     'submit',
 )
+
+# The documentation sits beside the package, not inside it, so the tests which compare a page
+# against the code can only read it from a checkout. Installed with `pip install .` there is no
+# docs directory at all, which is why CI installs the plugin editable.
+DOCS = Path(__file__).resolve().parent.parent.parent / 'docs'
+
+
+def docs_page(name):
+    """
+    The text of one documentation page, with a usable message when it is not there.
+    """
+    page = DOCS / name
+    if not page.exists():
+        raise AssertionError(
+            f'{page} is missing. The documentation tests read the pages beside the package, '
+            f'so the plugin has to be installed from a checkout (pip install -e).'
+        )
+    return page.read_text()
 
 
 def make_policy(name='One review', *, groups=(), users=(), min_reviews=1, rule_name='Rule', checks=(), **kwargs):

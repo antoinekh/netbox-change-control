@@ -4,7 +4,7 @@ Once a change request reaches **Approved** and every required check passes, a **
 
 ![Merge button](img/merge-button.png)
 
-The branch page under **Branching > Branches** carries the same information from the other side: the change request governing it, its status, which rules are still short and who may satisfy them, with a link to it.
+The branch page under **Branching > Branches** carries the same information from the other side, in a card in the right-hand column: the change request governing it, its status, which rules are still short and who may satisfy them, with a link to it.
 
 ![The change request shown on its own branch page](img/capture-blocked.png)
 
@@ -12,9 +12,9 @@ A branch nobody has opened a change request against is told so in the same place
 
 ![A branch with no change request](img/capture-unmanaged.png)
 
-Once every gate is satisfied the same panel turns green and says so, which is the signal to use the Merge button beside it.
+Once every gate is satisfied the same card turns green and says so, which is the signal to use the Merge button on it.
 
-Where that panel sits is configuration. `branch_page_placement` takes `right_page` for a card in the right-hand column, beside the branch's own cards, which is the default; `alerts` for a band across the top of the page, above them, which is what the screenshots here show; both to show both, which is how you compare them; or `[]` to leave branching's page as it was. See [Configuration](installation.md#configuration).
+Where that panel sits is configuration. `branch_page_placement` takes `right_page` for the card the screenshots here show, which is the default; `alerts` for a band across the top of the page instead; both to show both, which is how you compare them; or `[]` to leave branching's page as it was. See [Configuration](installation.md#configuration).
 
 ![A branch whose change request is satisfied](img/capture-ready.png)
 

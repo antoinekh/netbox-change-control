@@ -88,17 +88,10 @@ The per-object discussion on the **Changes** tab.
 
 ## Policy bindings
 
-The table recording which policies govern which change request. The plugin maintains it and no page exposes it; these exist because Django creates the four actions for every model.
+The table recording which policies govern which change request **defines no permissions at all**. The plugin maintains it, no page exposes it, and the four Django creates for every model are switched off.
 
-| Permission | Action | Grants |
-|---|---|---|
-| `netbox_change_control.view_changerequestpolicy` | `view` | Read the bindings, through the REST API or the Django admin. |
-| `netbox_change_control.add_changerequestpolicy` | `add` | Not used by any view. |
-| `netbox_change_control.change_changerequestpolicy` | `change` | Not used by any view. |
-| `netbox_change_control.delete_changerequestpolicy` | `delete` | Not used by any view. |
-
-> [!CAUTION]
-> Do not grant these in order to detach a policy from a change request. Which policies govern a change is decided from the objects its branch touches, and they are re-matched as the branch moves, so a binding removed by hand comes back. Change the policy's scope instead.
+> [!NOTE]
+> There is therefore nothing to grant in order to detach a policy from a change request. Which policies govern a change is decided from the objects its branch touches, and they are re-matched as the branch moves, so a binding removed by hand comes back. Change the policy's scope instead.
 
 ## Permissions from netbox-branching
 

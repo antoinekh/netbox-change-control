@@ -482,6 +482,11 @@ class ChangeRequestPolicy(models.Model):
                 name='%(app_label)s_%(class)s_unique_request_policy',
             ),
         )
+        # Django creates four permissions for every model. No view of this plugin reads any of
+        # these, and granting one was a trap: an administrator reaching for
+        # delete_changerequestpolicy to detach a policy by hand gets it back at the next
+        # re-match. Restore them if this table ever grows a view.
+        default_permissions = ()
         verbose_name = _('change request policy')
         verbose_name_plural = _('change request policies')
 

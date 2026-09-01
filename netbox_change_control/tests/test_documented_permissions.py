@@ -87,3 +87,18 @@ class AdminGuideTest(TestCase):
     def test_no_invented_permission_in_the_admin_guide(self):
         invented = sorted(documented_permissions('admin-guide.md') - declared_permissions())
         self.assertEqual(invented, [], 'admin-guide.md names permissions which do not exist')
+
+
+class PolicyBindingPermissionsTest(TestCase):
+    """
+    The through table binding a policy to a change request defines no permissions.
+
+    Django would create four, and all four were dead: nothing reads them, and an administrator
+    granting one to detach a policy by hand gets the binding back at the next re-match.
+    """
+
+    def test_the_binding_table_defines_no_permissions(self):
+        from django.contrib.auth.models import Permission
+
+        content_type = ContentType.objects.get_for_model(ChangeRequestPolicy)
+        self.assertEqual(list(Permission.objects.filter(content_type=content_type)), [])

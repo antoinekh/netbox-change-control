@@ -9,6 +9,7 @@ The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on Net
 
 ### Added
 
+- **An event rule can report a pre-merge check.** A new action type writes a check result onto the change request of the branch the event came from: no webhook, no pipeline, no code. The check must still be declared, in a policy's Checks field or in `required_external_checks`. See [reporting a check without leaving NetBox](https://antoinekh.github.io/netbox-change-control/event-rules/#reporting-a-check-without-leaving-netbox).
 - **A policy condition can read the transition, not just a value.** `{"attr": "status", "op": "changed"}` matches when the status moved, whatever it moved from; `unchanged` is the inverse; and `snapshots.prechange.status` reads one named side of the change. **Condition state** is unaffected and still governs plain attribute names. See [policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/).
 - **A [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/)**, saying which release runs on which NetBox.
 

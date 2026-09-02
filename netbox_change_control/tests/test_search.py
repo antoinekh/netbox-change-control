@@ -9,6 +9,9 @@ It mattered most for `ChangeRequest.ref`: the field exists so a change can be fo
 ticket that spawned it, and the search box is the one place somebody types a ticket number.
 """
 
+from unittest.mock import patch
+
+from django.db import connection
 from django.test import TestCase
 from netbox.registry import registry
 from netbox.search.backends import search_backend
@@ -75,7 +78,42 @@ class SearchFindsThingsTest(TestCase):
             requester=self.requester,
         )
 
+    def flush_search_index(self):
+        """
+        Index everything this test has written, in this database, now.
+
+        NetBox 4.7 moved search cache updates off the request and onto a callback registered
+        with `transaction.on_commit`. Three things then stand between a write and an index,
+        and a test has to clear all three:
+
+        A `TestCase` rolls back and never commits, so the callback never runs on its own.
+
+        The callback indexes inline only when no RQ worker is listening on the broker. A
+        development stack runs one, and it would take the job away to its own database, where
+        this test cannot see the result. Whether a worker happens to be running is not part of
+        what these tests check, so the answer is pinned rather than inherited from the machine.
+
+        The callback is registered once per transaction and coalesces every later write into
+        the same batch. `setUp` provisions a branch, and a branch is searchable, so the
+        callback is already registered by the time the test writes anything of its own.
+        Wrapping only the test's own writes in `captureOnCommitCallbacks` therefore captures
+        nothing at all: it sees no new registration, and the batch it should have flushed
+        belongs to a callback registered before the block opened. Running the callbacks the
+        connection is already holding is what actually flushes that batch.
+
+        Only the search flushes are run. The connection also holds branching's own callback,
+        which would enqueue a real branch provisioning job. NetBox's own search tests identify
+        them by the same marker.
+        """
+        from netbox.search import deferred
+
+        with patch('netbox.search.deferred.any_workers_for_queue', return_value=False):
+            for _sids, func, _robust in list(connection.run_on_commit):
+                if hasattr(func, deferred._FLUSH_ALIAS_ATTR):
+                    func()
+
     def found(self, term):
+        self.flush_search_index()
         return {(r.object._meta.model_name, r.object.pk) for r in search_backend.search(term)}
 
     def test_a_change_request_is_found_by_its_reference(self):

@@ -9,7 +9,7 @@ on:
       netbox_ref:
         description: 'NetBox ref to check out (branch, tag or commit)'
         required: false
-        default: 'v4.6.9'
+        default: 'v4.7.0-beta2'
         type: string
 
 concurrency:
@@ -28,17 +28,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor is 4.6.9 because that is what is tested. The initial migration already
-        # rules out anything below 4.6.5: it depends on extras.0140, which 4.6.0 does not
-        # have, and on core.0024 and users.0016, which arrive in 4.6.0.
+        # This branch is the NetBox 4.7 line and is tested against nothing else. 4.7 drops
+        # the django-mptt columns, so netbox-branching 1.1.x cannot run on it and 1.2 cannot
+        # run on 4.6; there is no version of NetBox both lines share. The 0.4.x branch keeps
+        # the 4.6 job.
         include:
-          - netbox: 'v4.6.9'
+          - netbox: 'v4.7.0-beta2'
             python: '3.12'
-          - netbox: 'v4.6.9'
+          - netbox: 'v4.7.0-beta2'
             python: '3.13'
 
     services:
       redis:
+        # NetBox 4.7 requires Redis 6.0 or later.
         image: redis:7
         ports:
           - 6379:6379
@@ -48,8 +50,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       postgres:
-        # NetBox needs the ICU collation provider, which the official image provides.
-        image: postgres:16
+        # NetBox needs the ICU collation provider, which the official image provides. 17 is
+        # above the 15 floor NetBox 4.7 sets, and ships the ltree extension 4.7 installs
+        # itself; the GRANT below is what lets it, since installing an extension needs CREATE
+        # on the database.
+        image: postgres:17
         env:
           POSTGRES_USER: netbox
           POSTGRES_PASSWORD: netbox
@@ -89,7 +94,9 @@ jobs:
 
       - name: Install netbox-branching and the plugin
         run: |
-          pip install 'netboxlabs-netbox-branching~=1.1.3'
+          # 1.2 is the first release which runs on NetBox 4.7. Naming the pre-release is
+          # required while 1.2.0 is unreleased, because pip skips one otherwise.
+          pip install 'netboxlabs-netbox-branching>=1.2.0b1,<1.3'
           # Editable, so the tests run from the checkout. Several of them read the pages in
           # docs/ and compare them against the code, and a plain install copies the package
           # into site-packages without the documentation beside it, where those tests can
@@ -106,6 +113,7 @@ jobs:
           PGPASSWORD: netbox
         run: |
           # netbox-branching provisions one PostgreSQL schema per branch.
+          # This also covers the ltree extension NetBox 4.7 installs on first migrate.
           psql -h localhost -U netbox -d netbox -c 'GRANT CREATE ON DATABASE netbox TO netbox;'
 
       - name: Check for missing migrations

@@ -82,15 +82,17 @@ New here? Read [Installation and configuration](installation.md), then [Policies
 | [Administration guide](admin-guide.md) | [Policy conditions](policy-conditions.md) | [Writing your own checks](custom-checks.md) | [REST API](api.md) |
 | [Permissions](permissions.md) | [Change requests](change-requests.md) | [Event rules](event-rules.md) | [Extending this plugin](extending.md) |
 | | [Reviews](reviews.md) | [Merging, windows and auto-merge](merging.md) | [Design](design.md) |
-| | [Conflicts with main](conflicts.md) | [Protecting main](protect-main.md) | [Changelog](changelog.md) |
+| [Compatibility matrix](compatibility.md) | [Conflicts with main](conflicts.md) | [Protecting main](protect-main.md) | [Changelog](changelog.md) |
 
 ## Requirements
 
 | Component | Version |
 |---|---|
-| NetBox | `>= 4.6.9, < 4.7` |
-| netbox-branching | `>= 1.1.3, < 1.2` |
+| NetBox | `>= 4.7.0, < 4.8` |
+| netbox-branching | `>= 1.2, < 1.3` |
 | Python | `>= 3.12` |
+
+This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do not overlap, because netbox-branching 1.1.x and 1.2 do not either. [The compatibility matrix](compatibility.md) has every release, and [Installation](installation.md#upgrading-from-the-46-line) covers moving between the two lines.
 
 !!! note
 

@@ -13,6 +13,7 @@ nav = [
   { "Home" = "index.md" },
   { "Setting up" = [
     "installation.md",
+    "compatibility.md",
     "admin-guide.md",
     "permissions.md",
   ] },

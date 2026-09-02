@@ -65,8 +65,6 @@ A webhook delivery is NetBox's standard shape. The `event` key carries the event
   "event": "change_request_approved",
   "timestamp": "2026-08-26T18:44:49.406346+00:00",
   "object_type": "netbox_change_control.changerequest",
-  "username": "admin",
-  "request_id": "a37a4311-c2ec-48ed-affb-cbf942babefb",
   "data": {
     "id": 39,
     "url": "/api/plugins/change-control/change-requests/39/",
@@ -95,6 +93,14 @@ A webhook delivery is NetBox's standard shape. The `event` key carries the event
   "snapshots": {
     "prechange": {"status": "needs-review", "...": "..."},
     "postchange": {"status": "approved", "...": "..."}
+  },
+  "request": {
+    "id": "a37a4311-c2ec-48ed-affb-cbf942babefb",
+    "path": "/plugins/change-control/change-requests/39/",
+    "path_info": "/plugins/change-control/change-requests/39/",
+    "method": "POST",
+    "GET": {},
+    "user": "admin"
   }
 }
 ```
@@ -103,7 +109,11 @@ The fields worth acting on are `data.ready_to_merge`, `data.merge_blocked_reason
 
 `snapshots.prechange` is `null` on a create. On a lifecycle event it holds the state before the transition, so `snapshots.prechange.status` tells you where the request came from.
 
-`username` and `request_id` are present only when the transition happened inside an HTTP request. A status change made by a background job, such as an approval invalidated by an automatic sweep, carries neither.
+`request` is present only when the transition happened inside an HTTP request. A status change made by a background job, such as an approval invalidated by an automatic sweep, carries none of it, so read `request.user` and `request.id` defensively.
+
+!!! warning "Changed in 0.5.0"
+
+    NetBox 4.7 removed the top-level `username` and `request_id` keys from the webhook body. The same two values are still delivered, as `request.user` and `request.id`. A receiver written against the old names reads `null` from NetBox 4.7 onwards and must be updated.
 
 ## When nothing arrives
 

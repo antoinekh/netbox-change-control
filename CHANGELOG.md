@@ -3,6 +3,26 @@
 ## Unreleased
 
 
+## 0.5.0 - 2026-09-02
+
+The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox supports both. netbox-branching decides that, not the plugin. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
+
+### Added
+
+- **A [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/)**, saying which release runs on which NetBox.
+
+### Changed
+
+- **Requires NetBox 4.7 and netbox-branching 1.2.** NetBox enforces the range itself, so an install on 4.6 refuses to start rather than failing later.
+- **Webhook payloads lost `username` and `request_id`**, which NetBox 4.7 removed from the event context. Both values are still delivered, as `request.user` and `request.id`. Update any receiver reading the old names.
+- CI runs against NetBox 4.7 only, on PostgreSQL 17.
+
+### Fixed
+
+- **Every read of a review raised `TypeError` on Django 6.1.** `Review.from_db()` did not accept an argument 6.1 added, so nothing which loads a review worked: opening a change request, evaluating a policy, submitting a review. It now takes `**kwargs`.
+- Migration `0008` records the `related_name` NetBox 4.7 added to the inherited `owner` field. It changes no data; without it `makemigrations --check` fails on every run.
+- The search tests drive NetBox 4.7's deferred indexing themselves, rather than depending on whether a worker happens to be running.
+
 ## 0.4.0 - 2026-09-01
 
 ### Changed

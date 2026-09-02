@@ -3,12 +3,13 @@
   <p><strong>Policy-driven change control and mandatory review for NetBox branches</strong></p>
   <p>change requests &bull; policies &bull; checks &bull; comments</p>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
-  <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.6.9%2C%20%3C%204.7-00857d" alt="NetBox compatibility" />
-  <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.1.3-00857d" alt="netbox-branching compatibility" />
+  <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.7.0%2C%20%3C%204.8-00857d" alt="NetBox compatibility" />
+  <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.2-00857d" alt="netbox-branching compatibility" />
   <img src="https://img.shields.io/badge/python-%3E%3D%203.12-blue" alt="Python version" />
   <p>
     <strong><a href="https://antoinekh.github.io/netbox-change-control/">Documentation</a></strong> |
     <strong><a href="https://antoinekh.github.io/netbox-change-control/installation/">Install</a></strong> |
+    <strong><a href="https://antoinekh.github.io/netbox-change-control/compatibility/">Compatibility</a></strong> |
     <strong><a href="https://antoinekh.github.io/netbox-change-control/policies/">Policies</a></strong> |
     <strong><a href="https://antoinekh.github.io/netbox-change-control/checks/">Checks</a></strong> |
     <strong><a href="https://antoinekh.github.io/netbox-change-control/changelog/">Changelog</a></strong>
@@ -61,6 +62,7 @@ The documentation is a website: **[antoinekh.github.io/netbox-change-control](ht
 | Page | Covers |
 |---|---|
 | [Installation and configuration](https://antoinekh.github.io/netbox-change-control/installation/) | Requirements, installing, and every setting. |
+| [Compatibility matrix](COMPATIBILITY.md) | Which release runs on which NetBox and which netbox-branching. |
 | [Policies and rules](https://antoinekh.github.io/netbox-change-control/policies/) | Scoping a policy and writing rules. |
 | [Policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/) | Narrowing a policy on object values. |
 | [Conflicts with main](https://antoinekh.github.io/netbox-change-control/conflicts/) | What counts as a real conflict, and how to resolve one. |
@@ -110,9 +112,11 @@ To read the site on your own machine, install [Zensical](https://zensical.org/) 
 
 | Component | Version |
 |---|---|
-| NetBox | `>= 4.6.9, < 4.7` |
-| netbox-branching | `>= 1.1.3, < 1.2` |
+| NetBox | `>= 4.7.0, < 4.8` |
+| netbox-branching | `>= 1.2, < 1.3` |
 | Python | `>= 3.12` |
+
+This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do not overlap, because netbox-branching 1.1.x and 1.2 do not either. [The compatibility matrix](COMPATIBILITY.md) has every release, and [Installation](https://antoinekh.github.io/netbox-change-control/installation/#upgrading-from-the-46-line) covers moving between the two lines.
 
 ## Quick install
 

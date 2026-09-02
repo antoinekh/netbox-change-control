@@ -145,6 +145,9 @@ def _condition_states(diff, condition_state):
 
     EITHER offers both sides, so `status == active` catches an object being switched off as
     well as one being switched on. AFTER and BEFORE narrow that deliberately.
+
+    This governs the plain attribute names only. A condition written against `snapshots` sees
+    both sides whatever is chosen here; see `_condition_payloads`.
     """
     if condition_state == ConditionStateChoices.BEFORE:
         candidates = (diff.original,)
@@ -153,6 +156,35 @@ def _condition_states(diff, condition_state):
     else:
         candidates = (diff.modified, diff.original)
     return [data for data in candidates if data]
+
+
+def _condition_payloads(diff, condition_state):
+    """
+    What one changed object offers a condition set, as NetBox's event pipeline offers it.
+
+    NetBox 4.7 taught conditions to read the two sides of a change directly: the `changed` and
+    `unchanged` operators compare an attribute across them, and `snapshots.prechange.<attr>`
+    reads one side by name. Both look for a `snapshots` key beside the object's own fields,
+    which is what is added here, so a policy can finally say "only when the status changes to
+    active" rather than "whenever the status reads active on either side".
+
+    The naming follows the event pipeline exactly, because the conditions are NetBox's and an
+    operator who has written an event rule has already learned it: `prechange` is the object
+    before the change and is null on a creation, `postchange` is the object after and is null
+    on a deletion. A change diff holds raw field values, the same shape as an event snapshot,
+    so a choice field is compared as `status` and never as `status.value`.
+
+    One payload is yielded per state `condition_state` asks for, and a bare `snapshots` payload
+    where it asks for a state this change does not have. That last case is what lets a ruleset
+    made only of snapshot operators still be evaluated on a creation under BEFORE, where there
+    is no object to read attributes off at all.
+    """
+    snapshots = {'prechange': diff.original, 'postchange': diff.modified}
+    states = _condition_states(diff, condition_state) or [{}]
+
+    # `snapshots` is written last, so it wins over a field of that name on the object itself.
+    # NetBox's own pipeline resolves the collision the same way.
+    return [{**data, 'snapshots': snapshots} for data in states]
 
 
 def _conditions_match(policy, branch):
@@ -168,13 +200,15 @@ def _conditions_match(policy, branch):
 
     condition_set = ConditionSet(policy.conditions)
     for diff in ChangeDiff.objects.filter(branch=branch).iterator():
-        for data in _condition_states(diff, policy.condition_state):
+        for data in _condition_payloads(diff, policy.condition_state):
             try:
                 if condition_set.eval(data):
                     return True
             except InvalidCondition:
                 # A condition referencing a field this object type does not have simply does
-                # not match; it must not break evaluation of the remaining objects.
+                # not match; it must not break evaluation of the remaining objects. NetBox 4.7
+                # raises the same exception for a snapshot path which resolves in neither
+                # side, so a typo in one goes the same way: it matches nothing.
                 continue
     return False
 

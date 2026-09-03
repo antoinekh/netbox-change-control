@@ -4,19 +4,19 @@
 
 ## 0.5.0 - 2026-09-03
 
-The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox supports both. netbox-branching decides that, not the plugin. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
-
-### Added
-
-- **An event rule can report a pre-merge check.** A new action type writes a check result onto the change request of the branch the event came from: no webhook, no pipeline, no code. The check must still be declared, in a policy's Checks field or in `required_external_checks`. Treat it as provisional: it reports only onto a change request which is already open, so a change made before that is missed, and the action may be removed in a later release. See [reporting a check without leaving NetBox](https://antoinekh.github.io/netbox-change-control/event-rules/#reporting-a-check-without-leaving-netbox).
-- **A policy condition can read the transition, not just a value.** `{"attr": "status", "op": "changed"}` matches when the status moved, whatever it moved from; `unchanged` is the inverse; and `snapshots.prechange.status` reads one named side of the change. **Condition state** is unaffected and still governs plain attribute names. See [policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/).
-- **A [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/)**, saying which release runs on which NetBox. It lists the 0.4.x and 0.5.x lines only: releases before 0.4.0 are not recommended.
+0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox runs both. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
 
 ### Changed
 
 - **Requires NetBox 4.7 and netbox-branching 1.2.** NetBox enforces the range itself, so an install on 4.6 refuses to start rather than failing later.
 - **Webhook payloads lost `username` and `request_id`**, which NetBox 4.7 removed from the event context. Both values are still delivered, as `request.user` and `request.id`. Update any receiver reading the old names.
 - CI runs against NetBox 4.7 only, on PostgreSQL 17, and on Python 3.12, 3.13 and 3.14, which are the three versions NetBox 4.7 supports.
+
+### Added
+
+- **An event rule can report a pre-merge check.** A new action type writes a check result onto the change request of the branch the event came from: no webhook, no pipeline, no code. The check must still be declared, in a policy's Checks field or in `required_external_checks`. Treat it as provisional: it reports only onto a change request which is already open, so a change made before that is missed, and the action may be removed in a later release. See [reporting a check without leaving NetBox](https://antoinekh.github.io/netbox-change-control/event-rules/#reporting-a-check-without-leaving-netbox).
+- **A policy condition can read the transition, not just a value.** `{"attr": "status", "op": "changed"}` matches when the status moved, whatever it moved from; `unchanged` is the inverse; and `snapshots.prechange.status` reads one named side of the change. **Condition state** is unaffected and still governs plain attribute names. See [policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/).
+- **A [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/)**, saying which release runs on which NetBox. It lists the 0.4.x and 0.5.x lines only: releases before 0.4.0 are not recommended.
 
 ### Fixed
 

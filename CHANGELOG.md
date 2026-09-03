@@ -14,7 +14,7 @@ The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on Net
 
 - **Requires NetBox 4.7 and netbox-branching 1.2.** NetBox enforces the range itself, so an install on 4.6 refuses to start rather than failing later.
 - **Webhook payloads lost `username` and `request_id`**, which NetBox 4.7 removed from the event context. Both values are still delivered, as `request.user` and `request.id`. Update any receiver reading the old names.
-- CI runs against NetBox 4.7 only, on PostgreSQL 17.
+- CI runs against NetBox 4.7 only, on PostgreSQL 17, and on Python 3.12, 3.13 and 3.14, which are the three versions NetBox 4.7 supports.
 
 ### Fixed
 

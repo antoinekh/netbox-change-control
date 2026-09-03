@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-09-03
+
 The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox supports both. netbox-branching decides that, not the plugin. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
 
 ### Added

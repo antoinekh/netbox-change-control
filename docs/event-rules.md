@@ -143,6 +143,12 @@ For anything NetBox can already answer on its own, there is no need to leave Net
 
 ## Reporting a check without leaving NetBox
 
+!!! warning "Provisional, and only from the moment the change request exists"
+
+    A rule reports onto a change request which is already open. A change made in the branch before that is missed, and nothing replays it later, so a check can read green on a branch which would have failed it. Open the change request as soon as you create the branch and the gap closes; forget once and it does not.
+
+    This is also why the feature is provisional. It is useful, but an event rule answers one change at a time, and a merge gate is a question about the whole branch. If that mismatch proves to matter in practice, this action may be removed in a later release.
+
 The plugin registers an action type of its own: **Change control: report a pre-merge check**. Pick it in the **Action type** dropdown on an event rule, and the rule writes a check result straight onto the change request, with no webhook, no pipeline and no code.
 
 This is the difference between the two halves of a check:

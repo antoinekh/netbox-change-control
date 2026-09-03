@@ -21,6 +21,12 @@ interface, on an ordinary event rule.
 It pairs with the condition operators NetBox 4.7 added. `changed` and `snapshots.prechange.*`
 are what let the rule's own conditions describe a transition rather than a value, which is
 the same thing a policy condition can now say. See docs/event-rules.md.
+
+Treat this as provisional. An event rule answers one change at a time, and it can only report
+onto a change request which is already open, so a change made in the branch before that is
+missed and nothing replays it. A merge gate is a question about the whole branch, which is a
+different shape of question; if the mismatch proves to matter, this action may be removed in
+favour of evaluating the branch's ChangeDiff rows the way `_conditions_match` already does.
 """
 
 import logging

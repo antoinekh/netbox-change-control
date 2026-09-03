@@ -40,7 +40,11 @@ class PolicyView(generic.ObjectView):
     queryset = Policy.objects.all()
 
     def get_extra_context(self, request, instance):
-        rules = PolicyRule.objects.filter(policy=instance).prefetch_related('groups', 'users')
+        # `policy` is select_related even though every rule here belongs to `instance`: the
+        # table links that column, and a table built by hand never has `configure()` called on
+        # it, which is what would otherwise apply NetBox's own column-derived prefetching. A
+        # list view gets that for free; this page would issue one query per rule without it.
+        rules = PolicyRule.objects.filter(policy=instance).select_related('policy').prefetch_related('groups', 'users')
         return {
             'rules_table': tables.PolicyRuleTable(rules, orderable=False),
         }

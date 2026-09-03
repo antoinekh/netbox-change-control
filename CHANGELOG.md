@@ -21,6 +21,7 @@ The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on Net
 - **Every read of a review raised `TypeError` on Django 6.1.** `Review.from_db()` did not accept an argument 6.1 added, so nothing which loads a review worked: opening a change request, evaluating a policy, submitting a review. It now takes `**kwargs`.
 - Migration `0008` records the `related_name` NetBox 4.7 added to the inherited `owner` field. It changes no data; without it `makemigrations --check` fails on every run.
 - The search tests drive NetBox 4.7's deferred indexing themselves, rather than depending on whether a worker happens to be running.
+- **A policy page issued one query per rule.** The rules table is built by hand, so it never received the column-derived prefetching NetBox applies to a list view. A policy with fifty rules cost fifty extra queries to open.
 
 ## 0.4.0 - 2026-09-01
 

@@ -188,7 +188,7 @@ The rule's **Action data** is a JSON object:
 | `check` | Yes | The name of the check to report, as declared above |
 | `status` | No | `pending`, `running`, `success`, `failure`, `error` or `skipped`. Defaults to `failure` |
 | `summary` | No | The line shown beside the result. Defaults to naming the rule and the object that tripped it |
-| `details_url` | No | A link shown with the result |
+| `details_url` | No | A link shown with the result. 200 characters at most |
 
 The form refuses a rule that names no check, or an unknown status, at the moment you save it. A rule that saves and then quietly does nothing would be far worse.
 

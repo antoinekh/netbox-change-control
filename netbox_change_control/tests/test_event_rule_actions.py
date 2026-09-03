@@ -105,6 +105,21 @@ class ValidationTest(ChangeControlTestCase):
         with self.assertRaises(ValidationError):
             self._validate({'check': CHECK, 'summary': 12})
 
+    def test_a_details_url_must_be_text(self):
+        with self.assertRaises(ValidationError):
+            self._validate({'check': CHECK, 'details_url': 12})
+
+    def test_a_details_url_longer_than_the_column_is_refused(self):
+        """
+        The column is 200 characters. A longer one used to reach `row.save()` and raise a
+        DataError from inside the event pipeline, which is the one thing an action must never
+        do. Refusing it on the form is where the operator can still fix it.
+        """
+        limit = MergeCheck._meta.get_field('details_url').max_length
+        self._validate({'check': CHECK, 'details_url': 'https://e.com/' + 'a' * (limit - 14)})
+        with self.assertRaises(ValidationError):
+            self._validate({'check': CHECK, 'details_url': 'https://e.com/' + 'a' * limit})
+
     def test_an_object_cannot_be_attached(self):
         """
         The base class enforces this from `object_model = None`, and it is worth pinning: it
@@ -226,7 +241,25 @@ class ReportingTest(ChangeControlTestCase):
 
     def test_a_long_summary_is_cut_rather_than_refused(self):
         rule = EventRule(name='Verbose', action_type=SLUG, action_data={'check': CHECK, 'summary': 'x' * 900})
-        self.assertEqual(len(self._fire(rule=rule).summary), 500)
+        self.assertEqual(len(self._fire(rule=rule).summary), MergeCheck._meta.get_field('summary').max_length)
+
+    def test_a_long_details_url_is_dropped_rather_than_cut(self):
+        """
+        `validate()` refuses this on the form, so a rule can only carry one if it was written
+        straight to the database. The result still has to be reported: an action which raised
+        here would abandon whatever else NetBox was dispatching alongside it.
+
+        The link goes, not the result. A cut URL points somewhere else, or nowhere.
+        """
+        limit = MergeCheck._meta.get_field('details_url').max_length
+        rule = EventRule(
+            name='Long link',
+            action_type=SLUG,
+            action_data={'check': CHECK, 'details_url': 'https://e.com/' + 'a' * limit},
+        )
+        row = self._fire(rule=rule)
+        self.assertEqual(row.details_url, '')
+        self.assertEqual(row.status, MergeCheckStatusChoices.FAILURE)
 
     def test_an_event_about_a_change_request_names_it_directly(self):
         """

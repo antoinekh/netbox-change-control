@@ -44,9 +44,17 @@ __all__ = (
 
 logger = logging.getLogger('netbox.plugins.netbox_change_control')
 
-# The row's `summary` column. A reported summary is cut to fit rather than refused, because
-# losing the tail of a message is better than losing the result it came with.
-SUMMARY_LENGTH = 500
+
+def _max_length(field_name):
+    """
+    The column's own limit, read from the model rather than repeated here.
+
+    A number copied into this module is a number which drifts: widen the field one day and the
+    action keeps cutting to the old width, or narrow it and every write raises instead.
+    """
+    from netbox_change_control.models import MergeCheck
+
+    return MergeCheck._meta.get_field(field_name).max_length
 
 
 class ReportCheckAction(EventRuleAction):
@@ -111,13 +119,33 @@ class ReportCheckAction(EventRuleAction):
         if summary is not None and not isinstance(summary, str):
             raise ValidationError({'action_data': _('"summary" must be text.')})
 
+        # A summary which is too long is cut to fit when the result is written, so it is not
+        # refused here. A details URL is not: cutting a link produces a link which goes
+        # somewhere else, or nowhere, which is worse than having none. Say so on the form,
+        # where it can still be corrected.
+        details_url = data.get('details_url')
+        if details_url is not None:
+            if not isinstance(details_url, str):
+                raise ValidationError({'action_data': _('"details_url" must be text.')})
+            limit = _max_length('details_url')
+            if len(details_url) > limit:
+                raise ValidationError(
+                    {'action_data': _('"details_url" must be {limit} characters or fewer.').format(limit=limit)}
+                )
+
     def enqueue(self, *, event_rule, event_context, action_object, action_data):
         """
         Write the result.
 
-        Nothing here raises. A rule which cannot be satisfied is this rule's own configuration
-        problem, and the base class is explicit that such a rule must log and return: an
-        exception would abandon whatever else NetBox was dispatching in the same batch.
+        No configuration problem raises from here. A rule which cannot be satisfied is that
+        rule's own fault, and the base class is explicit that such a rule must log and return:
+        an exception would abandon whatever else NetBox was dispatching in the same batch. So
+        a missing check, a missing change request and an over-long value are all logged and
+        dropped, and every value written is bounded to what its column accepts.
+
+        A database error still propagates, and must. By then the transaction which carried the
+        originating change is already broken, and swallowing it here would hide a real failure
+        behind a silent log line.
 
         The work is done inline rather than handed to a worker. It is one indexed lookup and
         at most one row written, which is cheaper than the job record that deferring it would
@@ -156,8 +184,23 @@ class ReportCheckAction(EventRuleAction):
             return
 
         status = config.get('status', MergeCheckStatusChoices.FAILURE)
-        summary = (config.get('summary') or self._default_summary(event_rule, event_context))[:SUMMARY_LENGTH]
+        # Cut to fit rather than refused: losing the tail of a message is better than losing
+        # the result it came with.
+        summary = (config.get('summary') or self._default_summary(event_rule, event_context))[: _max_length('summary')]
+
+        # `validate()` rejects an over-long URL on the form, so reaching this with one means
+        # the rule was written straight to the database. Drop it rather than cut it: a cut URL
+        # points somewhere else. Dropping it costs a link and keeps the result, and letting it
+        # through would raise a DataError inside the event pipeline instead.
         details_url = config.get('details_url') or ''
+        if len(details_url) > _max_length('details_url'):
+            logger.warning(
+                'Event rule "%s" has a details_url longer than %s characters; reporting %s without it.',
+                event_rule,
+                _max_length('details_url'),
+                name,
+            )
+            details_url = ''
 
         if (row.status, row.summary, row.details_url) == (status, summary, details_url):
             # A rule which fires twice on the same answer is not a change. Writing it anyway

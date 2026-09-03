@@ -9,9 +9,6 @@ It mattered most for `ChangeRequest.ref`: the field exists so a change can be fo
 ticket that spawned it, and the search box is the one place somebody types a ticket number.
 """
 
-from unittest.mock import patch
-
-from django.db import connection
 from django.test import TestCase
 from netbox.registry import registry
 from netbox.search.backends import search_backend
@@ -78,42 +75,32 @@ class SearchFindsThingsTest(TestCase):
             requester=self.requester,
         )
 
-    def flush_search_index(self):
+    def index_everything(self):
         """
-        Index everything this test has written, in this database, now.
+        Index every object this test has written.
 
-        NetBox 4.7 moved search cache updates off the request and onto a callback registered
-        with `transaction.on_commit`. Three things then stand between a write and an index,
-        and a test has to clear all three:
+        `search_backend.cache()` is the same call NetBox's own signal handlers end at, and it
+        resolves the indexer out of the registry, so a model with none registered caches
+        nothing and the search below finds nothing. That is the behaviour these tests are
+        about, and it is reached here through public API only.
 
-        A `TestCase` rolls back and never commits, so the callback never runs on its own.
+        Calling it directly is what avoids depending on the deferred pipeline NetBox 4.7 put
+        in front of it, which a test cannot drive without reaching inside it: a `TestCase`
+        never commits, so the `on_commit` callback never runs; the callback indexes inline
+        only when no RQ worker is listening, and a development stack runs one; and the
+        callback is registered once per transaction, so `setUp` provisioning a branch claims
+        it and `captureOnCommitCallbacks` around a later write captures nothing. That
+        pipeline is NetBox's to test, and its own module says it is not plugin API.
 
-        The callback indexes inline only when no RQ worker is listening on the broker. A
-        development stack runs one, and it would take the job away to its own database, where
-        this test cannot see the result. Whether a worker happens to be running is not part of
-        what these tests check, so the answer is pinned rather than inherited from the machine.
-
-        The callback is registered once per transaction and coalesces every later write into
-        the same batch. `setUp` provisions a branch, and a branch is searchable, so the
-        callback is already registered by the time the test writes anything of its own.
-        Wrapping only the test's own writes in `captureOnCommitCallbacks` therefore captures
-        nothing at all: it sees no new registration, and the batch it should have flushed
-        belongs to a callback registered before the block opened. Running the callbacks the
-        connection is already holding is what actually flushes that batch.
-
-        Only the search flushes are run. The connection also holds branching's own callback,
-        which would enqueue a real branch provisioning job. NetBox's own search tests identify
-        them by the same marker.
+        One call per model: `cache()` reads the indexer from the first instance it is given
+        and applies it to the rest, so a mixed iterable would index everything as whatever
+        came first.
         """
-        from netbox.search import deferred
-
-        with patch('netbox.search.deferred.any_workers_for_queue', return_value=False):
-            for _sids, func, _robust in list(connection.run_on_commit):
-                if hasattr(func, deferred._FLUSH_ALIAS_ATTR):
-                    func()
+        for model in INDEXED_MODELS:
+            search_backend.cache(model.objects.all())
 
     def found(self, term):
-        self.flush_search_index()
+        self.index_everything()
         return {(r.object._meta.model_name, r.object.pk) for r in search_backend.search(term)}
 
     def test_a_change_request_is_found_by_its_reference(self):

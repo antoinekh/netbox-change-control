@@ -75,7 +75,32 @@ class SearchFindsThingsTest(TestCase):
             requester=self.requester,
         )
 
+    def index_everything(self):
+        """
+        Index every object this test has written.
+
+        `search_backend.cache()` is the same call NetBox's own signal handlers end at, and it
+        resolves the indexer out of the registry, so a model with none registered caches
+        nothing and the search below finds nothing. That is the behaviour these tests are
+        about, and it is reached here through public API only.
+
+        Calling it directly is what avoids depending on the deferred pipeline NetBox 4.7 put
+        in front of it, which a test cannot drive without reaching inside it: a `TestCase`
+        never commits, so the `on_commit` callback never runs; the callback indexes inline
+        only when no RQ worker is listening, and a development stack runs one; and the
+        callback is registered once per transaction, so `setUp` provisioning a branch claims
+        it and `captureOnCommitCallbacks` around a later write captures nothing. That
+        pipeline is NetBox's to test, and its own module says it is not plugin API.
+
+        One call per model: `cache()` reads the indexer from the first instance it is given
+        and applies it to the rest, so a mixed iterable would index everything as whatever
+        came first.
+        """
+        for model in INDEXED_MODELS:
+            search_backend.cache(model.objects.all())
+
     def found(self, term):
+        self.index_everything()
         return {(r.object._meta.model_name, r.object.pk) for r in search_backend.search(term)}
 
     def test_a_change_request_is_found_by_its_reference(self):

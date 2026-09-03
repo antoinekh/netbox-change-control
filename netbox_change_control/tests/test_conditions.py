@@ -203,3 +203,132 @@ class ConditionStateTest(TestCase):
         diff = self._diff(self.branch, before='planned', after='planned')
         type(diff).objects.filter(pk=diff.pk).update(current={'status': 'active'})
         self.assertFalse(self._matches(self._policy(ConditionStateChoices.EITHER)))
+
+
+class SnapshotConditionTest(TestCase):
+    """
+    The `changed` and `unchanged` operators, and the `snapshots.` paths, which NetBox 4.7
+    added. They answer the question a plain comparison cannot: not what a value is, but
+    whether it moved.
+
+    The plugin's part is only to hand the condition set both sides of the change under the
+    key NetBox's event pipeline uses. Everything below therefore also pins that the two are
+    wired together, because a condition written this way silently matches nothing if they
+    are not.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create(username='snapshot-u')
+
+    def setUp(self):
+        self.branch = make_branch('snap', self._testMethodName)
+
+    def _diff(self, action=ObjectChangeActionChoices.ACTION_UPDATE, **states):
+        diff = ChangeDiff.objects.create(
+            branch=self.branch,
+            object_type=ContentType.objects.get_for_model(Policy),
+            object_id=1,
+            object_repr='object',
+            action=action,
+        )
+        # Written after creation: ChangeDiff.save() recomputes some fields.
+        ChangeDiff.objects.filter(pk=diff.pk).update(**states)
+        return diff
+
+    def _matches(self, conditions, condition_state=ConditionStateChoices.EITHER):
+        policy = Policy(name='tmp', conditions=conditions, condition_state=condition_state)
+        return _conditions_match(policy, self.branch)
+
+    def test_changed_matches_a_value_that_moved(self):
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        self.assertTrue(self._matches({'attr': 'status', 'op': 'changed'}))
+
+    def test_changed_does_not_match_a_value_that_stayed(self):
+        self._diff(original={'status': 'active'}, modified={'status': 'active'})
+        self.assertFalse(self._matches({'attr': 'status', 'op': 'changed'}))
+
+    def test_unchanged_is_the_other_way_round(self):
+        self._diff(original={'status': 'active'}, modified={'status': 'active'})
+        self.assertTrue(self._matches({'attr': 'status', 'op': 'unchanged'}))
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        self.assertTrue(self._matches({'attr': 'status', 'op': 'changed'}))
+
+    def test_a_snapshot_path_reads_one_named_side(self):
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        self.assertTrue(self._matches({'attr': 'snapshots.prechange.status', 'value': 'active'}))
+        self.assertTrue(self._matches({'attr': 'snapshots.postchange.status', 'value': 'offline'}))
+        self.assertFalse(self._matches({'attr': 'snapshots.prechange.status', 'value': 'offline'}))
+
+    def test_the_direction_of_a_transition_can_be_pinned(self):
+        """
+        The case the two operators exist for: a live object being switched off, which must
+        not also fire on one that was already off.
+        """
+        switched_off = {
+            'and': [
+                {'attr': 'status', 'op': 'changed'},
+                {'attr': 'snapshots.prechange.status', 'value': 'active'},
+            ]
+        }
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        self.assertTrue(self._matches(switched_off))
+
+    def test_an_object_already_off_is_not_a_transition(self):
+        switched_off = {
+            'and': [
+                {'attr': 'status', 'op': 'changed'},
+                {'attr': 'snapshots.prechange.status', 'value': 'active'},
+            ]
+        }
+        self._diff(original={'status': 'offline'}, modified={'status': 'decommissioning'})
+        self.assertFalse(self._matches(switched_off))
+
+    def test_condition_state_does_not_narrow_a_snapshot_condition(self):
+        """
+        The setting picks which side plain attribute names read. These read both sides
+        themselves, so all three settings have to agree.
+        """
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        for state in (
+            ConditionStateChoices.EITHER,
+            ConditionStateChoices.AFTER,
+            ConditionStateChoices.BEFORE,
+        ):
+            with self.subTest(condition_state=state):
+                self.assertTrue(self._matches({'attr': 'status', 'op': 'changed'}, condition_state=state))
+
+    def test_a_creation_counts_as_changed_on_every_condition_state(self):
+        """
+        A creation has no before, so `changed` is true: the attribute went from nothing to
+        something. BEFORE is the case worth pinning, because it asks for a side this change
+        does not have, and the condition still has to be evaluated.
+        """
+        self._diff(
+            action=ObjectChangeActionChoices.ACTION_CREATE,
+            original=None,
+            modified={'status': 'active'},
+        )
+        for state in (
+            ConditionStateChoices.EITHER,
+            ConditionStateChoices.AFTER,
+            ConditionStateChoices.BEFORE,
+        ):
+            with self.subTest(condition_state=state):
+                self.assertTrue(self._matches({'attr': 'status', 'op': 'changed'}, condition_state=state))
+
+    def test_a_deletion_counts_as_changed(self):
+        self._diff(
+            action=ObjectChangeActionChoices.ACTION_DELETE,
+            original={'status': 'active'},
+            modified=None,
+        )
+        self.assertTrue(self._matches({'attr': 'status', 'op': 'changed'}))
+
+    def test_a_typo_in_a_snapshot_path_does_not_match_and_does_not_raise(self):
+        """
+        The same guarantee a plain attribute has: a policy that never applies, not a crash.
+        """
+        self._diff(original={'status': 'active'}, modified={'status': 'offline'})
+        self.assertFalse(self._matches({'attr': 'stauts', 'op': 'changed'}))
+        self.assertFalse(self._matches({'attr': 'snapshots.prechange.stauts', 'value': 'active'}))

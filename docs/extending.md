@@ -20,6 +20,14 @@ All six hooks (`buttons`, `alerts`, `left_page`, `right_page`, `full_width_page`
 
 The most useful extension point is a check that gates the merge. See [Writing your own checks](custom-checks.md).
 
+Three ways in, in order of how much work they are:
+
+| Way in | Written by | Use it for |
+|---|---|---|
+| [An event rule](event-rules.md#reporting-a-check-without-leaving-netbox) | Anybody who can add one | A condition on the objects in the branch |
+| [The REST API](custom-checks.md#checks-reported-by-an-external-system) | A pipeline | Work that happens outside NetBox |
+| [A registered function](custom-checks.md#writing-and-registering-one) | A plugin | A question that needs Python, in-process |
+
 ## What this plugin guarantees
 
 The test suite renders every page with a probe extension registered and fails if any hook is missing, so a template change here cannot silently close a page to extension. See `tests/test_extensibility.py`.

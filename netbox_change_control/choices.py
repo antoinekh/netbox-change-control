@@ -60,6 +60,9 @@ class ConditionStateChoices(ChoiceSet):
     read only against the second means "leaves it active", which misses a live circuit being
     decommissioned, the change most in need of review. EITHER is the default because a policy
     exists to catch changes, and the safe failure is to attach and ask for a review.
+
+    This applies to plain attribute names only. A condition using `changed`, `unchanged` or a
+    `snapshots.` path reads both sides itself, so it answers the same whichever is chosen.
     """
 
     EITHER = 'either'

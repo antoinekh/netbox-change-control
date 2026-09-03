@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+The NetBox 4.7 release, and a new line rather than an upgrade: 0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox supports both. netbox-branching decides that, not the plugin. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
+
+### Added
+
+- **An event rule can report a pre-merge check.** A new action type writes a check result onto the change request of the branch the event came from: no webhook, no pipeline, no code. The check must still be declared, in a policy's Checks field or in `required_external_checks`. Treat it as provisional: it reports only onto a change request which is already open, so a change made before that is missed, and the action may be removed in a later release. See [reporting a check without leaving NetBox](https://antoinekh.github.io/netbox-change-control/event-rules/#reporting-a-check-without-leaving-netbox).
+- **A policy condition can read the transition, not just a value.** `{"attr": "status", "op": "changed"}` matches when the status moved, whatever it moved from; `unchanged` is the inverse; and `snapshots.prechange.status` reads one named side of the change. **Condition state** is unaffected and still governs plain attribute names. See [policy conditions](https://antoinekh.github.io/netbox-change-control/policy-conditions/).
+- **A [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/)**, saying which release runs on which NetBox. It lists the 0.4.x and 0.5.x lines only: releases before 0.4.0 are not recommended.
+
+### Changed
+
+- **Requires NetBox 4.7 and netbox-branching 1.2.** NetBox enforces the range itself, so an install on 4.6 refuses to start rather than failing later.
+- **Webhook payloads lost `username` and `request_id`**, which NetBox 4.7 removed from the event context. Both values are still delivered, as `request.user` and `request.id`. Update any receiver reading the old names.
+- CI runs against NetBox 4.7 only, on PostgreSQL 17, and on Python 3.12, 3.13 and 3.14, which are the three versions NetBox 4.7 supports.
+
+### Fixed
+
+- **Every read of a review raised `TypeError` on Django 6.1.** `Review.from_db()` did not accept an argument 6.1 added, so nothing which loads a review worked: opening a change request, evaluating a policy, submitting a review. It now takes `**kwargs`.
+- Migration `0008` records the `related_name` NetBox 4.7 added to the inherited `owner` field. It changes no data; without it `makemigrations --check` fails on every run.
+- The search tests drive NetBox 4.7's deferred indexing themselves, rather than depending on whether a worker happens to be running.
+- **A policy page issued one query per rule.** The rules table is built by hand, so it never received the column-derived prefetching NetBox applies to a list view. A policy with fifty rules cost fifty extra queries to open.
 
 ## 0.4.0 - 2026-09-01
 

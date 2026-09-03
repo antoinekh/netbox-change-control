@@ -72,12 +72,12 @@ def emit(change_request, event_type):
         snapshots=get_snapshots(change_request, event_type),
         user=getattr(request, 'user', None),
     )
-    # Both are optional: a status change can come from a background job, and NetBox's own
-    # job events reach the pipeline without a request too.
+    # Optional: a status change can come from a background job, and NetBox's own job events
+    # reach the pipeline without a request too. The webhook context carries the user and the
+    # request id under `request`; NetBox 4.7 removed the flat `username` and `request_id`
+    # keys, so setting them here would put two dead entries on every event.
     if request is not None:
         event['request'] = request
-        event['username'] = request.user.username
-        event['request_id'] = request.id
 
     transaction.on_commit(lambda: flush_events([event]))
     return True

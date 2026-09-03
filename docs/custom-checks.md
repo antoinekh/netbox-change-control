@@ -210,3 +210,7 @@ curl -X PATCH "$NETBOX/api/plugins/change-control/checks/$CHECK_ID/" \
 Set `status` to `running` when the job starts, so reviewers can see it is in progress.
 
 The API deliberately does not let a reporter decide whether its own check counts. Report `status`, `summary` and `details_url`; the `required` flag is read from your configuration.
+
+!!! tip "No pipeline needed for a question NetBox can answer"
+
+    A check declared this way can also be reported by an **event rule**, with no receiver, no token and no code. If the answer is a condition on the objects in the branch, such as "a device went into service with no tenant recorded", write it as a rule instead. See [reporting a check without leaving NetBox](event-rules.md#reporting-a-check-without-leaving-netbox).

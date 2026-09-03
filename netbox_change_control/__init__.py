@@ -1,6 +1,6 @@
 from netbox.plugins import PluginConfig, get_plugin_config
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 
 
 class ChangeControlConfig(PluginConfig):
@@ -10,11 +10,11 @@ class ChangeControlConfig(PluginConfig):
     version = __version__
     base_url = 'change-control'
     # NetBox refuses to load the plugin outside this range, which is the only place the
-    # requirement is enforced rather than documented. The floor is 4.6.9 because that is what
-    # is tested; below 4.6.5 the initial migration cannot even apply, since it depends on
-    # extras.0140, and below 4.6.0 on core.0024 and users.0016 as well.
-    min_version = '4.6.9'
-    max_version = '4.6.99'
+    # requirement is enforced rather than documented. This release is the NetBox 4.7 line and
+    # supports nothing older: 4.7 drops the django-mptt columns, so netbox-branching 1.1.x
+    # cannot run on it, and 1.2 cannot run on 4.6. Stay on the 0.4.x line for NetBox 4.6.
+    min_version = '4.7.0'
+    max_version = '4.7.99'
     default_settings = {  # noqa: RUF012
         # Block writes to branching-supported models outside of a branch. Users holding the
         # netbox_change_control.bypass_policy permission are exempt.

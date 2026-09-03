@@ -55,6 +55,14 @@ REDIS = {
     },
 }
 
+# NetBox 4.7 raises InvalidMailer when something sends mail and no server is named. The
+# plugin notifies in the interface rather than by mail, so nothing here sends any; this is
+# only so a test which does cannot fail for a reason that has nothing to do with the plugin.
+EMAIL = {
+    'SERVER': 'localhost',
+    'PORT': 25,
+}
+
 SECRET_KEY = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 API_TOKEN_PEPPERS = {

@@ -550,8 +550,18 @@ class Review(NetBoxModel):
         return ReviewDecisionChoices.colors.get(self.decision)
 
     @classmethod
-    def from_db(cls, db, field_names, values):
-        instance = super().from_db(db, field_names, values)
+    def from_db(cls, db, field_names, values, **kwargs):
+        """
+        Remember the decision this row was loaded with, so `save()` can tell a reviewer
+        restating their position from an incidental write.
+
+        `**kwargs` is not decoration: Django adds keyword arguments to this signature between
+        releases and passes them positionally to nobody, so an override which lists the
+        arguments it knows breaks every read of the model on the next upgrade. Django 6.1
+        added `fetch_mode` and did exactly that. NetBox's own overrides take `**kwargs` for
+        the same reason.
+        """
+        instance = super().from_db(db, field_names, values, **kwargs)
         instance._loaded_decision = instance.decision
         return instance
 

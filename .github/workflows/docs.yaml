@@ -40,7 +40,7 @@ jobs:
 
       - name: Install zensical
         # Pinned so a new zensical release cannot change the published site on its own.
-        run: pip install 'zensical==0.0.57'
+        run: pip install 'zensical==0.0.58'
 
       - name: Build the site
         # --strict turns a broken internal link or anchor into a failed build, so a dead link

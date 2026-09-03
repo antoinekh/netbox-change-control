@@ -16,9 +16,7 @@ keywords = ["netbox", "netbox-plugin", "change-management", "change-control", "b
 # netbox-branching 1.2 is the floor because NetBox 4.7 is: 1.1.x still uses django-mptt,
 # whose columns 4.7 drops, and 1.2 declares NetBox 4.7 as its own floor. The two lines do not
 # overlap, so this release supports 4.7 only; the 0.4.x line stays on NetBox 4.6 with 1.1.x.
-# The pre-release is named explicitly because 1.2.0 is not out yet, and pip skips a
-# pre-release unless the specifier asks for one. The final 1.2.0 satisfies this too.
-dependencies = ["netboxlabs-netbox-branching>=1.2.0b1,<1.3"]
+dependencies = ["netboxlabs-netbox-branching>=1.2,<1.3"]
 classifiers = [
   # Below 1.0: the models, the settings and the REST API can still change, which the README
   # says as well. This is what says it on the PyPI page.

@@ -25,9 +25,7 @@ The two transitions a person makes by hand have an action each, and a permission
 | **Abandon** | The change request page, or `POST /change-requests/{id}/abandon/` | `netbox_change_control.abandon_changerequest` | Draft, Needs review, Approved, Rejected |
 | **Reopen** | The change request page, or `POST /change-requests/{id}/reopen/` | `netbox_change_control.reopen_changerequest` | Abandoned only |
 
-Reopening returns the request to Draft and then recomputes, rather than restoring the status it held before. Its reviews may have gone stale and its policies may have changed while it was set aside, so the honest answer has to be worked out again.
-
-Completed is never reopened. It records a merge that actually happened, and taking it back up would invite a second merge of a branch already in main.
+Reopening returns the request to Draft and recomputes from there, rather than restoring the status it held before. Completed is never reopened. See [what the states mean](#what-the-states-mean).
 
 ## The lifecycle
 

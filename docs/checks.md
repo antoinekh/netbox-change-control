@@ -115,12 +115,7 @@ curl -X PATCH "$NETBOX/api/plugins/change-control/policies/$POLICY_ID/" \
   -d '{"checks": ["peer-signoff"]}'
 ```
 
-`checks` replaces the whole list, so send every name the policy should require, not just the new one. Read it back first if you are adding to an existing set:
-
-```bash
-curl -s -H "Authorization: Token $TOKEN" \
-  "$NETBOX/api/plugins/change-control/policies/$POLICY_ID/" | jq '.checks'
-```
+`checks` replaces the whole list, so send every name the policy should require, not just the new one. See [choosing which checks a policy requires](api.md#choosing-which-checks-a-policy-requires) for adding one without dropping the rest.
 
 The check now runs only on change requests carrying that policy. Elsewhere it has no row, does not run, and does not block. Detach the policy and its check disappears with it.
 
@@ -140,17 +135,7 @@ curl -X PATCH "$NETBOX/api/plugins/change-control/policies/$POLICY_ID/" \
   -d '{"checks": ["cab-approval"]}'
 ```
 
-Every change request carrying that policy now shows a required `cab-approval` check, pending, blocking the merge. Whatever performs the sign-off reports the result the same way any external check does:
-
-```bash
-CHECK_ID=$(curl -s -H "Authorization: Token $TOKEN" \
-  "$NETBOX/api/plugins/change-control/checks/?change_request_id=$CR_ID&name=cab-approval" \
-  | jq -r '.results[0].id')
-
-curl -X PATCH "$NETBOX/api/plugins/change-control/checks/$CHECK_ID/" \
-  -H "Authorization: Token $TOKEN" -H "Content-Type: application/json" \
-  -d '{"status": "success", "summary": "Approved at the 14:00 CAB", "details_url": "https://cab.example.com/2026-08-26"}'
-```
+Every change request carrying that policy now shows a required `cab-approval` check, pending, blocking the merge. Whatever performs the sign-off reports the result the same way any external check does: see [reporting a check result](api.md#reporting-a-check-result).
 
 This is how to require a pipeline, a ticket, or a person outside NetBox for one class of change only, without wiring that requirement into every change request. See [checks reported by an external system](custom-checks.md#checks-reported-by-an-external-system) for the full contract, including why a reporter cannot decide whether its own check counts.
 

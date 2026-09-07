@@ -97,19 +97,11 @@ The merge gate does not depend on this cache; it re-evaluates. The cache is for 
 
 ### Repeated work is collapsed, not deferred
 
-Refreshing a change request is correct on every event that could change its answer, and doing
-it per event is what keeps the cached status honest without any caller having to remember.
-The cost is that one user action is often many events: attaching policies is one signal each.
+Refreshing a change request is correct on every event that could change its answer, and doing it per event is what keeps the cached status honest without any caller having to remember. The cost is that one user action is often many events: attaching policies is one signal each.
 
-`netbox_change_control/batching.py` collapses those bursts. A caller that knows it is about to
-cause one wraps it in `batched()`, and each affected change request is refreshed once when the
-block ends.
+`netbox_change_control/batching.py` collapses those bursts. A caller that knows it is about to cause one wraps it in `batched()`, and each affected change request is refreshed once when the block ends.
 
-It deliberately does not use `transaction.on_commit`. Deferring past the commit would mean a
-request's checks are not yet run when the view that submitted it renders the next page, and it
-would make every test that asserts on a check result depend on `captureOnCommitCallbacks`.
-Outside a block the refresh is immediate, so nothing changes for the callers which are not
-part of a burst.
+It deliberately does not use `transaction.on_commit`. Deferring past the commit would mean a request's checks are not yet run when the view that submitted it renders the next page, and it would make every test that asserts on a check result depend on `captureOnCommitCallbacks`. Outside a block the refresh is immediate, so nothing changes for the callers which are not part of a burst.
 
 ### Staleness is derived from a snapshot, not a flag
 
@@ -119,13 +111,9 @@ This is preferable to a `stale` boolean maintained by signals, because a flag ca
 
 ### `protect_main` listens to every write
 
-`protect_main_on_save` and `protect_main_on_delete` are registered without a sender, so they
-run for every model write anywhere in NetBox. That is deliberate rather than an oversight: the
-set of protected models is not knowable at import time, because it depends on which models
-branching supports and on `protect_main_scope`, which is configuration.
+`protect_main_on_save` and `protect_main_on_delete` are registered without a sender, so they run for every model write anywhere in NetBox. That is deliberate rather than an oversight: the set of protected models is not knowable at import time, because it depends on which models branching supports and on `protect_main_scope`, which is configuration.
 
-The cost is bounded by ordering the guard cheaply. The first thing each receiver does is read
-`protect_main`, and with it off, which is the default, that is the whole cost of the call.
+The cost is bounded by ordering the guard cheaply. The first thing each receiver does is read `protect_main`, and with it off, which is the default, that is the whole cost of the call.
 
 ### `protect_main_scope`
 

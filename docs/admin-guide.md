@@ -141,20 +141,7 @@ Both are custom actions, and both are optional.
 | `netbox_change_control.bypass_policy` | Write outside a branch while `protect_main` is enabled. | Automation accounts, and the people who run an incident. |
 | `netbox_change_control.override_window_changerequest` | Merge a change request outside its change window. | Whoever is allowed to break a change freeze. |
 
-To grant them, go to **Administration > Permissions > Add**, and enter the action in the *additional actions* field rather than ticking view, add, change or delete:
-
-| Exemption | Object type | Action to enter |
-|---|---|---|
-| Write directly to main | Change Control > Policy | `bypass` |
-| Merge outside the change window | Change Control > Change Request | `override_window` |
-
-!!! info "Important"
-
-    The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy` and the window override on `ChangeRequest`, rather than on names that would read better.
-
-!!! note
-
-    Superusers hold every permission, so they are exempt from `protect_main` and from every change window without being granted anything.
+Neither is a tick box on the permission form: the action is typed into *additional actions*, and the object type is not the one the name suggests. See [granting the custom actions](permissions.md#granting-the-custom-actions), which covers **Abandon** and **Reopen** the same way.
 
 ### Setting up groups
 

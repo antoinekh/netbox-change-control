@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Documentation
+
+- Documentation cleanup and simplification.
+
 ## 0.5.0 - 2026-09-03
 
 0.5.x runs on NetBox 4.7, 0.4.x stays on NetBox 4.6, and no version of NetBox runs both. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).

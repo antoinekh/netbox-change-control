@@ -33,6 +33,10 @@ After the sync your branch held main's value. You then made one more edit. In gi
 
 Branching still reports a conflict, because `original` is stuck at 6 while `modified` is 12 and `current` is 5. It will report it forever, however many times you sync, until main or the branch happens to land back on 6.
 
+!!! note
+
+    This is netbox-branching issue [#640](https://github.com/netboxlabs/netbox-branching/issues/640). The pending pull request [#660](https://github.com/netboxlabs/netbox-branching/pull/660) makes a sync advance `original` to main's state, so a sync followed by an edit is no longer flagged. It is not in a netbox-branching release yet. Until it is, this plugin tells the two cases apart as described below.
+
 ## What this plugin does instead
 
 A conflict is real only when **main has moved since the branch last synced**. If main has not changed the object since the sync, your branch already contains main's value and merging cannot discard anything.

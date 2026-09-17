@@ -6,6 +6,7 @@
 
 - Documentation cleanup and simplification.
 - The conflicts page links the stale-baseline bug to netbox-branching issue [#640](https://github.com/netboxlabs/netbox-branching/issues/640) and its pending fix, [#660](https://github.com/netboxlabs/netbox-branching/pull/660).
+- The documentation site is built with zensical 0.0.62.
 
 ## 0.5.0 - 2026-09-03
 

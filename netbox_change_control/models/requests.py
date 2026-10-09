@@ -229,36 +229,25 @@ class ChangeRequest(PrimaryModel):
     @property
     def conflicts(self):
         """
-        Return the branch diffs which genuinely conflict with main, evaluated now.
-
-        Only conflicts where main has moved since the last sync are returned. Branching never
-        advances a diff's baseline, so a field main touched before the sync stays flagged even
-        though the branch already holds main's value. See netbox_change_control.conflicts.
+        Return the branch diffs which conflict with main, evaluated now.
         """
-        from netbox_change_control.conflicts import conflicting_diffs
+        from netbox_branching.models import ChangeDiff
 
-        return conflicting_diffs(None if self.branch_deleted else self.branch)
+        if self.branch_deleted:
+            return []
+        return list(
+            ChangeDiff.objects.filter(branch=self.branch, conflicts__isnull=False).select_related('object_type')
+        )
 
     @property
     def has_conflicts(self):
         """
         The cached answer, so a list of change requests costs no queries for this column.
 
-        Reading it live means one query for the diffs and one against the branch for what main
-        has done since the last sync, per row. Use `conflicts` where the actual objects are
-        wanted, which is a single change request's own page.
+        Use `conflicts` where the actual objects are wanted, which is a single change request's
+        own page.
         """
         return self.cached_conflicted
-
-    @property
-    def reconciled_conflicts(self):
-        """
-        Diffs branching still flags which a sync has already resolved. Shown as a note rather
-        than a blocker, so a reviewer can see why branching's own page disagrees with ours.
-        """
-        from netbox_change_control.conflicts import stale_baseline_diffs
-
-        return stale_baseline_diffs(None if self.branch_deleted else self.branch)
 
     @property
     def merge_indicator(self):

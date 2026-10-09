@@ -265,8 +265,6 @@ class CacheFollowsTheSignalsTest(TestCase):
         Only the no-conflicts check creates the row the diff receiver used to consult, so a
         request governed by a policy that does not require it had no path back to the cache.
         """
-        from unittest.mock import patch
-
         from django.contrib.contenttypes.models import ContentType
         from netbox_branching.models import ChangeDiff
 
@@ -283,16 +281,11 @@ class CacheFollowsTheSignalsTest(TestCase):
         ChangeDiff.objects.filter(pk=diff.pk).update(conflicts=['name'])
         diff.refresh_from_db()
 
-        class _Unsynced:
-            def values_list(self, *args, **kwargs):
-                return [(diff.object_type_id, diff.object_id)]
+        diff.save()
 
-        with patch.object(type(branch), 'get_unsynced_changes', return_value=_Unsynced()):
-            diff.save()
-
-            cr.refresh_from_db()
-            self.assertTrue(cr.cached_conflicted)
-            self.assert_agrees(cr)
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_conflicted)
+        self.assert_agrees(cr)
 
     def test_a_review_updates_the_cache(self):
         cr, _branch = self.make_request()

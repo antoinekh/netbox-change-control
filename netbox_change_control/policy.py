@@ -374,14 +374,13 @@ def refresh_cached_state(change_request):
     here. The cost is that a merge validator registered by another plugin is not reflected in
     the column; the change request page and the gate itself both still recompute in full.
     """
-    from netbox_change_control.conflicts import conflicting_diffs
     from netbox_change_control.validators import blocking_checks
 
     if change_request.branch_deleted:
         conflicted = False
         gates_cleared = False
     else:
-        conflicted = bool(conflicting_diffs(change_request.branch))
+        conflicted = bool(change_request.conflicts)
         gates_cleared = (
             change_request.status == ChangeRequestStatusChoices.APPROVED
             and evaluate_change_request(change_request).satisfied

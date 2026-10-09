@@ -89,7 +89,7 @@ New here? Read [Installation and configuration](installation.md), then [Policies
 | Component | Version |
 |---|---|
 | NetBox | `>= 4.7.0, < 4.8` |
-| netbox-branching | `>= 1.2, < 1.3` |
+| netbox-branching | `>= 1.2.2, < 1.3` |
 | Python | `>= 3.12` |
 
 This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do not overlap, because netbox-branching 1.1.x and 1.2 do not either. [The compatibility matrix](compatibility.md) has every release, and [Installation](installation.md#upgrading-from-the-46-line) covers moving between the two lines.

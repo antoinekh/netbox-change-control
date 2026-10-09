@@ -509,11 +509,7 @@ def rerun_checks_on_diff_change(sender, instance, **kwargs):
     if not instance.conflicts and not change_request.cached_conflicted:
         return
 
-    # Use the same real-versus-reconciled test the check applies, or this would react to a
-    # flag the check deliberately ignores. Computed once and used for both jobs below.
-    from netbox_change_control.conflicts import conflicting_diffs
-
-    conflicted = bool(conflicting_diffs(change_request.branch))
+    conflicted = ChangeDiff.objects.filter(branch_id=instance.branch_id, conflicts__isnull=False).exists()
 
     # The change request list reads a cached conflict flag, and it has to follow the diff
     # whether or not any policy asked for the no-conflicts check. Only that check creates the

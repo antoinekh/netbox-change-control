@@ -2,10 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+- **Requires netbox-branching 1.2.2.** It moves a branch's conflict baseline to main's state on sync ([#640](https://github.com/netboxlabs/netbox-branching/issues/640)), so a field main changed before the sync is no longer flagged. The `no-conflicts` check, the conflict banner and the list column now read branching's conflicts directly, and agree with the branch page. The informational note about conflicts a sync had already reconciled is gone, because there are none left to report.
+- Migration `0009` clears, once, the stale conflict flags recorded before the upgrade, which a later sync does not touch. A conflict where main changed the object after the last sync, or where the branch deletes an object main changed, is kept.
+
 ### Documentation
 
 - Documentation cleanup and simplification.
-- The conflicts page links the stale-baseline bug to netbox-branching issue [#640](https://github.com/netboxlabs/netbox-branching/issues/640) and its pending fix, [#660](https://github.com/netboxlabs/netbox-branching/pull/660).
+- The conflicts page describes how a sync moves the baseline, and adds syncing as a way to resolve a conflict.
+- The [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/) lists the 0.6.x line, which requires netbox-branching 1.2.2. 0.5.x keeps any netbox-branching 1.2.
 - The documentation site is built with zensical 0.0.62.
 
 ## 0.5.0 - 2026-09-03

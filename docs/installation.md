@@ -3,7 +3,7 @@
 | Component | Version |
 |---|---|
 | NetBox | `>= 4.7.0, < 4.8` |
-| netbox-branching | `>= 1.2, < 1.3` |
+| netbox-branching | `>= 1.2.2, < 1.3` |
 | Python | `>= 3.12` |
 
 This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do not overlap, because netbox-branching 1.1.x and 1.2 do not either. [The compatibility matrix](compatibility.md) has every release.
@@ -62,7 +62,7 @@ Every setting is optional. The defaults are safe to install on an existing NetBo
 
 ## Upgrading from the 4.6 line
 
-There is no version of NetBox which 0.4.x and 0.5.x share, so this is a move between lines rather than an ordinary upgrade. NetBox 4.7 replaced django-mptt with a PostgreSQL `ltree` implementation and dropped the `lft`, `rght`, `tree_id` and `level` columns. netbox-branching 1.1.x reads those columns and cannot run on 4.7; netbox-branching 1.2 rewrote that part and requires 4.7. The plugin sits on top of whichever is installed and inherits the split.
+There is no version of NetBox which 0.4.x and the NetBox 4.7 releases (0.5.x and later) share, so this is a move between lines rather than an ordinary upgrade. NetBox 4.7 replaced django-mptt with a PostgreSQL `ltree` implementation and dropped the `lft`, `rght`, `tree_id` and `level` columns. netbox-branching 1.1.x reads those columns and cannot run on 4.7; netbox-branching 1.2 rewrote that part and requires 4.7. The plugin sits on top of whichever is installed and inherits the split.
 
 Upgrade NetBox and netbox-branching together, then the plugin. Follow NetBox's own upgrade guide for the rest; these are only the points this plugin adds to it.
 

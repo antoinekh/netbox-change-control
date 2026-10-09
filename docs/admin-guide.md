@@ -290,7 +290,7 @@ Steps 8 and 9 are the ones worth repeating after any upgrade.
 
 **Checks sit on pending forever.** A name that is not a registered check is treated as reported from outside, and waits for something to report it. Either something must PATCH a result, or the name is a typo in the policy's **Reported checks** field.
 
-**A conflict is reported that you believe you already resolved.** netbox-branching never advances a diff's baseline, so a field main touched before your last sync stays flagged. This plugin distinguishes the two and says so on the request. See [Conflicts with main](conflicts.md).
+**A conflict is reported that you believe you already resolved.** Main has changed the object since your last sync. Sync the branch, or make the two sides agree. See [Conflicts with main](conflicts.md).
 
 **A user cannot see the Changes tab.** They are missing `netbox_branching.view_changediff`.
 

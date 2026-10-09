@@ -266,28 +266,14 @@ def check_branch_has_changes(change_request):
 def check_no_conflicts(change_request):
     """
     Branching flags a conflict when main has changed the same fields as the branch. Merging
-    through a real one silently discards somebody's work.
-
-    Only conflicts where main has moved since the last sync count. Branching never advances a
-    diff's baseline, so a field main touched before the sync stays flagged forever even
-    though the branch already holds main's value; failing on that would train reviewers to
-    acknowledge conflicts by reflex.
+    through one silently discards somebody's work.
     """
-    from netbox_change_control.conflicts import conflicting_diffs, stale_baseline_diffs
-
     if change_request.branch_deleted:
         return CheckResult.skipped('The branch no longer exists.')
 
-    real = conflicting_diffs(change_request.branch)
-    if real:
-        sample = ', '.join(d.object_repr for d in real[:3])
-        return CheckResult.failed(f'{len(real)} object(s) conflict with main: {sample}')
-
-    if stale := stale_baseline_diffs(change_request.branch):
-        return CheckResult.passed(
-            f'No conflicts with main. {len(stale)} object(s) are flagged by branching but were '
-            f'already reconciled by a sync.'
-        )
+    if conflicts := change_request.conflicts:
+        sample = ', '.join(d.object_repr for d in conflicts[:3])
+        return CheckResult.failed(f'{len(conflicts)} object(s) conflict with main: {sample}')
 
     return CheckResult.passed('No conflicts with main.')
 

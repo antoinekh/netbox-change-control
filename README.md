@@ -4,7 +4,7 @@
   <p>change requests &bull; policies &bull; checks &bull; comments</p>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
   <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.7.0%2C%20%3C%204.8-00857d" alt="NetBox compatibility" />
-  <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.2-00857d" alt="netbox-branching compatibility" />
+  <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.2.2-00857d" alt="netbox-branching compatibility" />
   <img src="https://img.shields.io/badge/python-%3E%3D%203.12-blue" alt="Python version" />
   <p>
     <strong><a href="https://antoinekh.github.io/netbox-change-control/">Documentation</a></strong> |
@@ -100,7 +100,6 @@ To read the site on your own machine, install [Zensical](https://zensical.org/) 
 | Stale review detection when the branch changes | Done |
 | Approval invalidation when the branch changes after approval | Done |
 | Policy reevaluation on rule, reviewer or group membership change | Done |
-| Real conflicts with main, distinguished from a stale branching baseline | Done |
 | Notifications to reviewers | Done, through NetBox's notification inbox |
 | Pluggable pre-merge checks, in-process or reported over the REST API | Done |
 | Change windows, with an override permission | Done |
@@ -113,7 +112,7 @@ To read the site on your own machine, install [Zensical](https://zensical.org/) 
 | Component | Version |
 |---|---|
 | NetBox | `>= 4.7.0, < 4.8` |
-| netbox-branching | `>= 1.2, < 1.3` |
+| netbox-branching | `>= 1.2.2, < 1.3` |
 | Python | `>= 3.12` |
 
 This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do not overlap, because netbox-branching 1.1.x and 1.2 do not either. [The compatibility matrix](COMPATIBILITY.md) has every release, and [Installation](https://antoinekh.github.io/netbox-change-control/installation/#upgrading-from-the-46-line) covers moving between the two lines.

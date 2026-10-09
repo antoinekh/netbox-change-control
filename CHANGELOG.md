@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-10-09
+
+0.6.x requires netbox-branching 1.2.2, and 0.5.x keeps running on any netbox-branching 1.2. Both run on NetBox 4.7. See the [compatibility matrix](https://antoinekh.github.io/netbox-change-control/compatibility/).
 
 ### Changed
 

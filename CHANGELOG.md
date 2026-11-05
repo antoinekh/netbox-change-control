@@ -4,6 +4,7 @@
 
 ### Changed
 
+- CI runs the test suite against NetBox 4.7.0, the minimum, and 4.7.4, the latest release.
 - CI lints with ruff 0.17.4.
 
 ### Documentation

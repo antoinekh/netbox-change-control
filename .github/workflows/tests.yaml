@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       netbox_ref:
-        description: 'NetBox ref to check out (branch, tag or commit)'
+        description: 'NetBox ref to check out (branch, tag or commit); empty runs the matrix versions'
         required: false
-        default: 'v4.7.0'
+        default: ''
         type: string
 
 concurrency:
@@ -31,14 +31,9 @@ jobs:
         # This branch is the NetBox 4.7 line and is tested against nothing else. 4.7 drops
         # the django-mptt columns, so netbox-branching 1.1.x cannot run on it and 1.2 cannot
         # run on 4.6; there is no version of NetBox both lines share. The 0.4.x branch keeps
-        # the 4.6 job.
-        include:
-          - netbox: 'v4.7.0'
-            python: '3.12'
-          - netbox: 'v4.7.0'
-            python: '3.13'
-          - netbox: 'v4.7.0'
-            python: '3.14'
+        # the 4.6 job. 4.7.0 is the declared minimum and 4.7.4 the latest release.
+        netbox: ['v4.7.0', 'v4.7.4']
+        python: ['3.12', '3.13', '3.14']
 
     services:
       redis:

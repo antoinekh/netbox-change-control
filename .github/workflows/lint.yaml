@@ -31,7 +31,7 @@ jobs:
 
       - name: Install ruff
         # Pinned so a new ruff release cannot fail an unrelated pull request.
-        run: pip install 'ruff==0.16.4'
+        run: pip install 'ruff==0.17.4'
 
       - name: Check
         run: ruff check --output-format=github netbox_change_control

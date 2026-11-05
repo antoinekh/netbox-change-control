@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- CI lints with ruff 0.17.4.
+
 ### Documentation
 
 - The README and the documentation home page no longer carry the "Not stable yet" warning.
+- The documentation site is built with zensical 0.1.0.
 
 ## 0.6.0 - 2026-10-09
 

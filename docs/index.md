@@ -100,6 +100,3 @@ This is the NetBox 4.7 line. For NetBox 4.6, stay on the 0.4.x line; the two do 
 
     There is no commercial support. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
 
-!!! warning
-
-    **Not stable yet.** The version is below 1.0. Models, settings and the REST API can still change between releases. Read the [changelog](changelog.md) before you upgrade.

@@ -353,6 +353,30 @@ class ReviewOwnershipAPITest(ChangeControlAPITestCase):
         response = self.client.patch(self._detail(self.theirs), {'comment': 'moderated'}, format='json', **self.header)
         self.assertHttpStatus(response, status.HTTP_200_OK)
 
+    def test_a_review_cannot_be_moved_to_another_change_request(self):
+        """
+        A review answers the change it was given on. Moved, it would keep the branch state of
+        the first request and skip the restatement the review form asks for.
+        """
+        other = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='review-ownership-other'), title='Other', requester=self.cr.requester
+        )
+        response = self.client.patch(
+            self._detail(self.mine), {'change_request': other.pk}, format='json', **self.header
+        )
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.mine.refresh_from_db()
+        self.assertEqual(self.mine.change_request, self.cr)
+
+    def test_a_full_update_naming_the_same_change_request_is_accepted(self):
+        response = self.client.put(
+            self._detail(self.mine),
+            {'change_request': self.cr.pk, 'decision': 'approve', 'comment': 'restated'},
+            format='json',
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
     def test_deleting_stays_model_wide(self):
         """
         Deletion follows NetBox's own model and is narrowed with a constraint, as documented.

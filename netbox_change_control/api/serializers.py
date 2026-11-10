@@ -177,6 +177,14 @@ class ReviewSerializer(NetBoxModelSerializer):
             request = self.context.get('request')
             if request is not None:
                 attrs['reviewer'] = request.user
+        # A review answers the change it was given on; moved, it would keep the first request's
+        # branch state and skip the restatement the review form asks for.
+        if self.instance is not None:
+            target = attrs.get('change_request', self.instance.change_request)
+            if target != self.instance.change_request:
+                raise serializers.ValidationError(
+                    {'change_request': 'A review cannot be moved to another change request.'}
+                )
         return super().validate(attrs)
 
 

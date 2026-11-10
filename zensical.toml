@@ -36,8 +36,8 @@ nav = [
     "api.md",
     "extending.md",
     "design.md",
-    "changelog.md",
   ] },
+  { "Changelog" = "changelog.md" },
 ]
 
 extra_css = ["stylesheets/extra.css"]

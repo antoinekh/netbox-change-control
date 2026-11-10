@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- The changelog has its own tab in the documentation site.
+
 ## 0.6.1 - 2026-11-10
 
 ### Fixed

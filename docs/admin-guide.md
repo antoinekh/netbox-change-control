@@ -141,7 +141,7 @@ Both are custom actions, and both are optional.
 | `netbox_change_control.bypass_policy` | Write outside a branch while `protect_main` is enabled. | Automation accounts, and the people who run an incident. |
 | `netbox_change_control.override_window_changerequest` | Merge a change request outside its change window. | Whoever is allowed to break a change freeze. |
 
-Neither is a tick box on the permission form: the action is typed into *additional actions*, and the object type is not the one the name suggests. See [granting the custom actions](permissions.md#granting-the-custom-actions), which covers **Abandon** and **Reopen** the same way.
+On the permission form, each is a box under **Actions** once its object type is selected: `bypass` on **Change Control > Policy**, which is not the object type the name suggests, and `override_window` on **Change Control > Change Request**. See [granting the custom actions](permissions.md#granting-the-custom-actions), which covers **Abandon** and **Reopen** the same way.
 
 ### Setting up groups
 

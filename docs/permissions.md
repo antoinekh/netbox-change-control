@@ -116,9 +116,9 @@ These belong to [netbox-branching](https://github.com/netboxlabs/netbox-branchin
 
 ## Granting the custom actions
 
-Four actions are not the usual view, add, change and delete. Grant them under **Administration > Permissions > Add**, typing the action into the *additional actions* field rather than ticking a box:
+Four actions are not the usual view, add, change and delete. Grant them under **Administration > Permissions > Add**: select the object type, then tick the action's box under **Actions**. Typing the action into the *additional actions* field does the same.
 
-| To allow | Object type | Action to enter |
+| To allow | Object type | Action |
 |---|---|---|
 | Writing directly to main under `protect_main` | Change Control > Policy | `bypass` |
 | Merging outside the change window | Change Control > Change Request | `override_window` |
@@ -127,7 +127,7 @@ Four actions are not the usual view, add, change and delete. Grant them under **
 
 !!! info "Important"
 
-    The trailing part of a custom permission name has to be a real model name, because NetBox splits on the last underscore. That is why the bypass lives on `Policy`: `bypass_change_control` would resolve to a model called `control`, which does not exist, so the permission could never be granted through an object permission at all and the exemption would silently be superuser-only.
+    NetBox checks a custom action as the permission `<app>.<action>_<model>`, so an action belongs to one model. That is why the bypass lives on `Policy`: granted on **Change Control > Policy**, `bypass` is the permission `netbox_change_control.bypass_policy` that `protect_main` checks.
 
 !!! note
 

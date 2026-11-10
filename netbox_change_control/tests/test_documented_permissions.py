@@ -29,15 +29,18 @@ MODELS = (ChangeComment, ChangeRequest, ChangeRequestPolicy, MergeCheck, Policy,
 
 def declared_permissions():
     """
-    Every permission Django and the plugin define for this plugin's models, read from the
-    database rather than from a list somebody has to maintain.
-    """
-    from django.contrib.auth.models import Permission
+    Every permission the plugin's models define, as NetBox names them, read from the models
+    rather than from a list somebody has to maintain.
 
-    return {
-        f'netbox_change_control.{p.codename}'
-        for p in Permission.objects.filter(content_type__in=[ContentType.objects.get_for_model(m) for m in MODELS])
-    }
+    NetBox names a permission `<app_label>.<action>_<model>`, where the action is a default one
+    or a `Meta.permissions` codename. Django's own Permission rows are not read: Django never
+    deletes the row of a renamed codename, so they can name permissions which no longer exist.
+    """
+    names = set()
+    for model in MODELS:
+        actions = [*model._meta.default_permissions, *(codename for codename, _label in model._meta.permissions)]
+        names.update(f'{model._meta.app_label}.{action}_{model._meta.model_name}' for action in actions)
+    return names
 
 
 def documented_permissions(page):

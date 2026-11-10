@@ -115,13 +115,14 @@ class ChangeRequest(PrimaryModel):
 
     class Meta:
         ordering = ('-created',)
+        # Each codename is the action alone; see Policy.Meta.permissions.
         permissions = (
-            ('override_window_changerequest', 'Can merge a change request outside its change window'),
+            ('override_window', 'Can merge a change request outside its change window'),
             # Status is derived from the policy evaluation, so it is not an editable field.
             # The two transitions a person legitimately makes by hand get an action each,
             # rather than leaving the field writable and hoping nobody sets it to completed.
-            ('abandon_changerequest', 'Can abandon a change request'),
-            ('reopen_changerequest', 'Can reopen an abandoned change request'),
+            ('abandon', 'Can abandon a change request'),
+            ('reopen', 'Can reopen an abandoned change request'),
         )
         verbose_name = _('change request')
         verbose_name_plural = _('change requests')

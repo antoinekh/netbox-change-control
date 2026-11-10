@@ -93,12 +93,9 @@ class Policy(PrimaryModel):
 
     class Meta:
         ordering = ('weight', 'name')
-        permissions = (
-            # NetBox resolves a permission as <app_label>.<action>_<model>, so a custom
-            # action must end in a real model name or it can never be granted through an
-            # object permission.
-            ('bypass_policy', 'Can write outside a branch while protect_main is enabled'),
-        )
+        # The codename is the action alone: NetBox 4.7 turns it into a checkbox that stores it
+        # as the action, and checks the permission as <app_label>.<action>_<model>.
+        permissions = (('bypass', 'Can write outside a branch while protect_main is enabled'),)
         verbose_name = _('policy')
         verbose_name_plural = _('policies')
 

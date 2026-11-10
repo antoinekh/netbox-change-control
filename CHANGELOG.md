@@ -9,6 +9,14 @@
 - **Review permissions ticked with the old custom action boxes.** They now grant what they say.
 - **Delete event rules using "Change control: report a pre-merge check".** The action is removed.
 
+### Changed
+
+- **Opening a change request no longer writes to the database.** The merge gate names a policy that applies but is not attached, and the policies are matched again when a policy is created, enabled or edited.
+- **A run of the checks reacts to its results once**, not once per result.
+- **A group membership change refreshes only the requests whose rules name that group.**
+- **`ChangeRequest.submit()` emits `change_request_submitted` itself**, so a script that submits a request announces it too.
+- **Internal:** status transitions live in `lifecycle`, permission checks in `permissions`, signal receivers in `receivers/`, the staleness rule in one function, and the shared test helpers in `tests/base.py`.
+
 ### Fixed
 
 - **An approval of an empty branch goes stale when the branch changes.** Before, it counted for ever, so the real change could be added after the approval.
@@ -21,14 +29,6 @@
 - **The My Reviews widget no longer lists drafts.**
 - **The custom action boxes on the NetBox 4.7 permission form work.** They are now `abandon`, `reopen`, `override_window` and `bypass`, and a migration repairs existing permissions.
 - **A change request merges itself only if its requester may merge the branch.** The page says why when it cannot.
-
-### Changed
-
-- **Opening a change request no longer writes to the database.** The merge gate names a policy that applies but is not attached, and the policies are matched again when a policy is created, enabled or edited.
-- **A run of the checks reacts to its results once**, not once per result.
-- **A group membership change refreshes only the requests whose rules name that group.**
-- **`ChangeRequest.submit()` emits `change_request_submitted` itself**, so a script that submits a request announces it too.
-- **Internal:** status transitions live in `lifecycle`, permission checks in `permissions`, signal receivers in `receivers/`, the staleness rule in one function, and the shared test helpers in `tests/base.py`.
 
 ### Removed
 

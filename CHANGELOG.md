@@ -15,13 +15,6 @@
 - **The custom actions can be granted with their checkboxes.** NetBox 4.7 shows each custom action as a box on the permission form, named after its codename, and the plugin declared Django-style codenames such as `abandon_changerequest`. A ticked box stored that name as the action, which granted nothing, since the plugin checks the action `abandon`. The boxes are now `abandon`, `reopen`, `override_window` and `bypass`, the documented actions. A migration rewrites the old names in existing permissions, so **a box ticked before this release starts granting what it says**; review those permissions before upgrading if that matters. A permission typed into *additional actions*, as the documentation said, is not affected.
 - **A change request merges itself only if its requester may merge the branch.** An automatic merge runs as the requester, and nothing checked that the requester held `netbox_branching.merge_branch`, so a user allowed to edit change requests but not to merge could tick **Merge automatically** and have the branch merged anyway. The flag is now refused for such a requester, on the form and the REST API, and the merge is not started if the requester has lost the permission since; the change request page says why. **Before upgrading, grant `merge` on branches to the requesters whose requests should keep merging themselves.**
 
-## 0.6.2 - 2026-11-10
-
-### Fixed
-
-- **A review submitted from the change request page fires its status event once.** When the review moved the status, `change_request_approved`, `change_request_rejected` or `change_request_review_requested` reached the event rules twice, a few milliseconds apart, so a webhook or a script ran twice for one transition. The checks also ran twice on approval. The review's own signal already recomputes the status, and the page computed it a second time from the change request it had loaded before the review was saved.
-- **Two actions at the same moment no longer act on the same old status.** Two approvals at once, or a double click on Submit, announced the transition twice. An approval computed while the author abandoned the request brought it back as approved and mergeable, and an abandon or a return to draft read before a merge could overwrite Completed. Every status change now locks the change request row and reads its status again before it decides. The lock does not stop another transaction from adding a review, a check or a comment to the same request.
-
 ### Changed
 
 - **Upgrading needs a branch migration.** This release adds database migrations, so netbox-branching marks every existing branch **Pending migrations** until it is migrated, and refuses edits in it until then. Run **Migrate** on each open branch after upgrading.
@@ -30,6 +23,13 @@
 - **The signal receivers are split by concern.** `signal_receivers.py` held `protect_main`, the status refresh, policy re-evaluation, branch events and checks in one file whose docstring named only the first; they now live in `netbox_change_control.receivers`, one module each. No behaviour changes.
 - **Opening a change request no longer writes to the database.** The page created the rows of checks registered since the request was created, and the merge gate it reads attached any policy that had come to match the branch. The page now shows such a check as pending without creating its row, and the gate refuses a request that a matching policy is not attached to, naming the policy, instead of attaching it. The policies are matched again on the events that can make one apply instead: a policy created, enabled, re-scoped or given new conditions now attaches to the submitted requests it matches, and an object edited again in a branch re-matches the policies that read conditions. A draft still has its policies matched when it is submitted.
 - **A run of the checks reacts to its results once.** Each result that moved was saved, and each save refreshed the cached readiness and tried the automatic merge on its own before the run did both again: four times for three changed results. A run now does both once, at its end. A result reported over the REST API still reacts at once.
+
+## 0.6.2 - 2026-11-10
+
+### Fixed
+
+- **A review submitted from the change request page fires its status event once.** When the review moved the status, `change_request_approved`, `change_request_rejected` or `change_request_review_requested` reached the event rules twice, a few milliseconds apart, so a webhook or a script ran twice for one transition. The checks also ran twice on approval. The review's own signal already recomputes the status, and the page computed it a second time from the change request it had loaded before the review was saved.
+- **Two actions at the same moment no longer act on the same old status.** Two approvals at once, or a double click on Submit, announced the transition twice. An approval computed while the author abandoned the request brought it back as approved and mergeable, and an abandon or a return to draft read before a merge could overwrite Completed. Every status change now locks the change request row and reads its status again before it decides. The lock does not stop another transaction from adding a review, a check or a comment to the same request.
 
 ### Documentation
 

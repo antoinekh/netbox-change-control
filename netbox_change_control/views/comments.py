@@ -10,6 +10,7 @@ from utilities.views import ViewTab, register_model_view
 from netbox_change_control import forms
 from netbox_change_control.diffs import build_change_rows
 from netbox_change_control.models import ChangeComment, ChangeRequest
+from netbox_change_control.permissions import own_statements
 
 __all__ = (
     'AddChangeCommentView',
@@ -111,10 +112,7 @@ class ChangeCommentEditView(generic.ObjectEditView):
     form = forms.ChangeCommentForm
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        if request.user.is_superuser:
-            return queryset
-        return queryset.filter(author=request.user)
+        return own_statements(super().get_queryset(request), request.user, 'author')
 
 
 @register_model_view(ChangeComment, 'delete')

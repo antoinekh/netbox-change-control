@@ -79,18 +79,91 @@ class ChangeCommentAttributionTest(APITestCase):
 
     def test_editing_a_comment_does_not_reassign_its_author(self):
         comment = ChangeComment.objects.create(
-            change_request=self.cr, change_diff=self.diff, author=self.victim, text='original'
+            change_request=self.cr, change_diff=self.diff, author=self.user, text='original'
         )
         response = self.client.patch(
             f'/api/plugins/change-control/change-comments/{comment.pk}/',
-            {'text': 'edited', 'author': self.user.pk},
+            {'text': 'edited', 'author': self.victim.pk},
             format='json',
             **self.header,
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         comment.refresh_from_db()
-        self.assertEqual(comment.author, self.victim)
+        self.assertEqual(comment.author, self.user)
         self.assertEqual(comment.text, 'edited')
+
+
+class ChangeCommentOwnershipAPITest(APITestCase):
+    """
+    Only the author may rewrite a comment over the API; anybody holding `change_changecomment`
+    may still resolve or reopen a thread, which is what that permission is documented for.
+
+    The edit form narrows to the caller's own comments, but the API did not, so a token could
+    rewrite a colleague's "do not merge" into "looks fine", still attributed to that colleague.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.colleague = User.objects.create(username='colleague')
+        requester = User.objects.create(username='requester')
+        branch = make_branch('comment-owner', 'x')
+        cr = ChangeRequest.objects.create(branch=branch, title='T', requester=requester)
+        diff = make_diff(branch)
+        self.theirs = ChangeComment.objects.create(
+            change_request=cr, change_diff=diff, author=self.colleague, text='Do not merge.'
+        )
+        self.mine = ChangeComment.objects.create(change_request=cr, change_diff=diff, author=self.user, text='Mine')
+
+        permission = ObjectPermission.objects.create(name='comment', actions=['view', 'change'])
+        permission.object_types.add(ContentType.objects.get_for_model(ChangeComment))
+        permission.users.add(self.user)
+
+    def _patch(self, comment, data):
+        return self.client.patch(
+            f'/api/plugins/change-control/change-comments/{comment.pk}/', data, format='json', **self.header
+        )
+
+    def test_a_colleague_comment_cannot_be_rewritten(self):
+        response = self._patch(self.theirs, {'text': 'Looks fine to me.'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.text, 'Do not merge.')
+
+    def test_a_bulk_rewrite_of_a_colleague_comment_is_refused(self):
+        response = self.client.patch(
+            '/api/plugins/change-control/change-comments/',
+            [{'id': self.mine.pk, 'text': 'Still mine'}, {'id': self.theirs.pk, 'text': 'Looks fine to me.'}],
+            format='json',
+            **self.header,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.text, 'Do not merge.')
+
+    def test_a_colleague_thread_can_be_resolved(self):
+        response = self._patch(self.theirs, {'resolved': True})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.theirs.refresh_from_db()
+        self.assertTrue(self.theirs.resolved)
+
+    def test_restating_the_same_text_while_resolving_is_accepted(self):
+        """
+        A client sending the whole object back with only `resolved` changed is resolving.
+        """
+        response = self._patch(self.theirs, {'resolved': True, 'text': 'Do not merge.'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_an_own_comment_can_be_rewritten(self):
+        response = self._patch(self.mine, {'text': 'Edited'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.mine.refresh_from_db()
+        self.assertEqual(self.mine.text, 'Edited')
+
+    def test_a_superuser_can_rewrite_any_comment(self):
+        self.user.is_superuser = True
+        self.user.save()
+        response = self._patch(self.theirs, {'text': 'Moderated.'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class ChangeCommentBranchScopeTest(APITestCase):

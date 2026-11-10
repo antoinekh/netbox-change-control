@@ -1,5 +1,6 @@
 from netbox.api.serializers import NetBoxModelSerializer
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from netbox_change_control.models import (
     ChangeComment,
@@ -9,6 +10,7 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
+from netbox_change_control.permissions import may_rewrite
 
 __all__ = (
     'ChangeCommentSerializer',
@@ -18,6 +20,23 @@ __all__ = (
     'PolicySerializer',
     'ReviewSerializer',
 )
+
+
+def _changed_fields(instance, attrs):
+    """
+    The submitted fields whose value differs from the stored one.
+
+    A client may send the whole object back with one field changed, so a field is judged by its
+    value, not by its presence.
+    """
+    changed = set()
+    for name, value in attrs.items():
+        if name == 'tags':
+            if {tag.pk for tag in value} != set(instance.tags.values_list('pk', flat=True)):
+                changed.add(name)
+        elif getattr(instance, name, None) != value:
+            changed.add(name)
+    return changed
 
 
 class PolicySerializer(NetBoxModelSerializer):
@@ -225,10 +244,18 @@ class ChangeCommentSerializer(NetBoxModelSerializer):
         """
         # `not self.nested` matters: a nested serializer's to_internal_value returns a model
         # instance rather than a dict, and assigning into it raises TypeError.
-        if self.instance is None and not self.nested:
-            request = self.context.get('request')
-            if request is not None:
+        if self.nested:
+            return super().validate(attrs)
+        request = self.context.get('request')
+        if request is not None:
+            if self.instance is None:
                 attrs['author'] = request.user
+            elif not may_rewrite(request.user, self.instance.author_id):
+                # Resolving a thread is what `change_changecomment` is for, whoever wrote it.
+                if rewritten := _changed_fields(self.instance, attrs) - {'resolved'}:
+                    raise PermissionDenied(
+                        f'Only the author may change {", ".join(sorted(rewritten))} on this comment.'
+                    )
         return super().validate(attrs)
 
     class Meta:

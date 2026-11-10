@@ -22,6 +22,7 @@ __all__ = (
     'CHANGE_REQUEST_SUBMITTED',
     'REVIEW_SUBMITTED',
     'emit',
+    'refresh_event_rule_form_choices',
 )
 
 CHANGE_REQUEST_SUBMITTED = 'change_request_submitted'
@@ -37,6 +38,21 @@ EventType(REVIEW_SUBMITTED, _('Review submitted'), kind=EVENT_TYPE_KIND_INFO).re
 EventType(CHANGE_REQUEST_APPROVED, _('Change request approved'), kind=EVENT_TYPE_KIND_SUCCESS).register()
 EventType(CHANGE_REQUEST_REJECTED, _('Change request rejected'), kind=EVENT_TYPE_KIND_WARNING).register()
 EventType(CHANGE_REQUEST_COMPLETED, _('Change request completed'), kind=EVENT_TYPE_KIND_SUCCESS).register()
+
+
+def refresh_event_rule_form_choices():
+    """
+    Make NetBox's event rule forms read the registered event types each time they are built.
+
+    NetBox 4.7 imports these forms before any plugin is ready, and they read the event types
+    once, at import, so no plugin's types can be picked in the interface or a CSV import. The
+    callable also covers plugins that register their types after this one.
+    """
+    from extras.forms import EventRuleBulkEditForm, EventRuleForm, EventRuleImportForm
+    from netbox.events import get_event_type_choices
+
+    for form_class in (EventRuleForm, EventRuleBulkEditForm, EventRuleImportForm):
+        form_class.base_fields['event_types'].choices = get_event_type_choices
 
 
 def emit(change_request, event_type):

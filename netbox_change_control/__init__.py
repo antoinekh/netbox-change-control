@@ -68,6 +68,8 @@ class ChangeControlConfig(PluginConfig):
         # already holding one fails to load at all.
         from . import dashboard, events, signal_receivers  # noqa: F401
 
+        events.refresh_event_rule_form_choices()
+
         # Registering the job is what makes rqworker schedule it, so skipping the import
         # when auto-merge is off means no periodic job and no Job records at all.
         if get_plugin_config('netbox_change_control', 'enable_auto_merge'):

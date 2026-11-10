@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The lifecycle event types can be picked on an event rule.** NetBox 4.7 builds its event rule forms before any plugin registers its event types, so `change_request_approved` and the other five were missing from the add, bulk edit and CSV import forms, although the REST API accepted them ([netbox#23652](https://github.com/netbox-community/netbox/issues/23652)). The plugin now makes these forms read the registered event types each time they are shown. This also brings back the event types of netbox-branching and of every other plugin.
+
 ### Changed
 
 - CI runs the test suite against NetBox 4.7.0, the minimum, and 4.7.4, the latest release.

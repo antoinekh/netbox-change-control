@@ -9,11 +9,16 @@ not disturb the core object events for the same object.
 
 from unittest.mock import patch
 
+from django.test import TestCase
+
 from netbox_change_control.choices import ChangeRequestStatusChoices, ReviewDecisionChoices
 from netbox_change_control.events import (
     CHANGE_REQUEST_APPROVED,
+    CHANGE_REQUEST_COMPLETED,
     CHANGE_REQUEST_REJECTED,
     CHANGE_REQUEST_REVIEW_REQUESTED,
+    CHANGE_REQUEST_SUBMITTED,
+    REVIEW_SUBMITTED,
 )
 from netbox_change_control.models import Review
 from netbox_change_control.tests.base import ChangeControlTestCase
@@ -107,3 +112,55 @@ class LifecycleEventTest(ChangeControlTestCase):
             with self.captureOnCommitCallbacks(execute=False):
                 self._approve()
             flush.assert_not_called()
+
+
+class EventRuleFormChoicesTest(TestCase):
+    """
+    Every registered event type is offered by NetBox's event rule forms.
+
+    A type the forms do not offer cannot be picked in the interface, and a CSV import naming it
+    is refused, even though it is registered and the REST API accepts it. NetBox 4.7 imports
+    these forms before any plugin is ready, so a list read at import misses every plugin type.
+    """
+
+    OUR_EVENTS = (
+        CHANGE_REQUEST_SUBMITTED,
+        CHANGE_REQUEST_REVIEW_REQUESTED,
+        REVIEW_SUBMITTED,
+        CHANGE_REQUEST_APPROVED,
+        CHANGE_REQUEST_REJECTED,
+        CHANGE_REQUEST_COMPLETED,
+    )
+
+    @staticmethod
+    def _forms():
+        from extras.forms import EventRuleBulkEditForm, EventRuleForm, EventRuleImportForm
+
+        return EventRuleForm, EventRuleBulkEditForm, EventRuleImportForm
+
+    @staticmethod
+    def _offered(form_class):
+        return {value for value, _label in form_class().fields['event_types'].choices}
+
+    def test_our_event_types_are_offered(self):
+        for form_class in self._forms():
+            offered = self._offered(form_class)
+            for name in self.OUR_EVENTS:
+                with self.subTest(form=form_class.__name__, event=name):
+                    self.assertIn(name, offered)
+
+    def test_every_registered_event_type_is_offered(self):
+        """
+        Plugins listed after this one, netbox-branching among them, register theirs later still.
+        """
+        from netbox.registry import registry
+
+        for form_class in self._forms():
+            with self.subTest(form=form_class.__name__):
+                self.assertEqual(set(registry['event_types']) - self._offered(form_class), set())
+
+    def test_csv_import_accepts_our_event_type(self):
+        from extras.forms import EventRuleImportForm
+
+        field = EventRuleImportForm().fields['event_types']
+        self.assertEqual(field.clean(CHANGE_REQUEST_APPROVED), [CHANGE_REQUEST_APPROVED])

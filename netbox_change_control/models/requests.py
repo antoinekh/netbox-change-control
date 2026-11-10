@@ -589,14 +589,11 @@ class Review(NetBoxModel):
         A stale approval must not count toward a policy rule, otherwise a reviewer's sign-off
         silently covers work they never saw.
         """
-        from netbox_change_control.policy import branch_last_change_time
+        from netbox_change_control.policy import branch_last_change_time, review_is_stale
 
         if self.branch_change_time is None:
             return False
-        latest = branch_last_change_time(self.change_request.branch)
-        if latest is None:
-            return False
-        return latest > self.branch_change_time
+        return review_is_stale(self, branch_last_change_time(self.change_request.branch))
 
     def clean(self):
         super().clean()

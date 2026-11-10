@@ -23,6 +23,7 @@ __all__ = (
     'get_touched_object_types',
     'match_policies',
     'refresh_cached_state',
+    'review_is_stale',
     'review_snapshot_time',
     'scope_may_have_drifted',
     'sync_policies',
@@ -121,6 +122,18 @@ def branch_last_change_time(branch):
     if branch is None:
         return None
     return branch.get_unmerged_changes().order_by('-time').values_list('time', flat=True).first()
+
+
+def review_is_stale(review, latest_change):
+    """
+    Whether the branch changed after `review` was given, `latest_change` being its newest change.
+
+    A review with no recorded branch state was given on a branch that is gone, and nothing can
+    change it any more.
+    """
+    if review.branch_change_time is None or latest_change is None:
+        return False
+    return latest_change > review.branch_change_time
 
 
 def review_snapshot_time(branch):
@@ -343,11 +356,7 @@ def evaluate_change_request(change_request):
 
     # Evaluating staleness needs one query for the branch, not one per review.
     latest_change = branch_last_change_time(change_request.branch)
-    stale = [
-        r
-        for r in reviews
-        if r.branch_change_time is not None and latest_change is not None and latest_change > r.branch_change_time
-    ]
+    stale = [r for r in reviews if review_is_stale(r, latest_change)]
     stale_ids = {r.pk for r in stale}
 
     approvals = {

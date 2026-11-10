@@ -384,3 +384,30 @@ class EmptyBranchApprovalTest(BranchClockTestCase):
         gone.refresh_from_db()
         self.assertEqual(live.branch_change_time, live.created)
         self.assertIsNone(gone.branch_change_time)
+
+
+class OneStalenessRuleTest(BranchClockTestCase):
+    """
+    The review's own answer and the evaluation's answer come from one rule, so the page, which
+    reads the first, and the merge gate, which reads the second, cannot disagree.
+    """
+
+    policy_checks = ()
+
+    def _both(self, review):
+        review.refresh_from_db()
+        return review.is_stale, review in self.cr.evaluate().stale
+
+    def test_they_agree_before_the_branch_moves(self):
+        self.assertEqual(self._both(self._approve()), (False, False))
+
+    def test_they_agree_after_the_branch_moves(self):
+        review = self._approve()
+        self._record_branch_change()
+        self.assertEqual(self._both(review), (True, True))
+
+    def test_they_agree_on_a_review_with_no_branch_state(self):
+        review = self._approve()
+        Review.objects.filter(pk=review.pk).update(branch_change_time=None)
+        self._record_branch_change()
+        self.assertEqual(self._both(review), (False, False))

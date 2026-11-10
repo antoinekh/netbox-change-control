@@ -206,10 +206,13 @@ def _condition_payloads(diff, condition_state):
     return [{**data, 'snapshots': snapshots} for data in states]
 
 
-def _conditions_match(policy, branch):
+def _conditions_match(policy, branch, object_type_ids=None):
     """
     Evaluate a policy's condition set against each changed object in the branch. The policy
     matches when any single changed object satisfies the conditions.
+
+    `object_type_ids` limits the objects read to the policy's own scope: a policy about circuits
+    must not attach because some other object in the branch satisfies its conditions.
     """
     if not policy.conditions:
         return True
@@ -217,8 +220,12 @@ def _conditions_match(policy, branch):
     from extras.conditions import ConditionSet, InvalidCondition
     from netbox_branching.models import ChangeDiff
 
+    diffs = ChangeDiff.objects.filter(branch=branch)
+    if object_type_ids is not None:
+        diffs = diffs.filter(object_type_id__in=object_type_ids)
+
     condition_set = ConditionSet(policy.conditions)
-    for diff in ChangeDiff.objects.filter(branch=branch).iterator():
+    for diff in diffs.iterator():
         for data in _condition_payloads(diff, policy.condition_state):
             try:
                 if condition_set.eval(data):
@@ -248,10 +255,12 @@ def match_policies(branch):
             if not matching:
                 continue
             names = [f'{ot.app_label}.{ot.model}' for ot in matching]
+            object_type_ids = [ot.pk for ot in matching]
         else:
             # An unscoped policy applies to every branch.
             names = []
-        if not _conditions_match(policy, branch):
+            object_type_ids = None
+        if not _conditions_match(policy, branch, object_type_ids):
             continue
         results.append((policy, names))
 

@@ -332,3 +332,52 @@ class SnapshotConditionTest(TestCase):
         self._diff(original={'status': 'active'}, modified={'status': 'offline'})
         self.assertFalse(self._matches({'attr': 'stauts', 'op': 'changed'}))
         self.assertFalse(self._matches({'attr': 'snapshots.prechange.stauts', 'value': 'active'}))
+
+
+class ScopedConditionTest(TestCase):
+    """
+    A policy scoped to object types reads its conditions on those types only.
+
+    The guide's example is "changes to active circuits need a lead": scoped to circuits, with
+    `status == active`. Evaluated against every changed object, it also attached to a branch
+    touching a planned circuit and an active site, because the site was active.
+    """
+
+    def setUp(self):
+        from circuits.models import Circuit
+        from core.models import ObjectType
+        from dcim.models import Site
+
+        self.circuit, self.site = Circuit, Site
+        self.branch = make_branch('scoped-cond', self._testMethodName)
+        self.policy = Policy.objects.create(name='Active circuits', conditions={'attr': 'status', 'value': 'active'})
+        self.policy.object_types.set([ObjectType.objects.get_for_model(Circuit)])
+
+    def _touch(self, model, status):
+        diff = ChangeDiff.objects.create(
+            branch=self.branch,
+            object_type=ContentType.objects.get_for_model(model),
+            object_id=1,
+            object_repr=model._meta.model_name,
+            action=ObjectChangeActionChoices.ACTION_UPDATE,
+        )
+        ChangeDiff.objects.filter(pk=diff.pk).update(original={'status': status}, modified={'status': status})
+
+    def _attached(self):
+        return [policy for policy, _names in match_policies(self.branch)]
+
+    def test_another_type_does_not_satisfy_the_condition(self):
+        self._touch(self.circuit, 'planned')
+        self._touch(self.site, 'active')
+        self.assertNotIn(self.policy, self._attached())
+
+    def test_the_scoped_type_satisfies_it(self):
+        self._touch(self.circuit, 'active')
+        self._touch(self.site, 'planned')
+        self.assertIn(self.policy, self._attached())
+
+    def test_an_unscoped_policy_still_reads_every_type(self):
+        self.policy.object_types.clear()
+        self._touch(self.circuit, 'planned')
+        self._touch(self.site, 'active')
+        self.assertIn(self.policy, self._attached())

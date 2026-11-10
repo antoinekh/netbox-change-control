@@ -123,9 +123,9 @@ A webhook is fire-and-forget, so a failed delivery is only visible in the worker
 docker compose logs netbox-worker
 ```
 
-!!! info "Important"
+??? info "Behind a corporate proxy, a webhook to an internal address fails"
 
-    **Behind a corporate proxy, a webhook to an internal address fails.** NetBox resolves a proxy for every outgoing webhook through `PROXY_ROUTERS` and hands it to `requests.Session.send()`. requests only honours `no_proxy` when it builds the request itself, so setting `no_proxy` changes nothing here: the delivery goes to the proxy, which cannot route to a private address, and fails with a 502.
+    NetBox resolves a proxy for every outgoing webhook through `PROXY_ROUTERS` and hands it to `requests.Session.send()`. requests only honours `no_proxy` when it builds the request itself, so setting `no_proxy` changes nothing here: the delivery goes to the proxy, which cannot route to a private address, and fails with a 502.
 
     `resolve_proxies` returns the first truthy result and a router cannot veto a later one, so the fix is a single router which declines to proxy private destinations and defers to the configured proxy for everything else:
 

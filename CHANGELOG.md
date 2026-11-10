@@ -15,6 +15,7 @@
 
 - The README and the documentation home page no longer carry the "Not stable yet" warning.
 - The documentation site is built with zensical 0.1.0.
+- On the event rules page, the note about webhooks behind a corporate proxy is collapsed by default.
 
 ## 0.6.0 - 2026-10-09
 

@@ -84,7 +84,7 @@ class ChangeRequestView(generic.ObjectView):
             'own_review': instance.reviews.filter(reviewer=request.user).first(),
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
-            'can_merge_perm': request.user.has_perm(MERGE_PERMISSION),
+            'can_merge_perm': not instance.branch_deleted and request.user.has_perm(MERGE_PERMISSION, instance.branch),
             'can_submit': instance.can_be_submitted and request.user.has_perm(CHANGE_PERMISSION, instance),
             'can_return_to_draft': instance.can_return_to_draft and request.user.has_perm(CHANGE_PERMISSION, instance),
             'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION, instance),

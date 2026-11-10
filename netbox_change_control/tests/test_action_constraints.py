@@ -174,6 +174,15 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertFalse(reverse('plugins:netbox_change_control:changerequest_abandon', args=[self.cr.pk]) in theirs)
         self.assertTrue(reverse('plugins:netbox_change_control:changerequest_abandon', args=[self.mine.pk]) in mine)
 
+    def test_the_merge_permission_is_read_for_this_branch(self):
+        from netbox_branching.models import Branch
+
+        grant(self.me, Branch, ['merge'], {'name': 'some-other-branch'})
+        self.assertFalse(self.client.get(self.cr.get_absolute_url()).context['can_merge_perm'])
+
+        grant(self.me, Branch, ['merge'], {'name': self.branch.name})
+        self.assertTrue(self.client.get(self.cr.get_absolute_url()).context['can_merge_perm'])
+
     @staticmethod
     def _diff(branch):
         return ChangeDiff.objects.create(

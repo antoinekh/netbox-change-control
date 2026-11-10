@@ -106,9 +106,6 @@ class ChangeRequestViewSet(NetBoxModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        from netbox_change_control import events
-
-        events.emit(change_request, events.CHANGE_REQUEST_SUBMITTED)
         change_request.refresh_from_db()
         return Response(self.get_serializer(change_request).data)
 

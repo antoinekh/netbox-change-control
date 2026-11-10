@@ -8,8 +8,6 @@ without a request.
 
 from dataclasses import dataclass, field
 
-from django.db import transaction
-
 from netbox_change_control.choices import (
     ChangeRequestStatusChoices,
     ConditionStateChoices,
@@ -25,7 +23,6 @@ __all__ = (
     'get_touched_object_types',
     'match_policies',
     'refresh_cached_state',
-    'refresh_status',
     'review_snapshot_time',
     'scope_may_have_drifted',
     'sync_policies',
@@ -422,94 +419,3 @@ def refresh_cached_state(change_request):
     change_request.cached_gates_cleared = gates_cleared
     change_request.save(update_fields=['cached_conflicted', 'cached_gates_cleared'])
     return True
-
-
-def _emit_lifecycle_event(status, change_request):
-    """
-    Put the matching lifecycle event through NetBox's event pipeline, so an event rule can
-    fire a webhook or run a script on the transition.
-    """
-    from netbox_change_control import events
-
-    event_type = {
-        ChangeRequestStatusChoices.NEEDS_REVIEW: events.CHANGE_REQUEST_REVIEW_REQUESTED,
-        ChangeRequestStatusChoices.APPROVED: events.CHANGE_REQUEST_APPROVED,
-        ChangeRequestStatusChoices.REJECTED: events.CHANGE_REQUEST_REJECTED,
-    }.get(status)
-    if event_type is not None:
-        events.emit(change_request, event_type)
-
-
-def refresh_status(change_request, run_checks_on_approval=True):
-    """
-    Recompute a change request's status from its current policy evaluation.
-
-    `status` is a cached view of the evaluation, so it must be refreshed on every path that
-    can change the outcome: a review added, edited or removed, or a policy attached or
-    detached. Signal receivers call this so no caller can forget.
-
-    Two statuses are the author's to hold rather than the evaluation's to compute, and are
-    left alone here.
-
-    Terminal statuses are never reopened. Draft means "not submitted", so a request the author
-    has pulled back must stay pulled back even while reviews arrive and policies move around
-    it; without this, the first signal after a withdrawal would push it straight back into
-    review. Submitting is what leaves draft, and it says so explicitly.
-
-    `run_checks_on_approval` exists for the one caller which runs the checks itself immediately
-    afterwards. Reaching Approved normally has to refresh them here, but a caller that is about
-    to do it anyway would otherwise put the whole suite through twice.
-    """
-    with transaction.atomic():
-        if not change_request.lock_status():
-            return change_request.status
-        return _refresh_locked_status(change_request, run_checks_on_approval)
-
-
-def _refresh_locked_status(change_request, run_checks_on_approval):
-    if change_request.status in ChangeRequestStatusChoices.TERMINAL:
-        return change_request.status
-
-    if change_request.status == ChangeRequestStatusChoices.DRAFT:
-        # The cached columns still have to follow the branch: a draft can gain a conflict.
-        refresh_cached_state(change_request)
-        return change_request.status
-
-    evaluation = evaluate_change_request(change_request)
-    if evaluation.rejections:
-        status = ChangeRequestStatusChoices.REJECTED
-    elif evaluation.satisfied:
-        status = ChangeRequestStatusChoices.APPROVED
-    else:
-        status = ChangeRequestStatusChoices.NEEDS_REVIEW
-
-    if status != change_request.status:
-        change_request.status = status
-        change_request.save(update_fields=['status'])
-
-        # Announce only on an actual transition, so a busy request does not spam reviewers
-        # or fire a webhook per save.
-        from netbox_change_control.notifications import notify_status_change
-
-        notify_status_change(change_request, status, evaluation)
-        _emit_lifecycle_event(status, change_request)
-
-        if status == ChangeRequestStatusChoices.APPROVED and run_checks_on_approval:
-            # Reaching Approved is the moment a merge becomes possible, so refresh the checks
-            # here. A branch edit invalidates the reviews but not the stored check results, so
-            # without this a request could be edited to introduce a conflict, re-approved, and
-            # then merged against a stale "no conflicts" row.
-            #
-            # run_checks triggers the auto-merge attempt itself once the results are current,
-            # so it must not also be called here or the merge would be enqueued twice.
-            from netbox_change_control.checks import run_checks
-
-            run_checks(change_request)
-            # run_checks refreshes the cached columns itself, and recomputing them here would
-            # repeat the whole evaluation for the same answer.
-            return status
-
-    # Last, so it reads the settled status.
-    refresh_cached_state(change_request)
-
-    return status

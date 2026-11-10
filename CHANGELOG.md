@@ -22,6 +22,11 @@
 - **A review submitted from the change request page fires its status event once.** When the review moved the status, `change_request_approved`, `change_request_rejected` or `change_request_review_requested` reached the event rules twice, a few milliseconds apart, so a webhook or a script ran twice for one transition. The checks also ran twice on approval. The review's own signal already recomputes the status, and the page computed it a second time from the change request it had loaded before the review was saved.
 - **Two actions at the same moment no longer act on the same old status.** Two approvals at once, or a double click on Submit, announced the transition twice. An approval computed while the author abandoned the request brought it back as approved and mergeable, and an abandon or a return to draft read before a merge could overwrite Completed. Every status change now locks the change request row and reads its status again before it decides. The lock does not stop another transaction from adding a review, a check or a comment to the same request.
 
+### Changed
+
+- **Upgrading needs a branch migration.** This release adds database migrations, so netbox-branching marks every existing branch **Pending migrations** until it is migrated, and refuses edits in it until then. Run **Migrate** on each open branch after upgrading.
+- **Every status transition lives in one module, `netbox_change_control.lifecycle`.** Submit, return to draft, abandon, reopen, completion and the recomputed statuses each lock the change request row, decide, write and announce in one place. `ChangeRequest.submit()` now emits `change_request_submitted` itself, so a script that submits a request announces it too, as the button and the REST API always did.
+
 ### Documentation
 
 - The changelog has its own tab in the documentation site.

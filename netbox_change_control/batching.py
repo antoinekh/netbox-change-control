@@ -90,8 +90,8 @@ def _refresh(change_request_id):
     check suite through twice for the one transition that matters most.
     """
     from netbox_change_control.checks import run_checks
+    from netbox_change_control.lifecycle import refresh_status
     from netbox_change_control.models import ChangeRequest
-    from netbox_change_control.policy import refresh_status
 
     change_request = ChangeRequest.objects.filter(pk=change_request_id).first()
     if change_request is None:

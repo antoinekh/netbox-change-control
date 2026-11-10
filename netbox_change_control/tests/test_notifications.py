@@ -7,9 +7,9 @@ from users.models import Group, User
 
 from netbox_change_control.choices import ChangeRequestStatusChoices, ReviewDecisionChoices
 from netbox_change_control.events import CHANGE_REQUEST_APPROVED, CHANGE_REQUEST_REVIEW_REQUESTED
+from netbox_change_control.lifecycle import refresh_status
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Review
 from netbox_change_control.notifications import pending_reviewers
-from netbox_change_control.policy import refresh_status
 from netbox_change_control.tests.base import add_rule, make_branch, make_policy
 
 

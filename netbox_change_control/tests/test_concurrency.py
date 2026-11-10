@@ -28,8 +28,8 @@ from netbox_change_control.events import (
     CHANGE_REQUEST_APPROVED,
     CHANGE_REQUEST_REVIEW_REQUESTED,
 )
+from netbox_change_control.lifecycle import refresh_status
 from netbox_change_control.models import ChangeComment, ChangeRequest, ChangeRequestPolicy, Review
-from netbox_change_control.policy import refresh_status
 from netbox_change_control.tests.base import ChangeControlTestCase, make_policy
 
 # How long a thread waits for the other at a barrier. With the lock, the other thread is held

@@ -516,7 +516,7 @@ class ChecksRefreshOnApprovalTest(CheckTestCase):
         self.cr.save(update_fields=['status'])
         calls.clear()
 
-        from netbox_change_control.policy import refresh_status
+        from netbox_change_control.lifecycle import refresh_status
 
         refresh_status(self.cr)
 

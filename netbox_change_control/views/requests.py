@@ -8,7 +8,7 @@ from netbox.object_actions import AddObject, BulkDelete, BulkEdit, BulkExport
 from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
-from netbox_change_control import events, filtersets, forms, tables
+from netbox_change_control import filtersets, forms, tables
 from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
 from netbox_change_control.permissions import (
@@ -258,10 +258,6 @@ class SubmitForReviewView(View):
         if not request.user.has_perm(CHANGE_PERMISSION, change_request):
             messages.error(request, _('You do not have permission to submit this change request for review.'))
         elif change_request.submit():
-            # Distinct from change_request_review_requested, which fires on every entry into
-            # Needs review, including an approval invalidated by a later edit. This one is the
-            # author's deliberate act of asking for review.
-            events.emit(change_request, events.CHANGE_REQUEST_SUBMITTED)
             messages.success(request, _('Change request submitted for review.'))
         else:
             messages.error(request, _('Only a draft can be submitted for review.'))

@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel, PrimaryModel
@@ -380,61 +380,18 @@ class ChangeRequest(PrimaryModel):
     def submit(self):
         """
         Put a draft into review, matching its policies. Returns True if the status moved.
-
-        The status is set here rather than left to `refresh_status`, because that treats draft
-        as the author's to hold and will not move a request out of it on its own.
-
-        That also means the announcement has to be made here. `refresh_status` tells the
-        reviewers only when it moves a request itself, and by the time it runs the status is
-        already Needs review, so it sees no transition and says nothing. Submitting without
-        telling anybody is the one outcome that makes the whole thing pointless.
         """
-        from netbox_change_control.batching import batched, schedule_refresh
-        from netbox_change_control.policy import sync_policies
+        from netbox_change_control import lifecycle
 
-        with transaction.atomic():
-            if not self.lock_status() or not self.can_be_submitted:
-                return False
-
-            self.status = ChangeRequestStatusChoices.NEEDS_REVIEW
-            self.save(update_fields=['status'])
-
-            with batched():
-                sync_policies(self)
-                schedule_refresh(self)
-
-            # The refresh may have carried it further, to Approved on a policy needing no human
-            # or to Rejected on a standing rejection, and it announces those itself. Only the
-            # case it cannot see is left here.
-            self.refresh_from_db()
-            if self.status == ChangeRequestStatusChoices.NEEDS_REVIEW:
-                from netbox_change_control import events
-                from netbox_change_control.notifications import notify_status_change
-
-                notify_status_change(self, ChangeRequestStatusChoices.NEEDS_REVIEW)
-                events.emit(self, events.CHANGE_REQUEST_REVIEW_REQUESTED)
-
-        return True
+        return lifecycle.submit(self)
 
     def return_to_draft(self):
         """
         Pull a submitted request back out of review. Returns True if the status moved.
-
-        The reviews are kept. They may already be stale, and if they are not they still stand:
-        a reviewer's position on the change does not stop being their position because the
-        author wants to work on it some more. What stops is the merge, because a draft is not
-        approved and the gate reads the status.
         """
-        from netbox_change_control.policy import refresh_cached_state
+        from netbox_change_control import lifecycle
 
-        with transaction.atomic():
-            if not self.lock_status() or not self.can_return_to_draft:
-                return False
-
-            self.status = ChangeRequestStatusChoices.DRAFT
-            self.save(update_fields=['status'])
-            refresh_cached_state(self)
-        return True
+        return lifecycle.return_to_draft(self)
 
     @property
     def can_be_abandoned(self):
@@ -458,33 +415,17 @@ class ChangeRequest(PrimaryModel):
         """
         Give up on this change request. Returns True if the status moved.
         """
-        with transaction.atomic():
-            if not self.lock_status() or not self.can_be_abandoned:
-                return False
-            self.status = ChangeRequestStatusChoices.ABANDONED
-            self.save(update_fields=['status'])
-        return True
+        from netbox_change_control import lifecycle
+
+        return lifecycle.abandon(self)
 
     def reopen(self):
         """
-        Bring an abandoned request back, then let the evaluation decide where it lands.
-
-        It returns to Draft rather than to whatever it held before, because the reviews it
-        carried may since have gone stale and the policies may since have changed. Refreshing
-        computes the honest answer instead of restoring a remembered one.
+        Bring an abandoned request back as a draft. Returns True if the status moved.
         """
-        from netbox_change_control.policy import refresh_status, sync_policies
+        from netbox_change_control import lifecycle
 
-        with transaction.atomic():
-            if not self.lock_status() or not self.can_be_reopened:
-                return False
-
-            self.status = ChangeRequestStatusChoices.DRAFT
-            self.save(update_fields=['status'])
-            if not self.branch_deleted:
-                sync_policies(self)
-            refresh_status(self)
-        return True
+        return lifecycle.reopen(self)
 
     def evaluate(self):
         """

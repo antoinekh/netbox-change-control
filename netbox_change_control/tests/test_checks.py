@@ -841,3 +841,37 @@ class ChecksRunWhenPoliciesAttachTest(TestCase):
 
         ChangeRequestPolicy.objects.filter(change_request=cr).delete()
         self.assertFalse(cr.checks.filter(name='has-changes').exists())
+
+
+class RunChecksDoesItsWorkOnceTest(CheckTestCase):
+    """
+    One run of the checks reacts to its results once.
+
+    Every result that moved is saved, and each save used to refresh the cached state and try
+    the automatic merge on its own, before the run did both again at its end.
+    """
+
+    def test_a_run_refreshes_and_tries_to_merge_once(self):
+        from unittest.mock import MagicMock, patch
+
+        from netbox_change_control import automerge, policy
+
+        for name in ('first', 'second', 'third'):
+            register_check(name, name.title(), lambda cr: CheckResult.passed('ok'))
+        self.require_checks('first', 'second', 'third')
+        run_checks(self.cr)
+        self.cr.checks.update(status=MergeCheckStatusChoices.PENDING, summary='')
+
+        refreshes = MagicMock(wraps=policy.refresh_cached_state)
+        merges = MagicMock(wraps=automerge.try_auto_merge)
+        with (
+            patch('netbox_change_control.policy.refresh_cached_state', refreshes),
+            patch('netbox_change_control.receivers.checks.refresh_cached_state', refreshes),
+            patch('netbox_change_control.automerge.try_auto_merge', merges),
+            patch('netbox_change_control.receivers.checks.try_auto_merge', merges),
+        ):
+            run_checks(self.cr)
+
+        self.assertFalse(self.cr.checks.filter(status=MergeCheckStatusChoices.PENDING).exists())
+        self.assertEqual(refreshes.call_count, 1)
+        self.assertEqual(merges.call_count, 1)

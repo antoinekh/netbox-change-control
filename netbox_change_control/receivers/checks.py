@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from netbox_branching.models import ChangeDiff
 
 from netbox_change_control.automerge import try_auto_merge
-from netbox_change_control.checks import run_checks
+from netbox_change_control.checks import checks_running, run_checks
 from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
 from netbox_change_control.models import (
     ChangeComment,
@@ -66,7 +66,8 @@ def react_to_check_result(sender, instance, **kwargs):
     plugin as a plain save with no other signal behind it. Auto-merge only cares about a
     result that passes.
     """
-    if is_being_deleted(instance.change_request_id):
+    # A run of the checks reacts once at its end instead.
+    if is_being_deleted(instance.change_request_id) or checks_running(instance.change_request_id):
         return
     change_request = ChangeRequest.objects.filter(pk=instance.change_request_id).first()
     if change_request is None:

@@ -15,6 +15,7 @@ Two sources:
 """
 
 import logging
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from django.utils import timezone
@@ -27,6 +28,7 @@ __all__ = (
     'CheckResult',
     'CheckScope',
     'checks_for_display',
+    'checks_running',
     'get_registered_checks',
     'register_builtin_checks',
     'register_check',
@@ -38,6 +40,17 @@ logger = logging.getLogger('netbox.plugins.netbox_change_control.checks')
 
 # name -> RegisteredCheck
 _registry = {}
+
+# The change requests whose checks are being run, whose reaction to the results the run makes
+# once at its end rather than once per result.
+_running = ContextVar('netbox_change_control.running_checks', default=frozenset())
+
+
+def checks_running(change_request_id):
+    """
+    True while the checks of this change request are being run.
+    """
+    return change_request_id in _running.get()
 
 
 @dataclass
@@ -153,14 +166,17 @@ def expected_checks(change_request=None):
     return expected
 
 
-def sync_checks(change_request):
+def sync_checks(change_request, expected=None):
     """
     Make sure a MergeCheck row exists for every registered and declared external check, and
     drop rows for checks which no longer exist.
+
+    `expected` is `expected_checks(change_request)`, for a caller which has it already.
     """
     from netbox_change_control.models import MergeCheck
 
-    expected = expected_checks(change_request)
+    if expected is None:
+        expected = expected_checks(change_request)
 
     existing = {c.name: c for c in MergeCheck.objects.filter(change_request=change_request)}
 
@@ -217,54 +233,53 @@ def run_checks(change_request):
     Run every registered check and store its result. Externally reported checks are left
     untouched, since only their reporter knows the answer.
     """
-    from netbox_change_control.models import MergeCheck
-
-    sync_checks(change_request)
-
-    applicable = expected_checks(change_request)
-    rows = {row.name: row for row in MergeCheck.objects.filter(change_request=change_request)}
-
-    for check in _registry.values():
-        # A policy-scoped check that no attached policy asked for has no row and must not run.
-        if check.name not in applicable:
-            continue
-        try:
-            result = check.func(change_request)
-        except Exception as e:
-            logger.exception('Merge check %s raised', check.name)
-            result = CheckResult(MergeCheckStatusChoices.ERROR, f'{type(e).__name__}: {e}'[:500])
-
-        row = rows.get(check.name)
-        if row is None:
-            continue
-
-        summary = result.summary[:500]
-        if (row.status, row.summary, row.details_url) == (result.status, summary, result.details_url):
-            # Nothing moved, so nothing is written. A re-run that finds the same answer is not
-            # a change, and recording one would fill the changelog with noise and bury the
-            # transitions that matter.
-            continue
-
-        row.status = result.status
-        row.summary = summary
-        row.details_url = result.details_url
-        row.completed = timezone.now()
-        # save(), not queryset.update(). update() writes straight to the database and fires no
-        # post_save, so NetBox never recorded a change: a required check going from failed to
-        # passed, which is what opens the gate, left no entry in the changelog at all. For a
-        # plugin whose job is the record of who allowed what, "the pipeline went green at
-        # 14:02" is exactly the fact worth keeping.
-        row.save(update_fields=['status', 'summary', 'details_url', 'completed'])
-
-    # An in-process check turning green can be the last gate a request was waiting on. The
-    # saves above reach the MergeCheck receiver, but only when a result actually moved, so this
-    # also covers the run where everything was already passing.
     from netbox_change_control.automerge import try_auto_merge
+    from netbox_change_control.models import MergeCheck
     from netbox_change_control.policy import refresh_cached_state
 
-    # A check result moves whether the request is ready, which the list reads from a cache.
-    refresh_cached_state(change_request)
+    applicable = expected_checks(change_request)
+    token = _running.set(_running.get() | {change_request.pk})
+    try:
+        sync_checks(change_request, applicable)
+        rows = {row.name: row for row in MergeCheck.objects.filter(change_request=change_request)}
 
+        for check in _registry.values():
+            # A policy-scoped check that no attached policy asked for has no row and must not run.
+            if check.name not in applicable:
+                continue
+            try:
+                result = check.func(change_request)
+            except Exception as e:
+                logger.exception('Merge check %s raised', check.name)
+                result = CheckResult(MergeCheckStatusChoices.ERROR, f'{type(e).__name__}: {e}'[:500])
+
+            row = rows.get(check.name)
+            if row is None:
+                continue
+
+            summary = result.summary[:500]
+            if (row.status, row.summary, row.details_url) == (result.status, summary, result.details_url):
+                # Nothing moved, so nothing is written. A re-run that finds the same answer is not
+                # a change, and recording one would fill the changelog with noise and bury the
+                # transitions that matter.
+                continue
+
+            row.status = result.status
+            row.summary = summary
+            row.details_url = result.details_url
+            row.completed = timezone.now()
+            # save(), not queryset.update(). update() writes straight to the database and fires no
+            # post_save, so NetBox never recorded a change: a required check going from failed to
+            # passed, which is what opens the gate, left no entry in the changelog at all. For a
+            # plugin whose job is the record of who allowed what, "the pipeline went green at
+            # 14:02" is exactly the fact worth keeping.
+            row.save(update_fields=['status', 'summary', 'details_url', 'completed'])
+    finally:
+        _running.reset(token)
+
+    # Once for the whole run: a result moves whether the request is ready, which the list reads
+    # from a cache, and an in-process check turning green can be the last gate it waited on.
+    refresh_cached_state(change_request)
     try_auto_merge(change_request)
 
     return MergeCheck.objects.filter(change_request=change_request)

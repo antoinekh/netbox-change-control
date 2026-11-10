@@ -25,6 +25,7 @@
 - **A run of the checks reacts to its results once.** Each result that moved was saved, and each save refreshed the cached readiness and tried the automatic merge on its own before the run did both again: four times for three changed results. A run now does both once, at its end. A result reported over the REST API still reacts at once.
 - **A group membership change refreshes only the requests it can affect.** Adding a user to any NetBox group, or removing one, refreshed every open change request and ran all its checks, even for a group no policy rule names; a single sign-on or LDAP sync can rewrite memberships at every login. Now only the requests governed by a rule naming that group are refreshed.
 - **Whether a review is stale is decided in one place.** The change request page and the merge gate each compared the review with the branch on their own; they now share one rule, so they cannot disagree. No behaviour changes.
+- **The test suite's shared helpers live in `tests/base.py`.** Six copies of a branch diff helper and six of a permission helper became one of each.
 
 ### Removed
 

@@ -22,8 +22,10 @@ __all__ = (
     'add_rule',
     'approve',
     'docs_page',
+    'grant',
     'grant_merge',
     'make_branch',
+    'make_diff',
     'make_policy',
     'pass_checks',
     'submit',
@@ -71,20 +73,52 @@ def make_branch(prefix, suffix):
     return Branch.objects.create(name=f'{prefix}-{suffix}'[:100])
 
 
-def grant_merge(user, constraints=None):
+def grant(user, actions, *models, constraints=None, name=None):
     """
-    Let `user` merge branches, as netbox-branching's `merge` action does. An automatic merge runs
-    as the requester, so a request can only merge itself when its requester holds this.
+    Give `user` an object permission for `actions` on `models`, optionally constrained.
     """
     from django.contrib.contenttypes.models import ContentType
     from users.models import ObjectPermission
 
     permission = ObjectPermission.objects.create(
-        name=f'merge-{user.pk}-{ObjectPermission.objects.count()}', actions=['merge'], constraints=constraints
+        name=f'{name or "-".join(actions)}-{user.pk}-{ObjectPermission.objects.count()}',
+        actions=list(actions),
+        constraints=constraints,
     )
-    permission.object_types.add(ContentType.objects.get_for_model(Branch))
+    permission.object_types.set([ContentType.objects.get_for_model(model) for model in models])
     permission.users.add(user)
     return permission
+
+
+def grant_merge(user, constraints=None):
+    """
+    Let `user` merge branches, as netbox-branching's `merge` action does. An automatic merge runs
+    as the requester, so a request can only merge itself when its requester holds this.
+    """
+    return grant(user, ['merge'], Branch, constraints=constraints)
+
+
+def make_diff(branch, model=Policy, object_id=1, repr_='thing', **fields):
+    """
+    Record that the branch changes one object, the way branching does.
+
+    ChangeDiff rows are always written one at a time by branching's own receiver, never in bulk,
+    so creating them here exercises the same post_save the plugin listens on.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from netbox_branching.models import ChangeDiff
+
+    return ChangeDiff.objects.create(
+        branch=branch,
+        action=fields.pop('action', 'update'),
+        object_type=ContentType.objects.get_for_model(model),
+        object_id=object_id,
+        object_repr=repr_,
+        original=fields.pop('original', {'status': 'active'}),
+        modified=fields.pop('modified', {'status': 'active'}),
+        current=fields.pop('current', {'status': 'active'}),
+        **fields,
+    )
 
 
 def submit(change_request):

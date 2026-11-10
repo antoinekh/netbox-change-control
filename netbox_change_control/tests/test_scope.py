@@ -16,35 +16,14 @@ the branch losing one must let it go.
 """
 
 from core.models import ObjectType
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
-from netbox_branching.models import ChangeDiff
 from users.models import Group, User
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
 from netbox_change_control.policy import sync_policies
-from netbox_change_control.tests.base import approve, make_branch
+from netbox_change_control.tests.base import approve, make_branch, make_diff
 from netbox_change_control.validators import require_approved_change_request
-
-
-def touch(branch, model, object_id, repr_='thing', **kwargs):
-    """
-    Record that the branch changes one object, the way branching does.
-
-    ChangeDiff rows are always written one at a time by branching's own receiver, never in
-    bulk, so creating them here exercises the same post_save the plugin listens on.
-    """
-    return ChangeDiff.objects.create(
-        branch=branch,
-        action=kwargs.pop('action', 'update'),
-        object_type=ContentType.objects.get_for_model(model),
-        object_id=object_id,
-        object_repr=repr_,
-        original=kwargs.pop('original', {'status': 'active'}),
-        modified=kwargs.pop('modified', {'status': 'active'}),
-        current=kwargs.pop('current', {'status': 'active'}),
-    )
 
 
 class ScopeFollowsTheBranchTest(TestCase):
@@ -80,7 +59,7 @@ class ScopeFollowsTheBranchTest(TestCase):
 
     def setUp(self):
         self.branch = make_branch('scope', self._testMethodName)
-        touch(self.branch, self.Prefix, 1, '10.0.0.0/24')
+        make_diff(self.branch, self.Prefix, 1, '10.0.0.0/24')
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
         self.cr.submit()
         self.cr.refresh_from_db()
@@ -96,7 +75,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         The bug this file exists for. The device policy must attach on the edit, not on the
         next sync and not never.
         """
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         self.cr.refresh_from_db()
         self.assertEqual(self.attached(), ['Device changes', 'Prefix changes'])
@@ -110,7 +89,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
 
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
@@ -121,7 +100,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         The exploit end to end: the engineer approves twice and must still not get through.
         """
         approve(self.cr, self.engineer)
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         review = self.cr.reviews.get(reviewer=self.engineer)
         review.save(refresh_snapshot=True)
@@ -138,7 +117,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         """
         The guard that keeps a bulk edit cheap must not also skip a real change of scope.
         """
-        touch(self.branch, self.Prefix, 2, '10.0.1.0/24')
+        make_diff(self.branch, self.Prefix, 2, '10.0.1.0/24')
 
         self.cr.refresh_from_db()
         self.assertEqual(self.attached(), ['Prefix changes'])
@@ -148,7 +127,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         Drift runs both ways. A policy asking for approvals the branch no longer needs is a
         different failure, but it is the same missing re-match.
         """
-        diff = touch(self.branch, self.Device, 1, 'core-switch')
+        diff = make_diff(self.branch, self.Device, 1, 'core-switch')
         self.cr.refresh_from_db()
         self.assertIn('Device changes', self.attached())
 
@@ -162,7 +141,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         self.heavy.enabled = False
         self.heavy.save()
 
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         self.cr.refresh_from_db()
         self.assertEqual(self.attached(), ['Prefix changes'])
@@ -174,7 +153,7 @@ class ScopeFollowsTheBranchTest(TestCase):
         self.cr.status = ChangeRequestStatusChoices.COMPLETED
         self.cr.save(update_fields=['status'])
 
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         self.cr.refresh_from_db()
         self.assertEqual(self.attached(), ['Prefix changes'])
@@ -214,7 +193,7 @@ class MergeGateRematchesTest(TestCase):
 
     def setUp(self):
         self.branch = make_branch('gate', self._testMethodName)
-        touch(self.branch, self.Prefix, 1, '10.0.0.0/24')
+        make_diff(self.branch, self.Prefix, 1, '10.0.0.0/24')
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
         self.cr.submit()
         approve(self.cr, self.engineer)
@@ -225,7 +204,7 @@ class MergeGateRematchesTest(TestCase):
         self.assertTrue(require_approved_change_request(self.branch).permitted)
 
     def test_the_gate_refuses_when_a_matching_policy_is_not_attached(self):
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
 
         # Behind the receiver's back, as any path it does not cover would leave things.
         ChangeRequestPolicy.objects.filter(change_request=self.cr, policy=self.heavy).delete()
@@ -239,7 +218,7 @@ class MergeGateRematchesTest(TestCase):
         The gate is read on every page view, so it reports a missing policy instead of
         attaching it; the receivers attach it on the event that made it match.
         """
-        touch(self.branch, self.Device, 1, 'core-switch')
+        make_diff(self.branch, self.Device, 1, 'core-switch')
         ChangeRequestPolicy.objects.filter(change_request=self.cr, policy=self.heavy).delete()
         ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.APPROVED)
 
@@ -268,7 +247,7 @@ class PolicyEventsRematchTest(TestCase):
 
     def setUp(self):
         self.branch = make_branch('events', self._testMethodName)
-        self.diff = touch(self.branch, self.Device, 1, 'core-switch', original={'status': 'planned'})
+        self.diff = make_diff(self.branch, self.Device, 1, 'core-switch', original={'status': 'planned'})
         self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
         self.cr.submit()
 

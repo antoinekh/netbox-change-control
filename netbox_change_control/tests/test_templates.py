@@ -12,11 +12,11 @@ from pathlib import Path
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from netbox_branching.models import ChangeDiff
-from users.models import Group, ObjectPermission, User
+from users.models import Group, User
 
 from netbox_change_control.choices import ReviewDecisionChoices
 from netbox_change_control.models import ChangeRequest, Review
-from netbox_change_control.tests.base import ChangeControlTestCase, make_policy
+from netbox_change_control.tests.base import ChangeControlTestCase, grant, make_policy
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / 'templates'
 
@@ -61,24 +61,13 @@ class BadgeColourTest(TestCase):
         self.assertEqual(sorted(set(offenders)), [], 'badge colours NetBox does not define')
 
 
-def grant(user, actions, *models, label='perm'):
-    """
-    The pages under test are permission-gated, and these tests are about what they render
-    rather than who may see them.
-    """
-    permission = ObjectPermission.objects.create(name=f'{label}-{user.pk}', actions=list(actions))
-    permission.object_types.set(ContentType.objects.get_for_model(m) for m in models)
-    permission.users.add(user)
-    return permission
-
-
 def grant_reviewer(user):
     """
     View the request, and be able to review it: the form is replaced by an explanation for a
     user who cannot, so without `add_review` there is no select to inspect at all.
     """
-    grant(user, ['view'], ChangeRequest, label='view')
-    grant(user, ['view', 'add'], Review, label='review')
+    grant(user, ['view'], ChangeRequest, name='view')
+    grant(user, ['view', 'add'], Review, name='review')
 
 
 class ReviewFormTest(ChangeControlTestCase):
@@ -131,7 +120,6 @@ class ReviewStalenessIsVisibleTest(ChangeControlTestCase):
 
     def test_a_stale_review_says_so_on_its_own_page(self):
         from core.choices import ObjectChangeActionChoices
-        from django.contrib.contenttypes.models import ContentType
 
         review = Review.objects.create(
             change_request=self.cr, reviewer=self.reviewer, decision=ReviewDecisionChoices.APPROVE

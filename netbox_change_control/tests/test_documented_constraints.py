@@ -16,20 +16,11 @@ import re
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from netbox_branching.models import ChangeDiff
-from users.models import ObjectPermission, User
+from users.models import User
 
 from netbox_change_control.choices import MergeCheckStatusChoices, ReviewDecisionChoices
 from netbox_change_control.models import ChangeComment, ChangeRequest, MergeCheck, Policy, Review
-from netbox_change_control.tests.base import docs_page, make_branch
-
-
-def constrain(user, model, actions, constraints):
-    permission = ObjectPermission.objects.create(
-        name=f'{model._meta.model_name}-{user.pk}', actions=list(actions), constraints=constraints
-    )
-    permission.object_types.add(ContentType.objects.get_for_model(model))
-    permission.users.add(user)
-    return permission
+from netbox_change_control.tests.base import docs_page, grant, make_branch
 
 
 class DocumentedConstraintsWorkTest(TestCase):
@@ -61,7 +52,7 @@ class DocumentedConstraintsWorkTest(TestCase):
         not_ours = Review.objects.create(
             change_request=self.cr_mine, reviewer=self.theirs, decision=ReviewDecisionChoices.APPROVE
         )
-        constrain(self.mine, Review, ['view', 'delete'], {'reviewer': '$user'})
+        grant(self.mine, ['view', 'delete'], Review, constraints={'reviewer': '$user'})
         user = User.objects.get(pk=self.mine.pk)
 
         self.assertTrue(user.has_perm('netbox_change_control.delete_review', ours))
@@ -81,14 +72,14 @@ class DocumentedConstraintsWorkTest(TestCase):
         not_ours = ChangeComment.objects.create(
             change_request=self.cr_mine, change_diff=diff, author=self.theirs, text='theirs'
         )
-        constrain(self.mine, ChangeComment, ['view', 'delete'], {'author': '$user'})
+        grant(self.mine, ['view', 'delete'], ChangeComment, constraints={'author': '$user'})
         user = User.objects.get(pk=self.mine.pk)
 
         self.assertTrue(user.has_perm('netbox_change_control.delete_changecomment', ours))
         self.assertFalse(user.has_perm('netbox_change_control.delete_changecomment', not_ours))
 
     def test_a_requester_constraint_limits_a_change_request_to_its_owner(self):
-        constrain(self.mine, ChangeRequest, ['view', 'change'], {'requester': '$user'})
+        grant(self.mine, ['view', 'change'], ChangeRequest, constraints={'requester': '$user'})
         user = User.objects.get(pk=self.mine.pk)
 
         self.assertTrue(user.has_perm('netbox_change_control.change_changerequest', self.cr_mine))
@@ -105,7 +96,7 @@ class DocumentedConstraintsWorkTest(TestCase):
         not_ours = MergeCheck.objects.create(
             change_request=self.cr_mine, name='cab-approval', status=MergeCheckStatusChoices.PENDING
         )
-        constrain(self.mine, MergeCheck, ['view', 'change'], {'name': 'ci-pipeline'})
+        grant(self.mine, ['view', 'change'], MergeCheck, constraints={'name': 'ci-pipeline'})
         user = User.objects.get(pk=self.mine.pk)
 
         self.assertTrue(user.has_perm('netbox_change_control.change_mergecheck', ours))

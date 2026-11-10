@@ -11,26 +11,12 @@ The review side of this is pinned in test_api.py. This file pins the comment sid
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from netbox_branching.models import ChangeDiff
 from rest_framework import status
 from users.models import ObjectPermission, User
 from utilities.testing import APITestCase
 
-from netbox_change_control.models import ChangeComment, ChangeRequest, Policy
-from netbox_change_control.tests.base import make_branch
-
-
-def make_diff(branch, object_id=1, repr_='thing'):
-    return ChangeDiff.objects.create(
-        branch=branch,
-        action='update',
-        object_type=ContentType.objects.get_for_model(Policy),
-        object_id=object_id,
-        object_repr=repr_,
-        original={'a': 1},
-        modified={'a': 2},
-        current={'a': 1},
-    )
+from netbox_change_control.models import ChangeComment, ChangeRequest
+from netbox_change_control.tests.base import make_branch, make_diff
 
 
 class ChangeCommentAttributionTest(APITestCase):

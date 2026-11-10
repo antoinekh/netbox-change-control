@@ -11,10 +11,8 @@ Each test grants one constrained permission and checks the action on an object i
 constraint and on one outside it.
 """
 
-from django.contrib.contenttypes.models import ContentType
 from django.test import Client
 from django.urls import reverse
-from netbox_branching.models import ChangeDiff
 from users.models import ObjectPermission, User
 
 from netbox_change_control.choices import (
@@ -22,17 +20,8 @@ from netbox_change_control.choices import (
     ChangeRequestStatusChoices,
     MergeCheckStatusChoices,
 )
-from netbox_change_control.models import ChangeComment, ChangeRequest, MergeCheck, Policy, Review
-from netbox_change_control.tests.base import ChangeControlTestCase, make_branch
-
-
-def grant(user, model, actions, constraints=None):
-    permission = ObjectPermission.objects.create(
-        name=f'{model._meta.model_name}-{"-".join(actions)}-{user.pk}', actions=list(actions), constraints=constraints
-    )
-    permission.object_types.add(ContentType.objects.get_for_model(model))
-    permission.users.add(user)
-    return permission
+from netbox_change_control.models import ChangeComment, ChangeRequest, MergeCheck, Review
+from netbox_change_control.tests.base import ChangeControlTestCase, grant, make_branch, make_diff
 
 
 class ActionConstraintTest(ChangeControlTestCase):
@@ -44,7 +33,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.me.groups.add(self.group)
         self.client = Client()
         self.client.force_login(self.me)
-        grant(self.me, ChangeRequest, ['view'])
+        grant(self.me, ['view'], ChangeRequest)
         # The fixture request belongs to somebody else; this one is mine.
         self.mine = ChangeRequest.objects.create(
             branch=make_branch('constraint-mine', self._testMethodName), title='Mine', requester=self.me
@@ -58,7 +47,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         return change_request.status
 
     def test_abandon_honours_the_constraint(self):
-        grant(self.me, ChangeRequest, ['abandon'], {'requester': '$user'})
+        grant(self.me, ['abandon'], ChangeRequest, constraints={'requester': '$user'})
         self.mine.submit()
 
         self._post('changerequest_abandon', self.cr.pk)
@@ -68,7 +57,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertEqual(self._status(self.mine), ChangeRequestStatusChoices.ABANDONED)
 
     def test_reopen_honours_the_constraint(self):
-        grant(self.me, ChangeRequest, ['reopen'], {'requester': '$user'})
+        grant(self.me, ['reopen'], ChangeRequest, constraints={'requester': '$user'})
         self.cr.abandon()
         self.mine.abandon()
 
@@ -79,7 +68,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertEqual(self._status(self.mine), ChangeRequestStatusChoices.DRAFT)
 
     def test_return_to_draft_honours_the_constraint(self):
-        grant(self.me, ChangeRequest, ['change'], {'requester': '$user'})
+        grant(self.me, ['change'], ChangeRequest, constraints={'requester': '$user'})
         self.mine.submit()
 
         self._post('changerequest_return_to_draft', self.cr.pk)
@@ -89,7 +78,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertEqual(self._status(self.mine), ChangeRequestStatusChoices.DRAFT)
 
     def test_submit_for_review_honours_the_constraint(self):
-        grant(self.me, ChangeRequest, ['change'], {'requester': '$user'})
+        grant(self.me, ['change'], ChangeRequest, constraints={'requester': '$user'})
         self.cr.return_to_draft()
 
         self._post('changerequest_submit', self.cr.pk)
@@ -99,7 +88,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertEqual(self._status(self.mine), ChangeRequestStatusChoices.NEEDS_REVIEW)
 
     def test_a_review_honours_the_constraint(self):
-        grant(self.me, Review, ['add'], {'change_request__priority': ChangeRequestPriorityChoices.HIGH})
+        grant(self.me, ['add'], Review, constraints={'change_request__priority': ChangeRequestPriorityChoices.HIGH})
         urgent = ChangeRequest.objects.create(
             branch=make_branch('constraint-urgent', self._testMethodName),
             title='Urgent',
@@ -115,9 +104,9 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertTrue(Review.objects.filter(change_request=urgent, reviewer=self.me).exists())
 
     def test_a_comment_honours_the_constraint(self):
-        grant(self.me, ChangeComment, ['add'], {'change_request__requester': '$user'})
-        theirs = self._diff(self.branch)
-        mine = self._diff(self.mine.branch)
+        grant(self.me, ['add'], ChangeComment, constraints={'change_request__requester': '$user'})
+        theirs = make_diff(self.branch)
+        mine = make_diff(self.mine.branch)
 
         self._post('changerequest_add_comment', self.cr.pk, {'change_diff': theirs.pk, 'text': 'Hm.'})
         self._post('changerequest_add_comment', self.mine.pk, {'change_diff': mine.pk, 'text': 'Hm.'})
@@ -126,8 +115,8 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertTrue(ChangeComment.objects.filter(change_request=self.mine).exists())
 
     def test_resolving_honours_the_constraint(self):
-        grant(self.me, ChangeComment, ['view', 'change'], {'author': '$user'})
-        diff = self._diff(self.branch)
+        grant(self.me, ['view', 'change'], ChangeComment, constraints={'author': '$user'})
+        diff = make_diff(self.branch)
         theirs = ChangeComment.objects.create(change_request=self.cr, change_diff=diff, author=self.requester, text='a')
         mine = ChangeComment.objects.create(change_request=self.cr, change_diff=diff, author=self.me, text='b')
 
@@ -140,7 +129,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertTrue(mine.resolved)
 
     def test_rerunning_checks_honours_the_constraint(self):
-        grant(self.me, MergeCheck, ['view', 'change'], {'name': 'some-other-check'})
+        grant(self.me, ['view', 'change'], MergeCheck, constraints={'name': 'some-other-check'})
         self.cr.checks.update(status=MergeCheckStatusChoices.PENDING, summary='')
 
         self._post('changerequest_run_checks', self.cr.pk)
@@ -148,7 +137,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertFalse(self.cr.checks.exclude(status=MergeCheckStatusChoices.PENDING).exists())
 
     def test_rerunning_checks_without_a_constraint_still_works(self):
-        grant(self.me, MergeCheck, ['view', 'change'])
+        grant(self.me, ['view', 'change'], MergeCheck)
         self.cr.checks.update(status=MergeCheckStatusChoices.PENDING, summary='')
 
         self._post('changerequest_run_checks', self.cr.pk)
@@ -157,7 +146,7 @@ class ActionConstraintTest(ChangeControlTestCase):
 
     def test_a_request_outside_the_view_constraint_is_not_found(self):
         ObjectPermission.objects.filter(users=self.me).delete()
-        grant(self.me, ChangeRequest, ['view', 'abandon'], {'requester': '$user'})
+        grant(self.me, ['view', 'abandon'], ChangeRequest, constraints={'requester': '$user'})
 
         response = self._post('changerequest_abandon', self.cr.pk)
 
@@ -165,7 +154,7 @@ class ActionConstraintTest(ChangeControlTestCase):
         self.assertEqual(self._status(self.cr), ChangeRequestStatusChoices.NEEDS_REVIEW)
 
     def test_the_page_offers_only_the_actions_the_constraint_allows(self):
-        grant(self.me, ChangeRequest, ['abandon'], {'requester': '$user'})
+        grant(self.me, ['abandon'], ChangeRequest, constraints={'requester': '$user'})
         self.mine.submit()
 
         theirs = self.client.get(self.cr.get_absolute_url()).content.decode()
@@ -177,21 +166,8 @@ class ActionConstraintTest(ChangeControlTestCase):
     def test_the_merge_permission_is_read_for_this_branch(self):
         from netbox_branching.models import Branch
 
-        grant(self.me, Branch, ['merge'], {'name': 'some-other-branch'})
+        grant(self.me, ['merge'], Branch, constraints={'name': 'some-other-branch'})
         self.assertFalse(self.client.get(self.cr.get_absolute_url()).context['can_merge_perm'])
 
-        grant(self.me, Branch, ['merge'], {'name': self.branch.name})
+        grant(self.me, ['merge'], Branch, constraints={'name': self.branch.name})
         self.assertTrue(self.client.get(self.cr.get_absolute_url()).context['can_merge_perm'])
-
-    @staticmethod
-    def _diff(branch):
-        return ChangeDiff.objects.create(
-            branch=branch,
-            action='update',
-            object_type=ContentType.objects.get_for_model(Policy),
-            object_id=1,
-            object_repr='thing',
-            original={'a': 1},
-            modified={'a': 2},
-            current={'a': 1},
-        )

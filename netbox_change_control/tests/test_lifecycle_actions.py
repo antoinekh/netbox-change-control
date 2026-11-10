@@ -9,22 +9,14 @@ from merging for good with no way back through the interface.
 These are the two transitions a person legitimately makes, each behind its own permission.
 """
 
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from rest_framework import status as http
-from users.models import Group, ObjectPermission, User
+from users.models import Group, User
 from utilities.testing import APITestCase
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
-from netbox_change_control.tests.base import approve, make_branch
-
-
-def grant(user, actions, model=ChangeRequest, name='cr'):
-    permission = ObjectPermission.objects.create(name=name, actions=actions)
-    permission.object_types.add(ContentType.objects.get_for_model(model))
-    permission.users.add(user)
-    return permission
+from netbox_change_control.tests.base import approve, grant, make_branch
 
 
 class AbandonAndReopenModelTest(TestCase):
@@ -120,27 +112,27 @@ class AbandonAndReopenViewTest(TestCase):
         self.client.force_login(self.actor)
 
     def test_abandoning_without_the_permission_is_refused(self):
-        grant(self.actor, ['view', 'change'])
+        grant(self.actor, ['view', 'change'], ChangeRequest)
         self.client.post(f'/plugins/change-control/change-requests/{self.cr.pk}/abandon/')
         self.cr.refresh_from_db()
         self.assertNotEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)
 
     def test_abandoning_with_the_permission_works(self):
-        grant(self.actor, ['view', 'abandon'])
+        grant(self.actor, ['view', 'abandon'], ChangeRequest)
         self.client.post(f'/plugins/change-control/change-requests/{self.cr.pk}/abandon/')
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)
 
     def test_reopening_needs_its_own_permission(self):
         self.cr.abandon()
-        grant(self.actor, ['view', 'abandon'])
+        grant(self.actor, ['view', 'abandon'], ChangeRequest)
         self.client.post(f'/plugins/change-control/change-requests/{self.cr.pk}/reopen/')
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)
 
     def test_reopening_with_the_permission_works(self):
         self.cr.abandon()
-        grant(self.actor, ['view', 'reopen'])
+        grant(self.actor, ['view', 'reopen'], ChangeRequest)
         self.client.post(f'/plugins/change-control/change-requests/{self.cr.pk}/reopen/')
         self.cr.refresh_from_db()
         self.assertNotEqual(self.cr.status, ChangeRequestStatusChoices.ABANDONED)
@@ -151,7 +143,7 @@ class StatusIsNotWritableTest(APITestCase):
         super().setUp()
         self.requester = User.objects.create(username='requester')
         self.cr = ChangeRequest.objects.create(branch=make_branch('apilife', 'x'), title='T', requester=self.requester)
-        grant(self.user, ['view', 'change'])
+        grant(self.user, ['view', 'change'], ChangeRequest)
 
     def test_patching_status_to_completed_is_ignored(self):
         """
@@ -177,7 +169,7 @@ class StatusIsNotWritableTest(APITestCase):
         self.assertEqual(response.status_code, http.HTTP_403_FORBIDDEN)
 
     def test_the_abandon_action_works_with_it(self):
-        grant(self.user, ['view', 'abandon'], name='cr-abandon')
+        grant(self.user, ['view', 'abandon'], ChangeRequest, name='cr-abandon')
         response = self.client.post(f'/api/plugins/change-control/change-requests/{self.cr.pk}/abandon/', **self.header)
         self.assertEqual(response.status_code, http.HTTP_200_OK)
         self.cr.refresh_from_db()
@@ -186,7 +178,7 @@ class StatusIsNotWritableTest(APITestCase):
     def test_abandoning_a_completed_request_reports_a_conflict(self):
         self.cr.status = ChangeRequestStatusChoices.COMPLETED
         self.cr.save(update_fields=['status'])
-        grant(self.user, ['view', 'abandon'], name='cr-abandon')
+        grant(self.user, ['view', 'abandon'], ChangeRequest, name='cr-abandon')
         response = self.client.post(f'/api/plugins/change-control/change-requests/{self.cr.pk}/abandon/', **self.header)
         self.assertEqual(response.status_code, http.HTTP_409_CONFLICT)
 
@@ -214,7 +206,7 @@ class SubmitForReviewPermissionTest(TestCase):
         self.url = f'/plugins/change-control/change-requests/{self.cr.pk}/submit/'
 
     def test_a_user_with_only_view_cannot_submit(self):
-        grant(self.outsider, ['view'], name='view-only')
+        grant(self.outsider, ['view'], ChangeRequest, name='view-only')
         self.client.force_login(self.outsider)
         self.client.post(self.url)
 
@@ -223,7 +215,7 @@ class SubmitForReviewPermissionTest(TestCase):
         self.assertEqual(self.cr.policies.count(), 0)
 
     def test_a_user_with_change_can_submit(self):
-        grant(self.requester, ['view', 'change'], name='may-change')
+        grant(self.requester, ['view', 'change'], ChangeRequest, name='may-change')
         self.client.force_login(self.requester)
         self.client.post(self.url)
 
@@ -244,7 +236,7 @@ class ReadOnlyTokenTest(APITestCase):
         super().setUp()
         self.requester = User.objects.create(username='requester')
         self.cr = ChangeRequest.objects.create(branch=make_branch('rotoken', 'x'), title='T', requester=self.requester)
-        grant(self.user, ['view', 'abandon'], name='cr-abandon')
+        grant(self.user, ['view', 'abandon'], ChangeRequest, name='cr-abandon')
         self.url = f'/api/plugins/change-control/change-requests/{self.cr.pk}/abandon/'
 
     def test_a_write_token_holding_the_permission_may_abandon(self):

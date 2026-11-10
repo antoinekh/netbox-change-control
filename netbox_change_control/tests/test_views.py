@@ -39,6 +39,22 @@ class SubmitReviewTest(ChangeControlTestCase):
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
 
+    def test_submitting_the_approval_which_approves_emits_the_event_once(self):
+        """
+        Saving the review already moves the status, so the view must not announce the same
+        transition a second time from the change request it loaded before the save.
+        """
+        from unittest.mock import patch
+
+        from netbox_change_control.events import CHANGE_REQUEST_APPROVED
+
+        with patch('extras.events.flush_events') as flush:
+            with self.captureOnCommitCallbacks(execute=True):
+                self._post(ReviewDecisionChoices.APPROVE, 'looks good')
+
+        emitted = [event['event_type'] for call in flush.call_args_list for event in call.args[0]]
+        self.assertEqual(emitted.count(CHANGE_REQUEST_APPROVED), 1)
+
     def test_a_failed_edit_does_not_destroy_the_existing_review(self):
         """
         Requesting changes without a comment fails validation. The reviewer's previous

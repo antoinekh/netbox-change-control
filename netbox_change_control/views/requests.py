@@ -12,7 +12,6 @@ from netbox_change_control import events, filtersets, forms, tables
 from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
 from netbox_change_control.permissions import ABANDON_PERMISSION, CHANGE_PERMISSION, REOPEN_PERMISSION
-from netbox_change_control.policy import refresh_status
 
 from .reviews import review_eligibility
 
@@ -169,9 +168,10 @@ class SubmitReviewView(View):
 
         # Submitting through the form is a deliberate restatement, so the branch snapshot is
         # refreshed even when the decision is unchanged.
+        # The review's own signal recomputes the status; recomputing it again here from the
+        # change request loaded before the save would announce the same transition twice.
         review.save(refresh_snapshot=True)
 
-        refresh_status(change_request)
         messages.success(request, _('Review recorded.'))
         return redirect(change_request.get_absolute_url())
 

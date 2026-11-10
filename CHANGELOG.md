@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A review submitted from the change request page fires its status event once.** When the review moved the status, `change_request_approved`, `change_request_rejected` or `change_request_review_requested` reached the event rules twice, a few milliseconds apart, so a webhook or a script ran twice for one transition. The checks also ran twice on approval. The review's own signal already recomputes the status, and the page computed it a second time from the change request it had loaded before the review was saved.
+
 ### Documentation
 
 - The changelog has its own tab in the documentation site.

@@ -8,6 +8,7 @@ branch. Users holding `netbox_change_control.bypass_policy` are exempt.
 from contextvars import ContextVar
 
 from core.models import ObjectChange
+from django.db import transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 from netbox.plugins import get_plugin_config
@@ -236,20 +237,24 @@ def complete_on_merge(sender, branch, **kwargs):
     change_request = ChangeRequest.objects.filter(branch=branch).first()
     if change_request is None:
         return
-    if change_request.status == ChangeRequestStatusChoices.COMPLETED:
-        return
-    change_request.status = ChangeRequestStatusChoices.COMPLETED
-    change_request.save(update_fields=['status'])
 
-    # Completion never passes through refresh_status, so the cached columns the list shows
-    # would otherwise keep reporting a merged request as ready to merge.
-    refresh_cached_state(change_request)
-
-    # refresh_status emits the other transitions, but completion is set here and never passes
-    # through it, so this is the only place the event can come from.
     from netbox_change_control import events
 
-    events.emit(change_request, events.CHANGE_REQUEST_COMPLETED)
+    with transaction.atomic():
+        if not change_request.lock_status():
+            return
+        if change_request.status == ChangeRequestStatusChoices.COMPLETED:
+            return
+        change_request.status = ChangeRequestStatusChoices.COMPLETED
+        change_request.save(update_fields=['status'])
+
+        # Completion never passes through refresh_status, so the cached columns the list shows
+        # would otherwise keep reporting a merged request as ready to merge.
+        refresh_cached_state(change_request)
+
+        # refresh_status emits the other transitions, but completion is set here and never
+        # passes through it, so this is the only place the event can come from.
+        events.emit(change_request, events.CHANGE_REQUEST_COMPLETED)
 
 
 @receiver(post_save, sender=Branch)

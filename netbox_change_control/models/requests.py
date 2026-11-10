@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel, PrimaryModel
@@ -297,6 +297,29 @@ class ChangeRequest(PrimaryModel):
             return ''
         return indicator.message
 
+    def lock_status(self):
+        """
+        Lock this row until the transaction ends and read its status again. Returns False if
+        the row is gone. Call it inside `transaction.atomic()`.
+
+        Every status transition decides from the current status, so two requests holding the
+        same old status could otherwise both make the move: both announce it, or one undo the
+        other, such as an abandon landing on a request that has just merged.
+        """
+        # NO KEY UPDATE, the lock the status write takes anyway: a plain FOR UPDATE would also
+        # stop every transaction adding a review, a check or a comment here from committing.
+        status = (
+            type(self)
+            .objects.select_for_update(no_key=True)
+            .filter(pk=self.pk)
+            .values_list('status', flat=True)
+            .first()
+        )
+        if status is None:
+            return False
+        self.status = status
+        return True
+
     @property
     def is_open(self):
         return self.status in ChangeRequestStatusChoices.OPEN
@@ -331,29 +354,30 @@ class ChangeRequest(PrimaryModel):
         already Needs review, so it sees no transition and says nothing. Submitting without
         telling anybody is the one outcome that makes the whole thing pointless.
         """
-        if not self.can_be_submitted:
-            return False
-
         from netbox_change_control.batching import batched, schedule_refresh
         from netbox_change_control.policy import sync_policies
 
-        self.status = ChangeRequestStatusChoices.NEEDS_REVIEW
-        self.save(update_fields=['status'])
+        with transaction.atomic():
+            if not self.lock_status() or not self.can_be_submitted:
+                return False
 
-        with batched():
-            sync_policies(self)
-            schedule_refresh(self)
+            self.status = ChangeRequestStatusChoices.NEEDS_REVIEW
+            self.save(update_fields=['status'])
 
-        # The refresh may have carried it further, to Approved on a policy needing no human or
-        # to Rejected on a standing rejection, and it announces those itself. Only the case it
-        # cannot see is left here.
-        self.refresh_from_db()
-        if self.status == ChangeRequestStatusChoices.NEEDS_REVIEW:
-            from netbox_change_control import events
-            from netbox_change_control.notifications import notify_status_change
+            with batched():
+                sync_policies(self)
+                schedule_refresh(self)
 
-            notify_status_change(self, ChangeRequestStatusChoices.NEEDS_REVIEW)
-            events.emit(self, events.CHANGE_REQUEST_REVIEW_REQUESTED)
+            # The refresh may have carried it further, to Approved on a policy needing no human
+            # or to Rejected on a standing rejection, and it announces those itself. Only the
+            # case it cannot see is left here.
+            self.refresh_from_db()
+            if self.status == ChangeRequestStatusChoices.NEEDS_REVIEW:
+                from netbox_change_control import events
+                from netbox_change_control.notifications import notify_status_change
+
+                notify_status_change(self, ChangeRequestStatusChoices.NEEDS_REVIEW)
+                events.emit(self, events.CHANGE_REQUEST_REVIEW_REQUESTED)
 
         return True
 
@@ -366,15 +390,15 @@ class ChangeRequest(PrimaryModel):
         author wants to work on it some more. What stops is the merge, because a draft is not
         approved and the gate reads the status.
         """
-        if not self.can_return_to_draft:
-            return False
-
-        self.status = ChangeRequestStatusChoices.DRAFT
-        self.save(update_fields=['status'])
-
         from netbox_change_control.policy import refresh_cached_state
 
-        refresh_cached_state(self)
+        with transaction.atomic():
+            if not self.lock_status() or not self.can_return_to_draft:
+                return False
+
+            self.status = ChangeRequestStatusChoices.DRAFT
+            self.save(update_fields=['status'])
+            refresh_cached_state(self)
         return True
 
     @property
@@ -399,10 +423,11 @@ class ChangeRequest(PrimaryModel):
         """
         Give up on this change request. Returns True if the status moved.
         """
-        if not self.can_be_abandoned:
-            return False
-        self.status = ChangeRequestStatusChoices.ABANDONED
-        self.save(update_fields=['status'])
+        with transaction.atomic():
+            if not self.lock_status() or not self.can_be_abandoned:
+                return False
+            self.status = ChangeRequestStatusChoices.ABANDONED
+            self.save(update_fields=['status'])
         return True
 
     def reopen(self):
@@ -413,16 +438,17 @@ class ChangeRequest(PrimaryModel):
         carried may since have gone stale and the policies may since have changed. Refreshing
         computes the honest answer instead of restoring a remembered one.
         """
-        if not self.can_be_reopened:
-            return False
-
         from netbox_change_control.policy import refresh_status, sync_policies
 
-        self.status = ChangeRequestStatusChoices.DRAFT
-        self.save(update_fields=['status'])
-        if not self.branch_deleted:
-            sync_policies(self)
-        refresh_status(self)
+        with transaction.atomic():
+            if not self.lock_status() or not self.can_be_reopened:
+                return False
+
+            self.status = ChangeRequestStatusChoices.DRAFT
+            self.save(update_fields=['status'])
+            if not self.branch_deleted:
+                sync_policies(self)
+            refresh_status(self)
         return True
 
     def evaluate(self):

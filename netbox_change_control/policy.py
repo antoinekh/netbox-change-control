@@ -8,6 +8,8 @@ without a request.
 
 from dataclasses import dataclass, field
 
+from django.db import transaction
+
 from netbox_change_control.choices import (
     ChangeRequestStatusChoices,
     ConditionStateChoices,
@@ -432,6 +434,13 @@ def refresh_status(change_request, run_checks_on_approval=True):
     afterwards. Reaching Approved normally has to refresh them here, but a caller that is about
     to do it anyway would otherwise put the whole suite through twice.
     """
+    with transaction.atomic():
+        if not change_request.lock_status():
+            return change_request.status
+        return _refresh_locked_status(change_request, run_checks_on_approval)
+
+
+def _refresh_locked_status(change_request, run_checks_on_approval):
     if change_request.status in ChangeRequestStatusChoices.TERMINAL:
         return change_request.status
 

@@ -184,17 +184,33 @@ def refresh_on_rule_membership_change(sender, instance, action, **kwargs):
     _refresh_for_policies([instance.policy_id])
 
 
-def refresh_on_group_membership_change(sender, instance, action, **kwargs):
+def refresh_on_group_membership_change(sender, instance, action, reverse, pk_set, **kwargs):
     """
     A user joining or leaving a group changes who is eligible for a rule.
 
     Connected explicitly below rather than with a bare @receiver, so it does not run on
     every many-to-many change in NetBox.
     """
+    # Only the policies whose rules name an affected group are refreshed: a single sign-on or
+    # LDAP sync can rewrite group memberships at every login, and refreshing every open request
+    # with all its checks for a group no rule names made each such login pay for the whole set.
+    if action == 'pre_clear' and not reverse:
+        # A clear reports no groups, so the user's groups are read before they go.
+        instance._change_control_cleared_groups = set(instance.groups.values_list('pk', flat=True))
+        return
     if action not in ('post_add', 'post_remove', 'post_clear'):
         return
-    policy_ids = list(PolicyRule.objects.values_list('policy_id', flat=True).distinct())
-    _refresh_for_policies(policy_ids)
+
+    if reverse:
+        group_ids = {instance.pk}
+    elif action == 'post_clear':
+        group_ids = getattr(instance, '_change_control_cleared_groups', set())
+    else:
+        group_ids = pk_set or set()
+
+    policy_ids = set(PolicyRule.objects.filter(groups__in=group_ids).values_list('policy_id', flat=True))
+    if policy_ids:
+        _refresh_for_policies(policy_ids)
 
 
 m2m_changed.connect(refresh_on_group_membership_change, sender=User.groups.through)

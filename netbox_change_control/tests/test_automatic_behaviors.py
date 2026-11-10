@@ -105,6 +105,44 @@ class PolicyReevaluationTest(AutomaticBehaviorTestCase):
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
 
+    def test_joining_through_the_group_side_grants_approval(self):
+        self._approve(user=self.outsider)
+
+        self.group.users.add(self.outsider)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
+
+    def test_clearing_the_reviewer_groups_revokes_approval(self):
+        self._approve()
+
+        self.reviewer.groups.clear()
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+
+    def test_clearing_the_group_revokes_approval(self):
+        self._approve()
+
+        self.group.users.clear()
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+
+    def test_a_group_no_rule_names_refreshes_nothing(self):
+        """
+        A single sign-on or LDAP sync can rewrite memberships at every login, so a group no
+        rule names must cost nothing.
+        """
+        from users.models import Group
+
+        unrelated = Group.objects.create(name='Unrelated')
+        with patch('netbox_change_control.receivers.status.schedule_refresh') as refresh:
+            self.outsider.groups.add(unrelated)
+            unrelated.users.add(self.reviewer)
+            self.outsider.groups.clear()
+        refresh.assert_not_called()
+
     def test_disabling_the_policy_removes_its_rules(self):
         self._approve()
         self.cr.refresh_from_db()

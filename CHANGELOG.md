@@ -11,6 +11,7 @@
 - **A policy scoped to object types reads its conditions on those types only.** The conditions were evaluated against every changed object in the branch, so the documented example, "active circuits need a lead", also attached to a branch touching a planned circuit and an active site, because the site was active. A policy with no object types still reads every changed object.
 - **A review can no longer be moved to another change request over the REST API.** The review form never offered it, but a PATCH of `change_request` moved the review, which then kept the branch state of the first request and skipped the restatement the form asks for. It now answers 400.
 - **A completed or abandoned change request takes no new comment.** The page hid the comment form, but a direct POST or a REST API call still opened a thread on a closed request. A new comment or reply is now refused there; resolving and reopening an existing thread still work.
+- **The My Reviews widget no longer lists drafts.** It is documented to follow the notifications, which reach a reviewer only once a request needs review, but it also listed requests still held as drafts by their author. It now lists only requests that need review.
 
 ## 0.6.2 - 2026-11-10
 

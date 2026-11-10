@@ -38,15 +38,11 @@ class MyReviewsWidget(DashboardWidget):
         if not request.user.is_authenticated:
             return ''
 
-        # Narrow in SQL first: skip requests this user opened, and those they have already
-        # reviewed. Only the survivors need a policy evaluation.
+        # Narrow in SQL first, so only the survivors need a policy evaluation: needs review only,
+        # as for the notifications, since a draft is the author's to hold; and skip requests this
+        # user opened or has already reviewed.
         queryset = (
-            ChangeRequest.objects.filter(
-                status__in=(
-                    ChangeRequestStatusChoices.NEEDS_REVIEW,
-                    ChangeRequestStatusChoices.DRAFT,
-                )
-            )
+            ChangeRequest.objects.filter(status=ChangeRequestStatusChoices.NEEDS_REVIEW)
             .exclude(requester=request.user)
             .exclude(reviews__reviewer=request.user)
             .select_related('branch', 'requester')

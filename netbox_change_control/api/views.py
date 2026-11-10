@@ -17,7 +17,12 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
-from netbox_change_control.permissions import ABANDON_PERMISSION, CHANGE_PERMISSION, REOPEN_PERMISSION
+from netbox_change_control.permissions import (
+    ABANDON_PERMISSION,
+    CHANGE_PERMISSION,
+    REOPEN_PERMISSION,
+    own_statements,
+)
 
 from .serializers import (
     ChangeCommentSerializer,
@@ -159,6 +164,13 @@ class ReviewViewSet(NetBoxModelViewSet):
     queryset = Review.objects.select_related('reviewer', 'change_request')
     serializer_class = ReviewSerializer
     filterset_class = filtersets.ReviewFilterSet
+
+    def get_queryset(self):
+        # Single and bulk updates both read this; deletion stays model-wide, as documented.
+        queryset = super().get_queryset()
+        if self.request.method in ('PUT', 'PATCH'):
+            return own_statements(queryset, self.request.user, 'reviewer')
+        return queryset
 
 
 class MergeCheckViewSet(NetBoxModelViewSet):

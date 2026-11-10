@@ -4,6 +4,7 @@ from utilities.views import register_model_view
 
 from netbox_change_control import forms
 from netbox_change_control.models import Review
+from netbox_change_control.permissions import own_statements
 
 __all__ = (
     'ReviewDeleteView',
@@ -36,10 +37,7 @@ class ReviewEditView(generic.ObjectEditView):
     form = forms.ReviewEditForm
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        if request.user.is_superuser:
-            return queryset
-        return queryset.filter(reviewer=request.user)
+        return own_statements(super().get_queryset(request), request.user, 'reviewer')
 
 
 @register_model_view(Review, 'delete')

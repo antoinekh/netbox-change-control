@@ -14,6 +14,7 @@ __all__ = (
     'OVERRIDE_WINDOW_PERMISSION',
     'REOPEN_PERMISSION',
     'current_user_has_perm',
+    'own_statements',
 )
 
 # NetBox parses a permission name as <app_label>.<action>_<model> using rsplit('_', 1), so
@@ -55,3 +56,16 @@ def current_user_has_perm(permission, *, without_request):
         return False
 
     return user.has_perm(permission)
+
+
+def own_statements(queryset, user, author_field):
+    """
+    Narrow `queryset` to the statements `user` may rewrite: their own, or any for a superuser.
+
+    A review or a comment is a statement attributed to a person, so rewriting somebody else's
+    puts words in their mouth in the record the merge decision rests on. Every place that edits
+    one narrows through here, so the interface and the REST API cannot disagree.
+    """
+    if user.is_superuser:
+        return queryset
+    return queryset.filter(**{author_field: user})

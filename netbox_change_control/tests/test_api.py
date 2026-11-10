@@ -285,6 +285,82 @@ class ReviewAttributionTest(ChangeControlAPITestCase):
         self.assertNotEqual(review.reviewer, self.colleague)
 
 
+class ReviewOwnershipAPITest(ChangeControlAPITestCase):
+    """
+    A review is a personal statement, so only its reviewer may rewrite it over the API.
+
+    The edit form narrows to the caller's own reviews, but the API did not, so a token holding
+    `change_review` could turn a colleague's "request changes" into an approval still
+    attributed to that colleague, which is the gate defeated by one request.
+    """
+
+    def setUp(self):
+        super().setUp()
+        requester = User.objects.create(username='ownership-requester')
+        self.colleague = User.objects.create(username='ownership-colleague')
+        self.cr = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='review-ownership'), title='T', requester=requester
+        )
+        self.theirs = Review.objects.create(
+            change_request=self.cr, reviewer=self.colleague, decision=ReviewDecisionChoices.REJECT, comment='no'
+        )
+        self.mine = Review.objects.create(
+            change_request=self.cr, reviewer=self.user, decision=ReviewDecisionChoices.APPROVE
+        )
+        self._grant(['view', 'change', 'delete'], Review)
+
+    def _detail(self, review):
+        return reverse('plugins-api:netbox_change_control-api:review-detail', args=[review.pk])
+
+    def test_a_colleague_review_cannot_be_patched(self):
+        response = self.client.patch(self._detail(self.theirs), {'decision': 'approve'}, format='json', **self.header)
+        self.assertHttpStatus(response, status.HTTP_404_NOT_FOUND)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.decision, ReviewDecisionChoices.REJECT)
+
+    def test_a_colleague_review_cannot_be_replaced(self):
+        response = self.client.put(
+            self._detail(self.theirs),
+            {'change_request': self.cr.pk, 'decision': 'approve', 'comment': ''},
+            format='json',
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_404_NOT_FOUND)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.decision, ReviewDecisionChoices.REJECT)
+
+    def test_a_bulk_update_naming_a_colleague_review_is_refused(self):
+        url = reverse('plugins-api:netbox_change_control-api:review-list')
+        response = self.client.patch(
+            url,
+            [{'id': self.mine.pk, 'comment': 'mine'}, {'id': self.theirs.pk, 'decision': 'approve'}],
+            format='json',
+            **self.header,
+        )
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.decision, ReviewDecisionChoices.REJECT)
+
+    def test_an_own_review_can_be_patched(self):
+        response = self.client.patch(self._detail(self.mine), {'comment': 'still fine'}, format='json', **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+        self.mine.refresh_from_db()
+        self.assertEqual(self.mine.comment, 'still fine')
+
+    def test_a_superuser_can_patch_any_review(self):
+        self.user.is_superuser = True
+        self.user.save()
+        response = self.client.patch(self._detail(self.theirs), {'comment': 'moderated'}, format='json', **self.header)
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+    def test_deleting_stays_model_wide(self):
+        """
+        Deletion follows NetBox's own model and is narrowed with a constraint, as documented.
+        """
+        response = self.client.delete(self._detail(self.theirs), **self.header)
+        self.assertHttpStatus(response, status.HTTP_204_NO_CONTENT)
+
+
 class CheckRequirednessTest(ChangeControlAPITestCase):
     """
     A reporter cannot decide whether its own check counts.

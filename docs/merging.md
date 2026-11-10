@@ -62,7 +62,7 @@ So a change approved at midday with a window opening at 21:00 does merge at 21:0
 
 Only ever one job per branch. A single write can reach the automatic merge by more than one route, and the request is still Approved at the second arrival because the merge has only been queued and not yet run. A queued, scheduled or running merge for the branch stops another being added.
 
-The merge is **enqueued as a background job**, the same path the branching plugin's own merge button takes. It is never run inline: auto-merge is reached from a signal, so merging directly would run a whole branch merge inside the web request that submitted the final review. It runs as the requester, so the changelog records the merge against the person who asked for it.
+The merge is **enqueued as a background job**, the same path the branching plugin's own merge button takes. It is never run inline: auto-merge is reached from a signal, so merging directly would run a whole branch merge inside the web request that submitted the final review. It runs as the requester, so the changelog records the merge against the person who asked for it, and so the requester must hold `netbox_branching.merge_branch` on the branch. Without it, **Merge automatically** cannot be ticked, and a request whose requester has since lost the permission does not merge itself: its page says so, and it can still be merged by hand.
 
 If the branch changes during the wait, the approvals go stale, the status returns to Needs review, and the evening merge does not happen. Approval is only valid for the branch state it was given against.
 

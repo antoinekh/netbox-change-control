@@ -153,6 +153,16 @@ class ChangeRequest(PrimaryModel):
 
     def clean(self):
         super().clean()
+        if self.auto_merge and self.requester_id and not self.requester_can_merge:
+            raise ValidationError(
+                {
+                    'auto_merge': _(
+                        '%(requester)s, who opened this change request, cannot merge this branch, and an automatic '
+                        'merge runs as them.'
+                    )
+                    % {'requester': self.requester}
+                }
+            )
         if self.scheduled_start and self.scheduled_end:
             if self.scheduled_end <= self.scheduled_start:
                 raise ValidationError(
@@ -199,6 +209,30 @@ class ChangeRequest(PrimaryModel):
         from netbox_change_control.automerge import unreliable_window
 
         return unreliable_window(self)
+
+    @property
+    def requester_can_merge(self):
+        """
+        Whether the requester may merge this request's branch, which an automatic merge needs.
+
+        A request with no branch yet, or whose branch is gone, has nothing to check against.
+        """
+        from netbox_change_control.permissions import MERGE_PERMISSION
+
+        if not self.branch_id:
+            return True
+        return self.requester.has_perm(MERGE_PERMISSION, self.branch)
+
+    @property
+    def auto_merge_blocked(self):
+        """
+        True when this request asks to merge itself but its requester may not merge the branch.
+        """
+        from netbox.plugins import get_plugin_config
+
+        if not (self.auto_merge and get_plugin_config('netbox_change_control', 'enable_auto_merge')):
+            return False
+        return not self.requester_can_merge
 
     @property
     def branch_deleted(self):

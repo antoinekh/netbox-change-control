@@ -20,6 +20,7 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
+from netbox_change_control.tests.base import grant_merge
 
 
 class ChangeControlAPITestCase(APITestCase):
@@ -109,6 +110,7 @@ class ChangeRequestAPITest(ChangeControlAPITestCase):
 
     def test_setting_a_change_window(self):
         self._grant(['view', 'change'], ChangeRequest)
+        grant_merge(self.requester)
         url = reverse('plugins-api:netbox_change_control-api:changerequest-detail', args=[self.cr.pk])
         response = self.client.patch(
             url,

@@ -12,6 +12,7 @@ __all__ = (
     'ABANDON_PERMISSION',
     'BYPASS_PERMISSION',
     'CHANGE_PERMISSION',
+    'MERGE_PERMISSION',
     'OVERRIDE_WINDOW_PERMISSION',
     'REOPEN_PERMISSION',
     'current_user_has_perm',
@@ -36,6 +37,9 @@ OVERRIDE_WINDOW_PERMISSION = 'netbox_change_control.override_window_changereques
 CHANGE_PERMISSION = 'netbox_change_control.change_changerequest'
 ABANDON_PERMISSION = 'netbox_change_control.abandon_changerequest'
 REOPEN_PERMISSION = 'netbox_change_control.reopen_changerequest'
+
+# netbox-branching's own action. An automatic merge runs as the requester, so it needs this too.
+MERGE_PERMISSION = 'netbox_branching.merge_branch'
 
 
 def current_user_has_perm(permission, *, without_request):

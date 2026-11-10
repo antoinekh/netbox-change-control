@@ -19,7 +19,7 @@ from netbox_change_control.choices import (
     MergeCheckStatusChoices,
 )
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, MergeCheck, Policy
-from netbox_change_control.tests.base import ChangeControlTestCase, make_branch
+from netbox_change_control.tests.base import ChangeControlTestCase, grant_merge, make_branch
 from netbox_change_control.validators import require_approved_change_request
 
 
@@ -425,6 +425,12 @@ class AutoMergeOnCheckPassTest(CheckTestCase):
     hold is that only one merge ends up queued. Mocking enqueue would remove the very
     mechanism that deduplicates them and prove nothing.
     """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # An automatic merge runs as the requester, who must be allowed to merge.
+        grant_merge(cls.requester)
 
     def queued(self):
         from core.choices import JobStatusChoices

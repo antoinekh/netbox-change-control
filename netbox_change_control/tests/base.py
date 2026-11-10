@@ -22,6 +22,7 @@ __all__ = (
     'add_rule',
     'approve',
     'docs_page',
+    'grant_merge',
     'make_branch',
     'make_policy',
     'pass_checks',
@@ -68,6 +69,22 @@ def make_branch(prefix, suffix):
     A branch named for the test that owns it. Branch names are unique and capped at 100.
     """
     return Branch.objects.create(name=f'{prefix}-{suffix}'[:100])
+
+
+def grant_merge(user, constraints=None):
+    """
+    Let `user` merge branches, as netbox-branching's `merge` action does. An automatic merge runs
+    as the requester, so a request can only merge itself when its requester holds this.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from users.models import ObjectPermission
+
+    permission = ObjectPermission.objects.create(
+        name=f'merge-{user.pk}-{ObjectPermission.objects.count()}', actions=['merge'], constraints=constraints
+    )
+    permission.object_types.add(ContentType.objects.get_for_model(Branch))
+    permission.users.add(user)
+    return permission
 
 
 def submit(change_request):

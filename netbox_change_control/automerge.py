@@ -107,6 +107,11 @@ def try_auto_merge(change_request):
 
     branch = change_request.branch
 
+    # The merge runs as the requester, so it must be a merge the requester may make.
+    if not change_request.requester_can_merge:
+        logger.info('Auto-merge skipped for %s: %s cannot merge this branch', change_request, change_request.requester)
+        return False
+
     # Enqueue rather than merge inline. try_auto_merge is reached from a signal, so a direct
     # call would run a whole branch merge inside the web request that submitted the final
     # review, and would bypass the branching plugin's job_timeout handling. This is the same

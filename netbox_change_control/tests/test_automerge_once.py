@@ -23,7 +23,7 @@ from users.models import Group, User
 from netbox_change_control.automerge import try_auto_merge
 from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
-from netbox_change_control.tests.base import approve, make_branch
+from netbox_change_control.tests.base import approve, grant_merge, make_branch
 
 
 def queued_merges(branch):
@@ -34,6 +34,8 @@ class AutoMergeIsEnqueuedOnceTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.requester = User.objects.create(username='requester')
+        # An automatic merge runs as the requester, who must be allowed to merge.
+        grant_merge(cls.requester)
         cls.group = Group.objects.create(name='Engineers')
         cls.reviewer = User.objects.create(username='reviewer')
         cls.reviewer.groups.add(cls.group)

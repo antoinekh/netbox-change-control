@@ -107,7 +107,7 @@ These belong to [netbox-branching](https://github.com/netboxlabs/netbox-branchin
 | `netbox_branching.add_branch` | `add` | Create a branch. |
 | `netbox_branching.change_branch` | `change` | Rename a branch and edit its description. |
 | `netbox_branching.delete_branch` | `delete` | Delete a branch. The change request survives it, keeping the branch name. |
-| `netbox_branching.merge_branch` | `merge` | Merge a branch. This is what shows the **Merge branch** button once every gate is satisfied. |
+| `netbox_branching.merge_branch` | `merge` | Merge a branch. This is what shows the **Merge branch** button once every gate is satisfied. An automatic merge runs as the requester, so a requester needs it on the branch for **Merge automatically**. |
 | `netbox_branching.sync_branch` | `sync` | Pull main's changes into a branch. |
 | `netbox_branching.revert_branch` | `revert` | Revert a merged branch. |
 | `netbox_branching.archive_branch` | `archive` | Archive a merged branch. |

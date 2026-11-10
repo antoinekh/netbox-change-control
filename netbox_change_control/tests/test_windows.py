@@ -15,7 +15,7 @@ from users.models import User
 
 from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
 from netbox_change_control.models import ChangeRequest
-from netbox_change_control.tests.base import ChangeControlTestCase, make_branch, pass_checks
+from netbox_change_control.tests.base import ChangeControlTestCase, grant_merge, make_branch, pass_checks
 from netbox_change_control.validators import require_approved_change_request
 
 
@@ -132,6 +132,12 @@ class AutoMergeTest(ApprovedRequestTestCase):
     test_automerge_once.py covers that with the real enqueue; do not delete it as a duplicate
     of these.
     """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # An automatic merge runs as the requester, who must be allowed to merge.
+        grant_merge(cls.requester)
 
     def _try(self):
         from netbox_change_control.automerge import try_auto_merge

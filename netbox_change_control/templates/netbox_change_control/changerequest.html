@@ -64,6 +64,21 @@
   </div>
 </div>
 {% endif %}
+{% if auto_merge_blocked %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="alert alert-warning d-flex align-items-start">
+      <i class="mdi mdi-account-lock-outline me-2" aria-hidden="true"></i>
+      <div>
+        <strong>{% trans "This change will not merge automatically." %}</strong>
+        <div class="small">
+          {% blocktrans with requester=object.requester %}An automatic merge runs as {{ requester }}, who opened this change request and cannot merge its branch. Grant them the merge permission, or merge it by hand.{% endblocktrans %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% if window_warning %}
 <div class="row">
   <div class="col col-md-12">
@@ -133,6 +148,7 @@
           <td>
             {% checkmark object.auto_merge %}
             {% if window_warning %}<span class="badge text-bg-orange">{% trans "Window too short" %}</span>{% endif %}
+            {% if auto_merge_blocked %}<span class="badge text-bg-orange">{% trans "Requester cannot merge" %}</span>{% endif %}
           </td>
         </tr>
       </table>

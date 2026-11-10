@@ -26,6 +26,7 @@
 
 - **Upgrading needs a branch migration.** This release adds database migrations, so netbox-branching marks every existing branch **Pending migrations** until it is migrated, and refuses edits in it until then. Run **Migrate** on each open branch after upgrading.
 - **Every status transition lives in one module, `netbox_change_control.lifecycle`.** Submit, return to draft, abandon, reopen, completion and the recomputed statuses each lock the change request row, decide, write and announce in one place. `ChangeRequest.submit()` now emits `change_request_submitted` itself, so a script that submits a request announces it too, as the button and the REST API always did.
+- **Every permission check goes through `netbox_change_control.permissions`.** The permission names the plugin checks, the constrained object lookup and the ownership rule for reviews and comments each live there once, and the interface and the REST API both use them, so they cannot drift apart again. No permission changes.
 
 ### Documentation
 

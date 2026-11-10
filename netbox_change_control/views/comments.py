@@ -10,7 +10,13 @@ from utilities.views import ViewTab, register_model_view
 from netbox_change_control import forms
 from netbox_change_control.diffs import build_change_rows
 from netbox_change_control.models import ChangeComment, ChangeRequest
-from netbox_change_control.permissions import own_statements, save_if_permitted
+from netbox_change_control.permissions import (
+    ADD_COMMENT_PERMISSION,
+    CHANGE_COMMENT_PERMISSION,
+    own_statements,
+    restricted_or_404,
+    save_if_permitted,
+)
 
 __all__ = (
     'AddChangeCommentView',
@@ -88,8 +94,8 @@ class ChangeRequestChangesView(generic.ObjectView):
             'rows': rows,
             'orphaned_threads': orphaned,
             'branch_deleted': instance.branch_deleted,
-            'can_comment': (instance.is_open and request.user.has_perm('netbox_change_control.add_changecomment')),
-            'can_resolve': request.user.has_perm('netbox_change_control.change_changecomment'),
+            'can_comment': (instance.is_open and request.user.has_perm(ADD_COMMENT_PERMISSION)),
+            'can_resolve': request.user.has_perm(CHANGE_COMMENT_PERMISSION),
             'open_threads': instance.change_comments.filter(parent__isnull=True, resolved=False).count(),
         }
 
@@ -128,9 +134,9 @@ class AddChangeCommentView(View):
     def post(self, request, pk):
         from netbox_branching.models import ChangeDiff
 
-        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
-        if not request.user.has_perm('netbox_change_control.add_changecomment'):
+        if not request.user.has_perm(ADD_COMMENT_PERMISSION):
             messages.error(request, _('You do not have permission to comment on changes.'))
             return redirect(change_request.get_absolute_url())
 
@@ -157,7 +163,7 @@ class AddChangeCommentView(View):
             for error in e.messages:
                 messages.error(request, error)
             return redirect(self._changes_url(change_request))
-        if not save_if_permitted(request.user, 'netbox_change_control.add_changecomment', comment, comment.save):
+        if not save_if_permitted(request.user, ADD_COMMENT_PERMISSION, comment, comment.save):
             messages.error(request, _('You do not have permission to comment on this change request.'))
             return redirect(self._changes_url(change_request))
 
@@ -175,9 +181,9 @@ class ResolveChangeCommentView(View):
     """
 
     def post(self, request, pk):
-        comment = get_object_or_404(ChangeComment.objects.restrict(request.user, 'view'), pk=pk, parent__isnull=True)
+        comment = restricted_or_404(ChangeComment.objects.all(), request.user, 'view', pk=pk, parent__isnull=True)
 
-        if not request.user.has_perm('netbox_change_control.change_changecomment', comment):
+        if not request.user.has_perm(CHANGE_COMMENT_PERMISSION, comment):
             messages.error(request, _('You do not have permission to resolve threads.'))
         else:
             comment.resolved = not comment.resolved

@@ -4,7 +4,7 @@ from utilities.views import register_model_view
 
 from netbox_change_control import forms
 from netbox_change_control.models import Review
-from netbox_change_control.permissions import own_statements
+from netbox_change_control.permissions import ADD_REVIEW_PERMISSION, own_statements
 
 __all__ = (
     'ReviewDeleteView',
@@ -61,6 +61,6 @@ def review_eligibility(request, change_request):
             'You opened this change request, so you cannot review it. Sign in as one of the '
             'users listed under "May approve" on the change request page.'
         )
-    if not request.user.has_perm('netbox_change_control.add_review'):
+    if not request.user.has_perm(ADD_REVIEW_PERMISSION):
         return False, _('You do not have permission to review change requests.')
     return True, ''

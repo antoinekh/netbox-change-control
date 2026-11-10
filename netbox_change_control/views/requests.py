@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
 from netbox.object_actions import AddObject, BulkDelete, BulkEdit, BulkExport
@@ -13,8 +13,11 @@ from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
 from netbox_change_control.permissions import (
     ABANDON_PERMISSION,
+    ADD_REVIEW_PERMISSION,
     CHANGE_PERMISSION,
+    MERGE_PERMISSION,
     REOPEN_PERMISSION,
+    restricted_or_404,
     save_if_permitted,
 )
 
@@ -37,13 +40,6 @@ __all__ = (
 #
 # Change requests
 #
-
-
-def _visible_change_request(request, pk):
-    """
-    The change request, among those the user may see; a 404 otherwise, as NetBox answers.
-    """
-    return get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
 
 
 class ChangeRequestListView(generic.ObjectListView):
@@ -92,7 +88,7 @@ class ChangeRequestView(generic.ObjectView):
             'own_review': instance.reviews.filter(reviewer=request.user).first(),
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
-            'can_merge_perm': request.user.has_perm('netbox_branching.merge_branch'),
+            'can_merge_perm': request.user.has_perm(MERGE_PERMISSION),
             'can_submit': instance.can_be_submitted and request.user.has_perm(CHANGE_PERMISSION, instance),
             'can_return_to_draft': instance.can_return_to_draft and request.user.has_perm(CHANGE_PERMISSION, instance),
             'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION, instance),
@@ -151,9 +147,9 @@ class SubmitReviewView(View):
     """
 
     def post(self, request, pk):
-        change_request = _visible_change_request(request, pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
-        if not request.user.has_perm('netbox_change_control.add_review'):
+        if not request.user.has_perm(ADD_REVIEW_PERMISSION):
             messages.error(request, _('You do not have permission to review change requests.'))
             return redirect(change_request.get_absolute_url())
 
@@ -184,7 +180,7 @@ class SubmitReviewView(View):
         # The review's own signal recomputes the status; recomputing it again here from the
         # change request loaded before the save would announce the same transition twice.
         if not save_if_permitted(
-            request.user, 'netbox_change_control.add_review', review, lambda: review.save(refresh_snapshot=True)
+            request.user, ADD_REVIEW_PERMISSION, review, lambda: review.save(refresh_snapshot=True)
         ):
             messages.error(request, _('You do not have permission to review this change request.'))
             return redirect(change_request.get_absolute_url())
@@ -205,7 +201,7 @@ class AbandonChangeRequestView(View):
     """
 
     def post(self, request, pk):
-        change_request = _visible_change_request(request, pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
         if not request.user.has_perm(ABANDON_PERMISSION, change_request):
             messages.error(request, _('You do not have permission to abandon this change request.'))
@@ -230,7 +226,7 @@ class ReopenChangeRequestView(View):
     """
 
     def post(self, request, pk):
-        change_request = _visible_change_request(request, pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
         if not request.user.has_perm(REOPEN_PERMISSION, change_request):
             messages.error(request, _('You do not have permission to reopen this change request.'))
@@ -253,7 +249,7 @@ class SubmitForReviewView(View):
     """
 
     def post(self, request, pk):
-        change_request = _visible_change_request(request, pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
         if not request.user.has_perm(CHANGE_PERMISSION, change_request):
             messages.error(request, _('You do not have permission to submit this change request for review.'))
@@ -275,7 +271,7 @@ class ReturnToDraftView(View):
     """
 
     def post(self, request, pk):
-        change_request = _visible_change_request(request, pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
 
         if not request.user.has_perm(CHANGE_PERMISSION, change_request):
             messages.error(request, _('You do not have permission to change this change request.'))

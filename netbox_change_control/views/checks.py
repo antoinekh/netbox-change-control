@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
 from netbox.object_actions import BulkDelete, BulkExport
@@ -9,6 +9,7 @@ from utilities.views import register_model_view
 from netbox_change_control import filtersets, forms, tables
 from netbox_change_control.checks import get_registered_checks, run_checks
 from netbox_change_control.models import ChangeRequest, MergeCheck
+from netbox_change_control.permissions import CHANGE_CHECK_PERMISSION, restricted_or_404
 
 __all__ = (
     'MergeCheckBulkDeleteView',
@@ -63,12 +64,13 @@ class RunChecksView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
+        change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
         # A re-run writes the result of every check that runs in-process, so the caller must be
         # allowed to change each of those rows, constraints included.
-        permission = 'netbox_change_control.change_mergecheck'
         rows = change_request.checks.filter(name__in=get_registered_checks())
-        if not request.user.has_perm(permission) or not all(request.user.has_perm(permission, row) for row in rows):
+        if not request.user.has_perm(CHANGE_CHECK_PERMISSION) or not all(
+            request.user.has_perm(CHANGE_CHECK_PERMISSION, row) for row in rows
+        ):
             messages.error(request, _('You do not have permission to run the checks of this change request.'))
             return redirect(change_request.get_absolute_url())
 

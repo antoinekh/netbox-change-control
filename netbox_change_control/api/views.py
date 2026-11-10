@@ -1,6 +1,5 @@
 from typing import ClassVar
 
-from django.shortcuts import get_object_or_404
 from netbox.api.authentication import TokenPermissions
 from netbox.api.viewsets import NetBoxModelViewSet
 from rest_framework import status
@@ -22,6 +21,7 @@ from netbox_change_control.permissions import (
     CHANGE_PERMISSION,
     REOPEN_PERMISSION,
     own_statements,
+    restricted_or_404,
 )
 
 from .serializers import (
@@ -87,7 +87,7 @@ class ChangeRequestViewSet(NetBoxModelViewSet):
         which is the NetBox convention for an object-level miss. Not holding it at all is a
         403, raised by the action before it gets here.
         """
-        return get_object_or_404(ChangeRequest.objects.restrict(request.user, action_name), pk=pk)
+        return restricted_or_404(ChangeRequest.objects.all(), request.user, action_name, pk=pk)
 
     # `status` is read-only on the serializer because it is derived from the policy
     # evaluation. These are the two transitions a person makes by hand, each behind its own

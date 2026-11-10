@@ -1,16 +1,22 @@
 """
-Permission lookups that read the current request.
+Every permission the plugin checks, and the helpers that check them.
 
-Both callers need the same thing, and they differ only in what an absent request means, so
-that decision is the caller's rather than duplicated in two near-identical helpers.
+Views and the REST API ask here rather than spelling a permission name or a restricted lookup
+themselves: when each did its own, the interface and the API drifted apart, one honouring an
+object constraint or an ownership rule that the other ignored.
 """
 
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from netbox.context import current_request
 
 __all__ = (
     'ABANDON_PERMISSION',
+    'ADD_COMMENT_PERMISSION',
+    'ADD_REVIEW_PERMISSION',
     'BYPASS_PERMISSION',
+    'CHANGE_CHECK_PERMISSION',
+    'CHANGE_COMMENT_PERMISSION',
     'CHANGE_PERMISSION',
     'MERGE_PERMISSION',
     'OVERRIDE_WINDOW_PERMISSION',
@@ -18,6 +24,7 @@ __all__ = (
     'current_user_has_perm',
     'may_rewrite',
     'own_statements',
+    'restricted_or_404',
     'save_if_permitted',
 )
 
@@ -37,6 +44,13 @@ OVERRIDE_WINDOW_PERMISSION = 'netbox_change_control.override_window_changereques
 CHANGE_PERMISSION = 'netbox_change_control.change_changerequest'
 ABANDON_PERMISSION = 'netbox_change_control.abandon_changerequest'
 REOPEN_PERMISSION = 'netbox_change_control.reopen_changerequest'
+
+ADD_REVIEW_PERMISSION = 'netbox_change_control.add_review'
+ADD_COMMENT_PERMISSION = 'netbox_change_control.add_changecomment'
+# Resolving and reopening a thread, whoever wrote it; rewriting one is the author's alone.
+CHANGE_COMMENT_PERMISSION = 'netbox_change_control.change_changecomment'
+# Re-running the checks and reporting a result both write check rows.
+CHANGE_CHECK_PERMISSION = 'netbox_change_control.change_mergecheck'
 
 # netbox-branching's own action. An automatic merge runs as the requester, so it needs this too.
 MERGE_PERMISSION = 'netbox_branching.merge_branch'
@@ -63,6 +77,14 @@ def current_user_has_perm(permission, *, without_request):
         return False
 
     return user.has_perm(permission)
+
+
+def restricted_or_404(queryset, user, action, **lookup):
+    """
+    The object `lookup` names, among those `user` may `action`, constraints included; a 404
+    otherwise, which is how NetBox answers an object-level miss.
+    """
+    return get_object_or_404(queryset.restrict(user, action), **lookup)
 
 
 def may_rewrite(user, author_id):

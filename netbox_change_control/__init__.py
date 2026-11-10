@@ -66,7 +66,7 @@ class ChangeControlConfig(PluginConfig):
         # not its dashboard module, so a widget is registered only if something imports it.
         # Without this the My Reviews widget is missing from "Add widget", and a dashboard
         # already holding one fails to load at all.
-        from . import dashboard, events, signal_receivers  # noqa: F401
+        from . import dashboard, events, receivers  # noqa: F401
 
         events.refresh_event_rule_form_choices()
 

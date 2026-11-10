@@ -21,7 +21,7 @@ from netbox_branching.models import Branch
 from netbox_branching.signals import post_merge
 from users.models import Group, User
 
-from netbox_change_control import policy, signal_receivers
+from netbox_change_control import policy
 from netbox_change_control.checks import BUILTIN_CHECKS
 from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.events import (
@@ -30,6 +30,7 @@ from netbox_change_control.events import (
 )
 from netbox_change_control.lifecycle import refresh_status
 from netbox_change_control.models import ChangeComment, ChangeRequest, ChangeRequestPolicy, Review
+from netbox_change_control.receivers import status as status_receivers
 from netbox_change_control.tests.base import ChangeControlTestCase, make_policy
 
 # How long a thread waits for the other at a barrier. With the lock, the other thread is held
@@ -195,13 +196,13 @@ class ConcurrentTransitionTest(TransactionTestCase):
         uncommitted, before either refresh starts.
         """
         barrier = threading.Barrier(2)
-        refresh = signal_receivers._refresh
+        refresh = status_receivers._refresh
 
         def refresh_together(change_request_id):
             self._meet(barrier)
             return refresh(change_request_id)
 
-        with patch.object(signal_receivers, '_refresh', refresh_together):
+        with patch.object(status_receivers, '_refresh', refresh_together):
             events = self._run(
                 self._approve(self.alice, outer_transaction=True),
                 self._approve(self.bob, outer_transaction=True),

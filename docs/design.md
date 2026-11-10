@@ -68,7 +68,7 @@ Enabling it by default would break an existing install the moment the plugin is 
 |---|---|
 | `policy.py` | Matching and evaluation. Pure functions over the database, no request needed, so they test in under a second. |
 | `validators.py` | The merge gate. |
-| `signal_receivers.py` | `protect_main`. |
+| `receivers/` | The signal receivers, one module per concern: `protect_main`, status and policy re-evaluation, branch events, checks, and the delete-cascade guard. |
 | `models/` | Split into `policies.py` and `requests.py`. |
 
 ## Testing

@@ -69,7 +69,7 @@ class ProtectMainTest(TestCase):
 
         token = current_request.set(self._request(self.user))
         try:
-            with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
                 with self.assertRaises(AbortRequest):
                     Site.objects.create(name='Blocked site', slug='blocked-site')
         finally:
@@ -80,7 +80,7 @@ class ProtectMainTest(TestCase):
 
         token = current_request.set(self._request(self.superuser))
         try:
-            with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
                 site = Site.objects.create(name='Bypass site', slug='bypass-site')
             self.assertIsNotNone(site.pk)
         finally:
@@ -93,7 +93,7 @@ class ProtectMainTest(TestCase):
         """
         token = current_request.set(self._request(self.user))
         try:
-            with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
                 policy = Policy.objects.create(name='Still writable')
             self.assertIsNotNone(policy.pk)
         finally:
@@ -107,7 +107,7 @@ class ProtectMainTest(TestCase):
         from dcim.models import Site
 
         current_request.set(None)
-        with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+        with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
             site = Site.objects.create(name='Job site', slug='job-site')
         self.assertIsNotNone(site.pk)
 
@@ -117,7 +117,7 @@ class ProtectMainTest(TestCase):
         site = Site.objects.create(name='Doomed', slug='doomed')
         token = current_request.set(self._request(self.user))
         try:
-            with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
                 with self.assertRaises(AbortRequest):
                     site.delete()
         finally:
@@ -154,7 +154,7 @@ class ProtectMainScopeTest(TestCase):
         token = current_request.set(self._request())
         try:
             with patch(
-                'netbox_change_control.signal_receivers.get_plugin_config',
+                'netbox_change_control.receivers.protect_main.get_plugin_config',
                 _scoped_config(['circuits.*']),
             ):
                 with self.assertRaises(AbortRequest):
@@ -166,7 +166,7 @@ class ProtectMainScopeTest(TestCase):
         token = current_request.set(self._request())
         try:
             with patch(
-                'netbox_change_control.signal_receivers.get_plugin_config',
+                'netbox_change_control.receivers.protect_main.get_plugin_config',
                 _scoped_config(['circuits.*']),
             ):
                 site = self._create_site('Allowed site')
@@ -178,7 +178,7 @@ class ProtectMainScopeTest(TestCase):
         token = current_request.set(self._request())
         try:
             with patch(
-                'netbox_change_control.signal_receivers.get_plugin_config',
+                'netbox_change_control.receivers.protect_main.get_plugin_config',
                 _scoped_config(['circuits.provider']),
             ):
                 with self.assertRaises(AbortRequest):
@@ -192,7 +192,7 @@ class ProtectMainScopeTest(TestCase):
         token = current_request.set(self._request())
         try:
             with patch(
-                'netbox_change_control.signal_receivers.get_plugin_config',
+                'netbox_change_control.receivers.protect_main.get_plugin_config',
                 _scoped_config(['circuits.provider']),
             ):
                 circuit_type = CircuitType.objects.create(name='Allowed type', slug='allowed-type')
@@ -204,7 +204,7 @@ class ProtectMainScopeTest(TestCase):
         token = current_request.set(self._request())
         try:
             with patch(
-                'netbox_change_control.signal_receivers.get_plugin_config',
+                'netbox_change_control.receivers.protect_main.get_plugin_config',
                 _scoped_config([]),
             ):
                 with self.assertRaises(AbortRequest):
@@ -249,7 +249,7 @@ class RefusalReachesTheUserTest(TestCase):
 
         token = current_request.set(request)
         try:
-            with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
                 with self.assertRaises(AbortRequest) as caught:
                     Site.objects.create(name='Refused', slug='refused')
         finally:
@@ -267,7 +267,7 @@ class RefusalReachesTheUserTest(TestCase):
         site = Site.objects.create(name='Existing', slug='existing')
         self.client.force_login(self.user)
 
-        with patch('netbox_change_control.signal_receivers.get_plugin_config', _plugin_config):
+        with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
             response = self.client.post(
                 site.get_absolute_url() + 'edit/',
                 {'name': 'Renamed', 'slug': 'existing', 'status': 'active'},

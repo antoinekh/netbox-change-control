@@ -27,6 +27,7 @@
 - **Upgrading needs a branch migration.** This release adds database migrations, so netbox-branching marks every existing branch **Pending migrations** until it is migrated, and refuses edits in it until then. Run **Migrate** on each open branch after upgrading.
 - **Every status transition lives in one module, `netbox_change_control.lifecycle`.** Submit, return to draft, abandon, reopen, completion and the recomputed statuses each lock the change request row, decide, write and announce in one place. `ChangeRequest.submit()` now emits `change_request_submitted` itself, so a script that submits a request announces it too, as the button and the REST API always did.
 - **Every permission check goes through `netbox_change_control.permissions`.** The permission names the plugin checks, the constrained object lookup and the ownership rule for reviews and comments each live there once, and the interface and the REST API both use them, so they cannot drift apart again. No permission changes.
+- **The signal receivers are split by concern.** `signal_receivers.py` held `protect_main`, the status refresh, policy re-evaluation, branch events and checks in one file whose docstring named only the first; they now live in `netbox_change_control.receivers`, one module each. No behaviour changes.
 
 ### Documentation
 

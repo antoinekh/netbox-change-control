@@ -234,11 +234,112 @@ class MergeGateRematchesTest(TestCase):
         indicator = require_approved_change_request(self.branch)
         self.assertFalse(indicator.permitted)
 
-    def test_the_gate_reattaches_the_policy_it_was_missing(self):
+    def test_the_gate_names_the_missing_policy_and_writes_nothing(self):
+        """
+        The gate is read on every page view, so it reports a missing policy instead of
+        attaching it; the receivers attach it on the event that made it match.
+        """
         touch(self.branch, self.Device, 1, 'core-switch')
         ChangeRequestPolicy.objects.filter(change_request=self.cr, policy=self.heavy).delete()
         ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.APPROVED)
 
-        require_approved_change_request(self.branch)
+        indicator = require_approved_change_request(self.branch)
 
-        self.assertIn('Device changes', {p.name for p in self.cr.policies.all()})
+        self.assertIn('Device changes', indicator.message)
+        self.assertNotIn('Device changes', {p.name for p in self.cr.policies.all()})
+
+
+class PolicyEventsRematchTest(TestCase):
+    """
+    The policies are re-matched on every event that can make one newly apply to a branch.
+
+    A branch growing an object type and a branch sync were covered. A policy created, enabled,
+    re-scoped or given new conditions was not, nor was an object edited a second time into a
+    state a conditional policy reads, and the merge gate used to repair those by writing on
+    every page view.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from dcim.models import Device
+
+        cls.Device = Device
+        cls.author = User.objects.create(username='events-author')
+
+    def setUp(self):
+        self.branch = make_branch('events', self._testMethodName)
+        self.diff = touch(self.branch, self.Device, 1, 'core-switch', original={'status': 'planned'})
+        self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.author)
+        self.cr.submit()
+
+    def attached(self):
+        return {p.name for p in self.cr.policies.all()}
+
+    def test_a_new_policy_attaches_to_an_open_request_it_matches(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            policy = Policy.objects.create(name='Device changes')
+            policy.object_types.set([ObjectType.objects.get_for_model(self.Device)])
+        self.assertIn('Device changes', self.attached())
+
+    def test_a_new_scoped_policy_is_not_attached_on_the_way(self):
+        """
+        Saved before its object types, a new policy is briefly unscoped and so matches every
+        branch. The re-match waits for the commit, so it never attaches in that moment.
+        """
+        from netbox_change_control.models import ChangeRequestPolicy
+        from netbox_change_control.tests.base import make_branch
+
+        other = ChangeRequest.objects.create(
+            branch=make_branch('events-other', self._testMethodName), title='Other', requester=self.author
+        )
+        other.submit()
+        with self.captureOnCommitCallbacks(execute=True):
+            policy = Policy.objects.create(name='Circuit changes')
+            policy.object_types.set([ObjectType.objects.get(app_label='circuits', model='circuit')])
+        self.assertFalse(ChangeRequestPolicy.objects.filter(policy=policy).exists())
+
+    def test_an_enabled_policy_attaches(self):
+        policy = Policy.objects.create(name='Later', enabled=False)
+        self.assertNotIn('Later', self.attached())
+
+        with self.captureOnCommitCallbacks(execute=True):
+            policy.enabled = True
+            policy.save()
+
+        self.assertIn('Later', self.attached())
+
+    def test_a_changed_condition_attaches(self):
+        policy = Policy.objects.create(name='Retired devices', conditions={'attr': 'status', 'value': 'retired'})
+        self.assertNotIn('Retired devices', self.attached())
+
+        with self.captureOnCommitCallbacks(execute=True):
+            policy.conditions = {'attr': 'status', 'value': 'active'}
+            policy.save()
+
+        self.assertIn('Retired devices', self.attached())
+
+    def test_an_object_edited_into_a_matching_state_attaches_a_conditional_policy(self):
+        Policy.objects.create(
+            name='Live devices', conditions={'attr': 'status', 'value': 'offline'}, condition_state='after'
+        )
+        self.assertNotIn('Live devices', self.attached())
+
+        self.diff.modified = {'status': 'offline'}
+        self.diff.save()
+
+        self.assertIn('Live devices', self.attached())
+
+    def test_a_draft_is_left_to_its_submission(self):
+        """
+        A draft's policies are matched when it is submitted, as its page says.
+        """
+        self.cr.return_to_draft()
+        with self.captureOnCommitCallbacks(execute=True):
+            Policy.objects.create(name='Not yet')
+        self.assertNotIn('Not yet', self.attached())
+
+    def test_a_closed_request_is_left_alone(self):
+        self.cr.abandon()
+        with self.captureOnCommitCallbacks(execute=True):
+            Policy.objects.create(name='Too late')
+        self.assertNotIn('Too late', self.attached())

@@ -9,7 +9,7 @@ from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
 from netbox_change_control import filtersets, forms, tables
-from netbox_change_control.checks import sync_checks
+from netbox_change_control.checks import checks_for_display
 from netbox_change_control.models import ChangeRequest, Review
 from netbox_change_control.permissions import (
     ABANDON_PERMISSION,
@@ -69,11 +69,7 @@ class ChangeRequestView(generic.ObjectView):
         for review in reviews:
             review.stale = review.pk in stale_ids
 
-        # Reconcile the stored rows with the registered checks before display. A check
-        # registered after this request was created has no row yet, and the gate already
-        # treats it as blocking, so the panel must show it rather than hide a blocker.
-        sync_checks(instance)
-        checks = list(instance.checks.all())
+        checks = checks_for_display(instance)
         return {
             'evaluation': evaluation,
             'bindings': instance.policy_bindings.select_related('policy'),

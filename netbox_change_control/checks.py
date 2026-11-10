@@ -26,6 +26,7 @@ __all__ = (
     'BUILTIN_CHECKS',
     'CheckResult',
     'CheckScope',
+    'checks_for_display',
     'get_registered_checks',
     'register_builtin_checks',
     'register_check',
@@ -183,6 +184,32 @@ def sync_checks(change_request):
         MergeCheck.objects.filter(pk__in=obsolete).delete()
 
     return MergeCheck.objects.filter(change_request=change_request)
+
+
+def checks_for_display(change_request):
+    """
+    The checks to show for a change request: its stored rows, and a pending placeholder for
+    every expected check that has no row yet.
+
+    A check registered after the request was created has no row until the checks next run, and
+    the gate already treats it as blocking, so the page must show it; a placeholder shows it
+    without a page view writing a row.
+    """
+    from netbox_change_control.models import MergeCheck
+
+    rows = list(change_request.checks.all())
+    stored = {row.name for row in rows}
+    return rows + [
+        MergeCheck(
+            change_request=change_request,
+            name=name,
+            label=label,
+            required=required,
+            status=MergeCheckStatusChoices.PENDING,
+        )
+        for name, (label, required) in expected_checks(change_request).items()
+        if name not in stored
+    ]
 
 
 def run_checks(change_request):

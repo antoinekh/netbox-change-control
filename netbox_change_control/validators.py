@@ -13,6 +13,7 @@ from netbox_change_control.permissions import OVERRIDE_WINDOW_PERMISSION, curren
 __all__ = (
     'blocking_checks',
     'require_approved_change_request',
+    'unattached_matching_policies',
 )
 
 
@@ -43,28 +44,18 @@ def require_approved_change_request(branch):
             f'{change_request} is not approved (status: {change_request.get_status_display()}).',
         )
 
-    # Re-match the policies before evaluating them.
-    #
-    # Re-evaluating the stored bindings asks the right question of the wrong set. Which
-    # policies govern a change is decided from the object types in the branch, and a branch
-    # can grow a new one after the request was submitted. A receiver re-matches when that
-    # happens, so this is normally a no-op which writes nothing; it is here so the gate does
-    # not depend on that receiver having fired, because this is the only moment the answer
-    # decides anything.
-    #
-    # Deliberately after the approval test above. An unapproved request is refused either way,
-    # so it does not pay for the match, which keeps the change request list from re-matching
-    # every row it renders.
-    from netbox_change_control.policy import scope_may_have_drifted, sync_policies
-
-    if scope_may_have_drifted(change_request):
-        sync_policies(change_request)
-        change_request.refresh_from_db(fields=['status'])
-        if not change_request.is_approved:
-            return BranchActionIndicator(
-                False,
-                f'{change_request} is not approved (status: {change_request.get_status_display()}).',
-            )
+    # Re-evaluating the stored bindings asks the right question of the wrong set when a policy
+    # now matches the branch but is not attached. The receivers attach it on the event that made
+    # it match; the gate only checks, because it is read on every page view, and a read must not
+    # write. Deliberately after the approval test: an unapproved request is refused either way,
+    # so it does not pay for the match.
+    if missing := unattached_matching_policies(change_request):
+        names = ', '.join(sorted(policy.name for policy in missing))
+        return BranchActionIndicator(
+            False,
+            f'{change_request} is not yet governed by every policy that applies to its branch: {names}. '
+            f'Return it to draft and submit it again to attach them.',
+        )
 
     # Re-evaluate rather than trusting the stored status. Policies or group membership may
     # have changed since approval was recorded.
@@ -97,6 +88,19 @@ def require_approved_change_request(branch):
         return BranchActionIndicator(False, f'Required checks are not passing: {", ".join(blocking)}.')
 
     return BranchActionIndicator(True)
+
+
+def unattached_matching_policies(change_request):
+    """
+    The enabled policies that match this request's branch but are not attached to it.
+    """
+    from netbox_change_control.policy import match_policies, scope_may_have_drifted
+
+    # The cheap test first: no candidate policy means nothing can be missing.
+    if not scope_may_have_drifted(change_request):
+        return []
+    attached = set(change_request.policy_bindings.values_list('policy_id', flat=True))
+    return [policy for policy, _names in match_policies(change_request.branch) if policy.pk not in attached]
 
 
 def blocking_checks(change_request):

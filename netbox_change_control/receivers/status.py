@@ -7,6 +7,7 @@ edit inside the branch. A branch growing a new object type re-matches the polici
 """
 
 from core.models import ObjectChange
+from django.db import transaction
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from netbox_branching.contextvars import active_branch
@@ -23,7 +24,7 @@ from netbox_change_control.models import (
     PolicyRule,
     Review,
 )
-from netbox_change_control.policy import sync_policies
+from netbox_change_control.policy import scope_may_have_drifted, sync_policies
 from netbox_change_control.receivers.deleting import is_being_deleted
 
 __all__ = (
@@ -34,7 +35,9 @@ __all__ = (
     'refresh_on_policy_change',
     'refresh_on_review_change',
     'refresh_on_rule_membership_change',
-    'resync_policies_on_new_diff',
+    'rematch_on_policy_save',
+    'rematch_on_policy_scope_change',
+    'resync_policies_on_diff_change',
 )
 
 
@@ -134,6 +137,45 @@ def refresh_on_policy_change(sender, instance, **kwargs):
     _refresh_for_policies([policy_id])
 
 
+def _rematch_open_requests():
+    """
+    Attach every enabled policy to the submitted, open requests it now matches.
+
+    A draft is left out: its policies are matched when it is submitted, as its page says.
+    """
+    requests = (
+        ChangeRequest.objects.filter(status__in=ChangeRequestStatusChoices.OPEN, branch__isnull=False)
+        .exclude(status=ChangeRequestStatusChoices.DRAFT)
+        .select_related('branch')
+    )
+    with batched():
+        for change_request in requests:
+            if not is_being_deleted(change_request.pk) and scope_may_have_drifted(change_request):
+                sync_policies(change_request)
+                schedule_refresh(change_request)
+
+
+@receiver(post_save, sender=Policy)
+def rematch_on_policy_save(sender, instance, **kwargs):
+    """
+    A policy created, enabled or given new conditions can start to match an open request.
+
+    Run at the commit: the policy form saves a policy before its object types, so in between a
+    new policy is unscoped and matches every branch, and a re-match then would attach it to
+    every open request and detach it again, announcing each move.
+    """
+    transaction.on_commit(_rematch_open_requests)
+
+
+@receiver(m2m_changed, sender=Policy.object_types.through)
+def rematch_on_policy_scope_change(sender, instance, action, **kwargs):
+    """
+    A policy's object types decide which branches it matches.
+    """
+    if action in ('post_add', 'post_remove', 'post_clear'):
+        transaction.on_commit(_rematch_open_requests)
+
+
 @receiver(m2m_changed, sender=PolicyRule.groups.through)
 @receiver(m2m_changed, sender=PolicyRule.users.through)
 def refresh_on_rule_membership_change(sender, instance, action, **kwargs):
@@ -187,31 +229,32 @@ def invalidate_approval_on_branch_change(sender, instance, **kwargs):
     refresh_status(change_request)
 
 
-def _scope_may_have_changed(diff):
+def _scope_may_have_changed(diff, created):
     """
-    Cheap test for whether one new ChangeDiff can change which policies match.
+    Cheap test for whether one written ChangeDiff can change which policies match.
 
     A policy scoped by object type cannot change its answer for the second object of a type
-    the branch already held, so the common case of a bulk edit costs one indexed query per
-    object rather than a full re-match.
+    the branch already held, nor for a second edit of an object it already held, so the common
+    case of a bulk edit costs one indexed query per object rather than a full re-match.
 
-    A policy carrying conditions reads the changed objects themselves, so for those any new
+    A policy carrying conditions reads the changed objects themselves, so for those any written
     object can change the answer and the re-match has to run.
     """
-    first_of_its_type = (
-        not ChangeDiff.objects.filter(branch_id=diff.branch_id, object_type_id=diff.object_type_id)
-        .exclude(pk=diff.pk)
-        .exists()
-    )
-    if first_of_its_type:
-        return True
+    if created:
+        first_of_its_type = (
+            not ChangeDiff.objects.filter(branch_id=diff.branch_id, object_type_id=diff.object_type_id)
+            .exclude(pk=diff.pk)
+            .exists()
+        )
+        if first_of_its_type:
+            return True
     return Policy.objects.filter(enabled=True).exclude(conditions__isnull=True).exists()
 
 
 @receiver(post_save, sender=ChangeDiff)
-def resync_policies_on_new_diff(sender, instance, created, **kwargs):
+def resync_policies_on_diff_change(sender, instance, created, **kwargs):
     """
-    Re-match the policies when the branch starts touching something new.
+    Re-match the policies when the branch touches something new, or edits an object again.
 
     Which policies govern a change request is decided from the object types in its branch.
     That question used to be asked twice only: when the author pressed Submit for review, and
@@ -225,13 +268,12 @@ def resync_policies_on_new_diff(sender, instance, created, **kwargs):
     policy governing the new object type never attached, so the same reviewer could approve a
     second time and merge work nobody with the authority to judge it had seen.
 
-    A ChangeDiff is created once per changed object, which makes it the cheapest signal
-    meaning "this branch now holds something it did not before". Reacting to ObjectChange
-    instead would fire on every save of every object for the same answer.
+    A ChangeDiff is written once per changed object and again when that object is edited again,
+    which makes it the cheapest signal meaning "this branch now holds something it did not
+    before". The second edit matters to a policy with conditions: an object planned in the first
+    edit and set active in the second is what "changes to active circuits" is about. Reacting
+    to ObjectChange instead would fire on every save of every object for the same answer.
     """
-    if not created:
-        return
-
     change_request = ChangeRequest.objects.filter(
         branch_id=instance.branch_id,
         status__in=ChangeRequestStatusChoices.OPEN,
@@ -239,7 +281,7 @@ def resync_policies_on_new_diff(sender, instance, created, **kwargs):
     if change_request is None or is_being_deleted(change_request.pk):
         return
 
-    if not _scope_may_have_changed(instance):
+    if not _scope_may_have_changed(instance, created):
         return
 
     # A newly attached policy brings rules with it, so the request may no longer be satisfied.

@@ -24,6 +24,10 @@
 - **Opening a change request no longer writes to the database.** The page created the rows of checks registered since the request was created, and the merge gate it reads attached any policy that had come to match the branch. The page now shows such a check as pending without creating its row, and the gate refuses a request that a matching policy is not attached to, naming the policy, instead of attaching it. The policies are matched again on the events that can make one apply instead: a policy created, enabled, re-scoped or given new conditions now attaches to the submitted requests it matches, and an object edited again in a branch re-matches the policies that read conditions. A draft still has its policies matched when it is submitted.
 - **A run of the checks reacts to its results once.** Each result that moved was saved, and each save refreshed the cached readiness and tried the automatic merge on its own before the run did both again: four times for three changed results. A run now does both once, at its end. A result reported over the REST API still reacts at once.
 
+### Removed
+
+- **The event rule action "Change control: report a pre-merge check" is removed.** An event rule sees one change at a time, while the merge gate asks about the whole branch, so the action could leave a check green that should block: a change made before the change request was opened was never reported, and a later passing object overwrote an earlier failing one. An existing event rule using this action now does nothing, and NetBox logs a warning naming it; delete it.
+
 ## 0.6.2 - 2026-11-10
 
 ### Fixed

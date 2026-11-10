@@ -226,11 +226,11 @@ class ChangeRequest(PrimaryModel):
     @property
     def auto_merge_blocked(self):
         """
-        True when this request asks to merge itself but its requester may not merge the branch.
+        True when this open request asks to merge itself but its requester may not merge the branch.
         """
         from netbox.plugins import get_plugin_config
 
-        if not (self.auto_merge and get_plugin_config('netbox_change_control', 'enable_auto_merge')):
+        if not (self.is_open and self.auto_merge and get_plugin_config('netbox_change_control', 'enable_auto_merge')):
             return False
         return not self.requester_can_merge
 

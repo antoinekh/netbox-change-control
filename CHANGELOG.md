@@ -2,34 +2,37 @@
 
 ## Unreleased
 
+### Upgrading
+
+- **Migrate every open branch.** This release adds migrations, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
+- **Grant `merge` on branches to requesters who use Merge automatically.** A request now merges itself only if its requester may merge the branch.
+- **Review permissions ticked with the old custom action boxes.** They now grant what they say.
+- **Delete event rules using "Change control: report a pre-merge check".** The action is removed.
+
 ### Fixed
 
-- **An approval given while the branch is empty goes stale when the branch changes.** A review records the branch state it was given against, and an empty branch had none to record, so such a review counted for ever: a request approved before any change was made could take the real change afterwards and still merge. A review of an empty branch now records the time it was given, so the first change makes it stale. A migration does the same for existing reviews, using the time each one was created; the status of an affected request follows at its next refresh, and the merge gate refuses it at once.
-- **The REST API no longer lets a user rewrite somebody else's review.** The edit form was limited to your own reviews, but the API was not, so a token holding `change_review` could turn a colleague's "request changes" into an approval still attributed to that colleague. A PATCH or PUT on another user's review, single or bulk, now answers 404, as the form does. A superuser may still edit any review, and deleting stays model-wide, as documented.
-- **The REST API no longer lets a user rewrite somebody else's comment.** The edit form was limited to your own comments, but the API was not, so a token holding `change_changecomment` could rewrite a colleague's "do not merge" into "looks fine", still attributed to that colleague. Changing anything but `resolved` on another user's comment, single or bulk, now answers 403. Resolving and reopening a thread stay open to anybody holding the permission, as documented, and a superuser may still edit any comment.
-- **The buttons on a change request honour permission constraints.** Abandon, Reopen, Submit for review, Return to draft, the review form, Re-run checks, posting a comment and resolving a thread checked the permission for the whole model, so a constraint such as `{"requester": "$user"}`, which the administration guide recommends, was ignored: the REST API refused to abandon a colleague's request while the button did it. Each action now checks the permission on the object it acts on, a new review or comment is kept only if the constraint on adding one allows it, and the page shows only the buttons the constraint allows.
-- **A policy scoped to object types reads its conditions on those types only.** The conditions were evaluated against every changed object in the branch, so the documented example, "active circuits need a lead", also attached to a branch touching a planned circuit and an active site, because the site was active. A policy with no object types still reads every changed object.
-- **A review can no longer be moved to another change request over the REST API.** The review form never offered it, but a PATCH of `change_request` moved the review, which then kept the branch state of the first request and skipped the restatement the form asks for. It now answers 400.
-- **A completed or abandoned change request takes no new comment.** The page hid the comment form, but a direct POST or a REST API call still opened a thread on a closed request. A new comment or reply is now refused there; resolving and reopening an existing thread still work.
-- **The My Reviews widget no longer lists drafts.** It is documented to follow the notifications, which reach a reviewer only once a request needs review, but it also listed requests still held as drafts by their author. It now lists only requests that need review.
-- **The custom actions can be granted with their checkboxes.** NetBox 4.7 shows each custom action as a box on the permission form, named after its codename, and the plugin declared Django-style codenames such as `abandon_changerequest`. A ticked box stored that name as the action, which granted nothing, since the plugin checks the action `abandon`. The boxes are now `abandon`, `reopen`, `override_window` and `bypass`, the documented actions. A migration rewrites the old names in existing permissions, so **a box ticked before this release starts granting what it says**; review those permissions before upgrading if that matters. A permission typed into *additional actions*, as the documentation said, is not affected.
-- **A change request merges itself only if its requester may merge the branch.** An automatic merge runs as the requester, and nothing checked that the requester held `netbox_branching.merge_branch`, so a user allowed to edit change requests but not to merge could tick **Merge automatically** and have the branch merged anyway. The flag is now refused for such a requester, on the form and the REST API, and the merge is not started if the requester has lost the permission since; the change request page says why. **Before upgrading, grant `merge` on branches to the requesters whose requests should keep merging themselves.**
+- **An approval of an empty branch goes stale when the branch changes.** Before, it counted for ever, so the real change could be added after the approval.
+- **The REST API refuses an edit of somebody else's review.** The form already did.
+- **The REST API refuses a rewrite of somebody else's comment.** Anybody with the permission can still resolve a thread.
+- **The buttons on a change request honour permission constraints**, such as `{"requester": "$user"}`, and the page shows only the allowed buttons.
+- **A policy scoped to object types reads its conditions on those types only.**
+- **A review can no longer be moved to another change request** over the REST API.
+- **A completed or abandoned change request takes no new comment.**
+- **The My Reviews widget no longer lists drafts.**
+- **The custom action boxes on the NetBox 4.7 permission form work.** They are now `abandon`, `reopen`, `override_window` and `bypass`, and a migration repairs existing permissions.
+- **A change request merges itself only if its requester may merge the branch.** The page says why when it cannot.
 
 ### Changed
 
-- **Upgrading needs a branch migration.** This release adds database migrations, so netbox-branching marks every existing branch **Pending migrations** until it is migrated, and refuses edits in it until then. Run **Migrate** on each open branch after upgrading.
-- **Every status transition lives in one module, `netbox_change_control.lifecycle`.** Submit, return to draft, abandon, reopen, completion and the recomputed statuses each lock the change request row, decide, write and announce in one place. `ChangeRequest.submit()` now emits `change_request_submitted` itself, so a script that submits a request announces it too, as the button and the REST API always did.
-- **Every permission check goes through `netbox_change_control.permissions`.** The permission names the plugin checks, the constrained object lookup and the ownership rule for reviews and comments each live there once, and the interface and the REST API both use them, so they cannot drift apart again. No permission changes.
-- **The signal receivers are split by concern.** `signal_receivers.py` held `protect_main`, the status refresh, policy re-evaluation, branch events and checks in one file whose docstring named only the first; they now live in `netbox_change_control.receivers`, one module each. No behaviour changes.
-- **Opening a change request no longer writes to the database.** The page created the rows of checks registered since the request was created, and the merge gate it reads attached any policy that had come to match the branch. The page now shows such a check as pending without creating its row, and the gate refuses a request that a matching policy is not attached to, naming the policy, instead of attaching it. The policies are matched again on the events that can make one apply instead: a policy created, enabled, re-scoped or given new conditions now attaches to the submitted requests it matches, and an object edited again in a branch re-matches the policies that read conditions. A draft still has its policies matched when it is submitted.
-- **A run of the checks reacts to its results once.** Each result that moved was saved, and each save refreshed the cached readiness and tried the automatic merge on its own before the run did both again: four times for three changed results. A run now does both once, at its end. A result reported over the REST API still reacts at once.
-- **A group membership change refreshes only the requests it can affect.** Adding a user to any NetBox group, or removing one, refreshed every open change request and ran all its checks, even for a group no policy rule names; a single sign-on or LDAP sync can rewrite memberships at every login. Now only the requests governed by a rule naming that group are refreshed.
-- **Whether a review is stale is decided in one place.** The change request page and the merge gate each compared the review with the branch on their own; they now share one rule, so they cannot disagree. No behaviour changes.
-- **The test suite's shared helpers live in `tests/base.py`.** Six copies of a branch diff helper and six of a permission helper became one of each.
+- **Opening a change request no longer writes to the database.** The merge gate names a policy that applies but is not attached, and the policies are matched again when a policy is created, enabled or edited.
+- **A run of the checks reacts to its results once**, not once per result.
+- **A group membership change refreshes only the requests whose rules name that group.**
+- **`ChangeRequest.submit()` emits `change_request_submitted` itself**, so a script that submits a request announces it too.
+- **Internal:** status transitions live in `lifecycle`, permission checks in `permissions`, signal receivers in `receivers/`, the staleness rule in one function, and the shared test helpers in `tests/base.py`.
 
 ### Removed
 
-- **The event rule action "Change control: report a pre-merge check" is removed.** An event rule sees one change at a time, while the merge gate asks about the whole branch, so the action could leave a check green that should block: a change made before the change request was opened was never reported, and a later passing object overwrote an earlier failing one. An existing event rule using this action now does nothing, and NetBox logs a warning naming it; delete it.
+- **The event rule action "Change control: report a pre-merge check".** An event rule sees one change at a time, so the check could stay green when it should block.
 
 ## 0.6.2 - 2026-11-10
 

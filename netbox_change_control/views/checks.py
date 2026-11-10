@@ -7,7 +7,7 @@ from netbox.views import generic
 from utilities.views import register_model_view
 
 from netbox_change_control import filtersets, forms, tables
-from netbox_change_control.checks import run_checks
+from netbox_change_control.checks import get_registered_checks, run_checks
 from netbox_change_control.models import ChangeRequest, MergeCheck
 
 __all__ = (
@@ -63,9 +63,13 @@ class RunChecksView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
-        if not request.user.has_perm('netbox_change_control.change_mergecheck'):
-            messages.error(request, _('You do not have permission to run checks.'))
+        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
+        # A re-run writes the result of every check that runs in-process, so the caller must be
+        # allowed to change each of those rows, constraints included.
+        permission = 'netbox_change_control.change_mergecheck'
+        rows = change_request.checks.filter(name__in=get_registered_checks())
+        if not request.user.has_perm(permission) or not all(request.user.has_perm(permission, row) for row in rows):
+            messages.error(request, _('You do not have permission to run the checks of this change request.'))
             return redirect(change_request.get_absolute_url())
 
         run_checks(change_request)

@@ -11,7 +11,12 @@ from utilities.views import ViewTab, register_model_view
 from netbox_change_control import events, filtersets, forms, tables
 from netbox_change_control.checks import sync_checks
 from netbox_change_control.models import ChangeRequest, Review
-from netbox_change_control.permissions import ABANDON_PERMISSION, CHANGE_PERMISSION, REOPEN_PERMISSION
+from netbox_change_control.permissions import (
+    ABANDON_PERMISSION,
+    CHANGE_PERMISSION,
+    REOPEN_PERMISSION,
+    save_if_permitted,
+)
 
 from .reviews import review_eligibility
 
@@ -32,6 +37,13 @@ __all__ = (
 #
 # Change requests
 #
+
+
+def _visible_change_request(request, pk):
+    """
+    The change request, among those the user may see; a 404 otherwise, as NetBox answers.
+    """
+    return get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
 
 
 class ChangeRequestListView(generic.ObjectListView):
@@ -80,10 +92,10 @@ class ChangeRequestView(generic.ObjectView):
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
             'can_merge_perm': request.user.has_perm('netbox_branching.merge_branch'),
-            'can_submit': instance.can_be_submitted and request.user.has_perm(CHANGE_PERMISSION),
-            'can_return_to_draft': instance.can_return_to_draft and request.user.has_perm(CHANGE_PERMISSION),
-            'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION),
-            'can_reopen': instance.can_be_reopened and request.user.has_perm(REOPEN_PERMISSION),
+            'can_submit': instance.can_be_submitted and request.user.has_perm(CHANGE_PERMISSION, instance),
+            'can_return_to_draft': instance.can_return_to_draft and request.user.has_perm(CHANGE_PERMISSION, instance),
+            'can_abandon': instance.can_be_abandoned and request.user.has_perm(ABANDON_PERMISSION, instance),
+            'can_reopen': instance.can_be_reopened and request.user.has_perm(REOPEN_PERMISSION, instance),
         }
 
 
@@ -138,7 +150,7 @@ class SubmitReviewView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = _visible_change_request(request, pk)
 
         if not request.user.has_perm('netbox_change_control.add_review'):
             messages.error(request, _('You do not have permission to review change requests.'))
@@ -170,7 +182,11 @@ class SubmitReviewView(View):
         # refreshed even when the decision is unchanged.
         # The review's own signal recomputes the status; recomputing it again here from the
         # change request loaded before the save would announce the same transition twice.
-        review.save(refresh_snapshot=True)
+        if not save_if_permitted(
+            request.user, 'netbox_change_control.add_review', review, lambda: review.save(refresh_snapshot=True)
+        ):
+            messages.error(request, _('You do not have permission to review this change request.'))
+            return redirect(change_request.get_absolute_url())
 
         messages.success(request, _('Review recorded.'))
         return redirect(change_request.get_absolute_url())
@@ -188,10 +204,10 @@ class AbandonChangeRequestView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = _visible_change_request(request, pk)
 
-        if not request.user.has_perm(ABANDON_PERMISSION):
-            messages.error(request, _('You do not have permission to abandon change requests.'))
+        if not request.user.has_perm(ABANDON_PERMISSION, change_request):
+            messages.error(request, _('You do not have permission to abandon this change request.'))
         elif change_request.abandon():
             messages.success(request, _('Change request abandoned.'))
         else:
@@ -213,10 +229,10 @@ class ReopenChangeRequestView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = _visible_change_request(request, pk)
 
-        if not request.user.has_perm(REOPEN_PERMISSION):
-            messages.error(request, _('You do not have permission to reopen change requests.'))
+        if not request.user.has_perm(REOPEN_PERMISSION, change_request):
+            messages.error(request, _('You do not have permission to reopen this change request.'))
         elif change_request.reopen():
             messages.success(request, _('Change request reopened.'))
         else:
@@ -236,10 +252,10 @@ class SubmitForReviewView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'change'), pk=pk)
+        change_request = _visible_change_request(request, pk)
 
-        if not request.user.has_perm(CHANGE_PERMISSION):
-            messages.error(request, _('You do not have permission to submit change requests for review.'))
+        if not request.user.has_perm(CHANGE_PERMISSION, change_request):
+            messages.error(request, _('You do not have permission to submit this change request for review.'))
         elif change_request.submit():
             # Distinct from change_request_review_requested, which fires on every entry into
             # Needs review, including an approval invalidated by a later edit. This one is the
@@ -262,10 +278,10 @@ class ReturnToDraftView(View):
     """
 
     def post(self, request, pk):
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = _visible_change_request(request, pk)
 
-        if not request.user.has_perm(CHANGE_PERMISSION):
-            messages.error(request, _('You do not have permission to change change requests.'))
+        if not request.user.has_perm(CHANGE_PERMISSION, change_request):
+            messages.error(request, _('You do not have permission to change this change request.'))
         elif change_request.return_to_draft():
             messages.success(request, _('Change request returned to draft.'))
         else:

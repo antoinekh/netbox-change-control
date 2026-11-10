@@ -10,7 +10,7 @@ from utilities.views import ViewTab, register_model_view
 from netbox_change_control import forms
 from netbox_change_control.diffs import build_change_rows
 from netbox_change_control.models import ChangeComment, ChangeRequest
-from netbox_change_control.permissions import own_statements
+from netbox_change_control.permissions import own_statements, save_if_permitted
 
 __all__ = (
     'AddChangeCommentView',
@@ -128,7 +128,7 @@ class AddChangeCommentView(View):
     def post(self, request, pk):
         from netbox_branching.models import ChangeDiff
 
-        change_request = get_object_or_404(ChangeRequest, pk=pk)
+        change_request = get_object_or_404(ChangeRequest.objects.restrict(request.user, 'view'), pk=pk)
 
         if not request.user.has_perm('netbox_change_control.add_changecomment'):
             messages.error(request, _('You do not have permission to comment on changes.'))
@@ -157,7 +157,9 @@ class AddChangeCommentView(View):
             for error in e.messages:
                 messages.error(request, error)
             return redirect(self._changes_url(change_request))
-        comment.save()
+        if not save_if_permitted(request.user, 'netbox_change_control.add_changecomment', comment, comment.save):
+            messages.error(request, _('You do not have permission to comment on this change request.'))
+            return redirect(self._changes_url(change_request))
 
         messages.success(request, _('Comment posted.'))
         return redirect(f'{self._changes_url(change_request)}#comment-{comment.pk}')
@@ -173,9 +175,9 @@ class ResolveChangeCommentView(View):
     """
 
     def post(self, request, pk):
-        comment = get_object_or_404(ChangeComment, pk=pk, parent__isnull=True)
+        comment = get_object_or_404(ChangeComment.objects.restrict(request.user, 'view'), pk=pk, parent__isnull=True)
 
-        if not request.user.has_perm('netbox_change_control.change_changecomment'):
+        if not request.user.has_perm('netbox_change_control.change_changecomment', comment):
             messages.error(request, _('You do not have permission to resolve threads.'))
         else:
             comment.resolved = not comment.resolved

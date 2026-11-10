@@ -5,6 +5,7 @@ Both callers need the same thing, and they differ only in what an absent request
 that decision is the caller's rather than duplicated in two near-identical helpers.
 """
 
+from django.db import transaction
 from netbox.context import current_request
 
 __all__ = (
@@ -16,6 +17,7 @@ __all__ = (
     'current_user_has_perm',
     'may_rewrite',
     'own_statements',
+    'save_if_permitted',
 )
 
 # NetBox parses a permission name as <app_label>.<action>_<model> using rsplit('_', 1), so
@@ -78,3 +80,25 @@ def own_statements(queryset, user, author_field):
     if user.is_superuser:
         return queryset
     return queryset.filter(**{author_field: user})
+
+
+class _Refused(Exception):
+    pass
+
+
+def save_if_permitted(user, permission, obj, save):
+    """
+    Run `save()`, and keep what it wrote only if `user` holds `permission` on the saved `obj`.
+
+    A constraint on an add permission describes the object being created, so it can only be
+    tested once the object exists. NetBox's own edit views do the same: write, test, and roll
+    back on a refusal, which also discards any event the write queued for the commit.
+    """
+    try:
+        with transaction.atomic():
+            save()
+            if not user.has_perm(permission, obj):
+                raise _Refused
+    except _Refused:
+        return False
+    return True

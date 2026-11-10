@@ -77,6 +77,17 @@ class ChangeCommentAttributionTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(ChangeComment.objects.get(pk=response.data['id']).author, self.user)
 
+    def test_a_closed_request_takes_no_new_comment(self):
+        self.cr.abandon()
+        response = self.client.post(
+            '/api/plugins/change-control/change-comments/',
+            {'change_request': self.cr.pk, 'change_diff': self.diff.pk, 'text': 'Too late.'},
+            format='json',
+            **self.header,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(ChangeComment.objects.filter(change_request=self.cr).exists())
+
     def test_editing_a_comment_does_not_reassign_its_author(self):
         comment = ChangeComment.objects.create(
             change_request=self.cr, change_diff=self.diff, author=self.user, text='original'

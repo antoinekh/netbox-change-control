@@ -105,6 +105,13 @@ class ChangeComment(NetBoxModel):
         if self.change_diff_id is None and self.pk is None:
             raise ValidationError({'change_diff': _('A comment must name the change it refers to.')})
 
+        # A closed request is a record: nothing new opens on it, but its threads can still close.
+        if self.pk is None and self.change_request_id and not self.change_request.is_open:
+            raise ValidationError(
+                _('This change request is %(status)s, so it takes no new comment.')
+                % {'status': self.change_request.get_status_display().lower()}
+            )
+
         # The change must be one of this request's own. The Changes tab looks the diff up
         # scoped to the branch, so the interface could not cross them, but the REST API took
         # both as plain ids and would happily file a comment on one request against another

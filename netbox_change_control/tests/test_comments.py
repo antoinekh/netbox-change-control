@@ -13,12 +13,9 @@ from netbox_change_control.models import ChangeComment, ChangeRequest, Policy
 from netbox_change_control.tests.base import ChangeControlTestCase, approve, make_branch
 
 
-class ChangeCommentTest(TestCase):
+class CommentFixture(TestCase):
     """
-    Comment threads, and the counting of them.
-
-    Resolution is a property of a thread, so every count must agree: the tab badge, the
-    banner on the page, and the threads-resolved check.
+    One change request on a branch with two changed objects to comment on.
     """
 
     @classmethod
@@ -54,6 +51,15 @@ class ChangeCommentTest(TestCase):
         comment.full_clean()
         comment.save()
         return comment
+
+
+class ChangeCommentTest(CommentFixture):
+    """
+    Comment threads, and the counting of them.
+
+    Resolution is a property of a thread, so every count must agree: the tab badge, the
+    banner on the page, and the threads-resolved check.
+    """
 
     def _open_thread_count(self):
         return self.cr.change_comments.filter(parent__isnull=True, resolved=False).count()
@@ -149,6 +155,47 @@ class ChangeCommentTest(TestCase):
 
         self.assertEqual(self._open_thread_count(), 0)
         self.assertEqual(check_threads_resolved(self.cr).status, MergeCheckStatusChoices.SUCCESS)
+
+
+class ClosedRequestCommentTest(CommentFixture):
+    """
+    A closed change request takes no new comment.
+
+    The page hides the comment form once a request is completed or abandoned, but the view and
+    the REST API did not check, so a direct POST still opened a thread on a closed request.
+    """
+
+    def test_a_comment_on_an_abandoned_request_is_refused(self):
+        self.cr.abandon()
+        with self.assertRaises(ValidationError):
+            self._comment()
+
+    def test_a_reply_on_an_abandoned_request_is_refused(self):
+        thread = self._comment()
+        self.cr.abandon()
+        with self.assertRaises(ValidationError):
+            self._comment(parent=thread)
+
+    def test_an_existing_thread_can_still_be_resolved(self):
+        thread = self._comment()
+        self.cr.abandon()
+        thread.resolved = True
+        thread.full_clean()
+        thread.save()
+
+    def test_the_view_refuses_it(self):
+        from django.test import Client
+        from django.urls import reverse
+
+        self.cr.abandon()
+        superuser = User.objects.create(username='closed-admin', is_superuser=True)
+        client = Client()
+        client.force_login(superuser)
+        client.post(
+            reverse('plugins:netbox_change_control:changerequest_add_comment', args=[self.cr.pk]),
+            {'change_diff': self.diff.pk, 'text': 'Too late.'},
+        )
+        self.assertFalse(self.cr.change_comments.exists())
 
 
 class DeletingARequestWithCommentsTest(ChangeControlTestCase):

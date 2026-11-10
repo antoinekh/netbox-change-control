@@ -26,6 +26,7 @@ __all__ = (
     'match_policies',
     'refresh_cached_state',
     'refresh_status',
+    'review_snapshot_time',
     'scope_may_have_drifted',
     'sync_policies',
 )
@@ -123,6 +124,22 @@ def branch_last_change_time(branch):
     if branch is None:
         return None
     return branch.get_unmerged_changes().order_by('-time').values_list('time', flat=True).first()
+
+
+def review_snapshot_time(branch):
+    """
+    The branch state a review is given against: its newest change, or now if it has none yet.
+
+    An empty branch has no change to record, and a review recording nothing could never go
+    stale, so approving an empty branch would cover whatever was added to it afterwards. Now
+    is later than nothing in the branch and earlier than anything added to it. A deleted
+    branch returns None: nothing can be added to it, so its reviews stay current.
+    """
+    if branch is None:
+        return None
+    from django.utils import timezone
+
+    return branch_last_change_time(branch) or timezone.now()
 
 
 def get_touched_object_types(branch):

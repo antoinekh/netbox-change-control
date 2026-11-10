@@ -592,15 +592,13 @@ class Review(NetBoxModel):
         edit, or an API PATCH of an unrelated field would otherwise silently revalidate a
         stale approval against branch content the reviewer never saw.
         """
-        from netbox_change_control.policy import branch_last_change_time
+        from netbox_change_control.policy import review_snapshot_time
 
         if refresh_snapshot is None:
             refresh_snapshot = self._state.adding or getattr(self, '_loaded_decision', self.decision) != self.decision
 
         if refresh_snapshot and self.change_request_id:
-            self.branch_change_time = branch_last_change_time(self.change_request.branch)
-            # branch_last_change_time returns None for a deleted branch, which leaves the
-            # review permanently current. That is correct: it can never go stale again.
+            self.branch_change_time = review_snapshot_time(self.change_request.branch)
             if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
                 kwargs['update_fields'] = {*kwargs['update_fields'], 'branch_change_time'}
 

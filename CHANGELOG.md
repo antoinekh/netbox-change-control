@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **An approval given while the branch is empty goes stale when the branch changes.** A review records the branch state it was given against, and an empty branch had none to record, so such a review counted for ever: a request approved before any change was made could take the real change afterwards and still merge. A review of an empty branch now records the time it was given, so the first change makes it stale. A migration does the same for existing reviews, using the time each one was created; the status of an affected request follows at its next refresh, and the merge gate refuses it at once.
+
 ## 0.6.2 - 2026-11-10
 
 ### Fixed

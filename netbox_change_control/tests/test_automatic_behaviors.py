@@ -150,21 +150,20 @@ class CompletionOnMergeTest(AutomaticBehaviorTestCase):
         self.assertIn('already completed', indicator.message)
 
 
-class BranchChangeInvalidationTest(AutomaticBehaviorTestCase):
+class BranchClockTestCase(AutomaticBehaviorTestCase):
     """
-    Editing an object inside a branch must invalidate an existing approval.
-
-    No review or policy signal fires for such an edit, so without a dedicated hook the stored
-    status stays "Approved" while the evaluation says otherwise.
-
     A test branch has no provisioned schema, so `get_unmerged_changes()` is always empty and
     nothing would ever look stale. The branch timestamp is therefore driven by a controlled
     clock; the receiver wiring under test is real.
+
+    Set `branch_starts_empty` for a branch which holds no change until the test records one.
     """
+
+    branch_starts_empty = False
 
     def setUp(self):
         super().setUp()
-        self.clock = {'now': timezone.now()}
+        self.clock = {'now': None if self.branch_starts_empty else timezone.now()}
         self.patcher = patch(
             'netbox_change_control.policy.branch_last_change_time',
             side_effect=lambda branch: self.clock['now'],
@@ -199,6 +198,15 @@ class BranchChangeInvalidationTest(AutomaticBehaviorTestCase):
             )
         finally:
             active_branch.reset(token)
+
+
+class BranchChangeInvalidationTest(BranchClockTestCase):
+    """
+    Editing an object inside a branch must invalidate an existing approval.
+
+    No review or policy signal fires for such an edit, so without a dedicated hook the stored
+    status stays "Approved" while the evaluation says otherwise.
+    """
 
     def test_editing_the_branch_reverts_an_approved_request(self):
         self._approve()
@@ -269,3 +277,72 @@ class BranchChangeInvalidationTest(AutomaticBehaviorTestCase):
 
         review.refresh_from_db()
         self.assertFalse(review.is_stale)
+
+
+class EmptyBranchApprovalTest(BranchClockTestCase):
+    """
+    An approval given while the branch holds nothing yet covers nothing.
+
+    With no change in the branch there was no branch state to record, and a review with no
+    recorded state was treated as current for ever. Approving an empty branch and then adding
+    the real change to it walked past the gate.
+    """
+
+    branch_starts_empty = True
+    # No checks, so the gate decides on the approval alone.
+    policy_checks = ()
+
+    def test_the_approval_records_a_branch_state(self):
+        review = self._approve()
+        self.assertIsNotNone(review.branch_change_time)
+
+    def test_the_first_change_makes_the_approval_stale(self):
+        review = self._approve()
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
+
+        self._record_branch_change()
+
+        review.refresh_from_db()
+        self.assertTrue(review.is_stale)
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+
+    def test_the_gate_refuses_the_merge(self):
+        from netbox_change_control.validators import require_approved_change_request
+
+        self._approve()
+        self._record_branch_change()
+
+        self.assertFalse(require_approved_change_request(self.branch).permitted)
+
+    def test_a_deleted_branch_still_leaves_the_review_current(self):
+        """
+        A request whose branch is gone is a record only, with nothing left to change.
+        """
+        self.branch.delete()
+        self.cr.refresh_from_db()
+
+        review = self._approve()
+        self.assertIsNone(review.branch_change_time)
+        self.assertFalse(review.is_stale)
+
+    def test_the_migration_gives_a_branch_state_to_old_reviews(self):
+        from importlib import import_module
+
+        from django.apps import apps
+
+        from netbox_change_control.models import ChangeRequest
+
+        migration = import_module('netbox_change_control.migrations.0010_snapshot_reviews_of_empty_branches')
+        live = self._approve()
+        Review.objects.filter(pk=live.pk).update(branch_change_time=None)
+        record = ChangeRequest.objects.create(branch=None, title='Gone', requester=self.requester)
+        gone = Review.objects.create(change_request=record, reviewer=self.reviewer, decision='approve')
+
+        migration.snapshot_reviews_of_empty_branches(apps, None)
+
+        live.refresh_from_db()
+        gone.refresh_from_db()
+        self.assertEqual(live.branch_change_time, live.created)
+        self.assertIsNone(gone.branch_change_time)

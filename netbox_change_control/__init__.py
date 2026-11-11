@@ -1,6 +1,6 @@
 from netbox.plugins import PluginConfig, get_plugin_config
 
-__version__ = '0.6.2'
+__version__ = '0.7.0'
 
 
 class ChangeControlConfig(PluginConfig):

@@ -13,10 +13,12 @@ from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.events import (
     CHANGE_REQUEST_APPROVED,
     CHANGE_REQUEST_REJECTED,
+    CHANGE_REQUEST_REVERTED,
     CHANGE_REQUEST_REVIEW_REQUESTED,
 )
 
 __all__ = (
+    'notify_revert',
     'notify_status_change',
     'pending_reviewers',
 )
@@ -67,6 +69,16 @@ def notify_status_change(change_request, status, evaluation=None):
         return
 
     _deliver(change_request, recipients, event_type)
+
+
+def notify_revert(change_request):
+    """
+    Tell the requester that the merge was reverted, since they act next by submitting again.
+    """
+    if not get_plugin_config('netbox_change_control', 'notify_reviewers'):
+        return
+
+    _deliver(change_request, [change_request.requester], CHANGE_REQUEST_REVERTED)
 
 
 def _deliver(change_request, recipients, event_type):

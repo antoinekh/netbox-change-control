@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Upgrading
+
+- **Migrate every open branch.** This release adds a migration, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
+
+### Changed
+
+- **A revert returns the change request to Draft.** Its reviews go stale, so it needs new reviews before the next merge.
+- **A History tab lists each step of a change request**, with the user, the time and the reviewers that decided it. A migration copies the past merges and reverts from netbox-branching.
+- **A review on the change request page shows when it was last updated**, not when it was created.
+
 ### Fixed
 
 - **`protect_main` no longer blocks a branch merge or revert.** The authors of the changes no longer need `bypass_policy`.

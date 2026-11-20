@@ -109,6 +109,8 @@ A review stores `branch_change_time`, the timestamp of the newest change in its 
 
 This is preferable to a `stale` boolean maintained by signals, because a flag can drift while a derived value cannot. It also means approval invalidation needs no separate mechanism: stale approvals are simply excluded from the evaluation, the rules stop being satisfied, and `refresh_status` returns the request to Needs review.
 
+A revert of the branch counts as a change: its time is in the change request's history, so every review given before it is stale. That is how a revert asks for new reviews without a flag of its own.
+
 ### `protect_main` listens to every write
 
 `protect_main_on_save` and `protect_main_on_delete` are registered without a sender, so they run for every model write anywhere in NetBox. That is deliberate rather than an oversight: the set of protected models is not knowable at import time, because it depends on which models branching supports and on `protect_main_scope`, which is configuration.

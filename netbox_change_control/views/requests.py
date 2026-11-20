@@ -27,6 +27,7 @@ __all__ = (
     'AbandonChangeRequestView',
     'ChangeRequestDeleteView',
     'ChangeRequestEditView',
+    'ChangeRequestHistoryView',
     'ChangeRequestListView',
     'ChangeRequestReviewsView',
     'ChangeRequestView',
@@ -106,6 +107,21 @@ class ChangeRequestEditView(generic.ObjectEditView):
 @register_model_view(ChangeRequest, 'delete')
 class ChangeRequestDeleteView(generic.ObjectDeleteView):
     queryset = ChangeRequest.objects.all()
+
+
+@register_model_view(ChangeRequest, 'history')
+class ChangeRequestHistoryView(generic.ObjectView):
+    """
+    Every step of the change request, with who took it and when: its status changes, and each
+    merge and revert of its branch.
+    """
+
+    queryset = ChangeRequest.objects.all()
+    template_name = 'netbox_change_control/changerequest_history.html'
+    tab = ViewTab(label=_('History'))
+
+    def get_extra_context(self, request, instance):
+        return {'history': instance.history.select_related('user').prefetch_related('reviewers')}
 
 
 @register_model_view(ChangeRequest, 'reviews')

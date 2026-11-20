@@ -5,6 +5,7 @@ __all__ = (
     'ChangeRequestPriorityChoices',
     'ChangeRequestStatusChoices',
     'ConditionStateChoices',
+    'HistoryActionChoices',
     'MergeCheckStatusChoices',
     'ReviewDecisionChoices',
 )
@@ -73,6 +74,34 @@ class ConditionStateChoices(ChoiceSet):
         (EITHER, _('Either side of the change')),
         (AFTER, _('After the change')),
         (BEFORE, _('Before the change')),
+    )
+
+
+class HistoryActionChoices(ChoiceSet):
+    """
+    What happened to a change request: each status change, and each merge or revert of its branch.
+    """
+
+    SUBMITTED = 'submitted'
+    NEEDS_REVIEW = 'needs-review'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+    RETURNED_TO_DRAFT = 'returned-to-draft'
+    MERGED = 'merged'
+    REVERTED = 'reverted'
+    ABANDONED = 'abandoned'
+    REOPENED = 'reopened'
+
+    CHOICES = (
+        (SUBMITTED, _('Submitted'), 'cyan'),
+        (NEEDS_REVIEW, _('Needs review'), 'orange'),
+        (APPROVED, _('Approved'), 'green'),
+        (REJECTED, _('Rejected'), 'red'),
+        (RETURNED_TO_DRAFT, _('Returned to draft'), 'gray'),
+        (MERGED, _('Merged'), 'blue'),
+        (REVERTED, _('Reverted'), 'purple'),
+        (ABANDONED, _('Abandoned'), 'gray'),
+        (REOPENED, _('Reopened'), 'teal'),
     )
 
 

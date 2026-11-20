@@ -92,6 +92,8 @@ To read the site on your own machine, install [Zensical](https://zensical.org/) 
 | Per-change comments on the branch diff, with threaded replies, in Markdown | Done |
 | Merge button appears once approved | Done, on the change request and on the branch |
 | Status set to **completed** after a successful merge | Done |
+| Back to draft with stale reviews after a revert | Done |
+| History of each change request: status changes, approvers, merges and reverts | Done, on the History tab |
 | Pre-merge gate, enforced regardless of `protect_main` | Done |
 | `protect_main` blocks direct edits outside a branch, optionally scoped | Done, with a bypass permission |
 | Stale review detection when the branch changes | Done |

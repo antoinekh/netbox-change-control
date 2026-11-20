@@ -284,7 +284,7 @@
               {% badge review.get_decision_display bg_color=review.get_decision_color %}
               {% if review.stale %}<span class="badge text-bg-yellow">{% trans "Stale" %}</span>{% endif %}
             </div>
-            <span class="text-muted small text-nowrap ms-2">{{ review.created|isodatetime:"minutes" }}</span>
+            <span class="text-muted small text-nowrap ms-2">{{ review.last_updated|isodatetime:"minutes" }}</span>
           </div>
           {% if review.comment %}
             <div class="mt-1">{{ review.comment|markdown }}</div>

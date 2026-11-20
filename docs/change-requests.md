@@ -16,7 +16,7 @@ One change request per branch.
 | Window opens / closes | An optional [change window](merging.md#change-windows). |
 | Merge automatically | Merge without further human action once every gate passes. See [automatic merging](merging.md#automatic-merging). |
 
-Status is derived from the policy evaluation and is refreshed automatically, so it is not a field you set. It is read-only on the REST API and absent from the bulk edit form, because Completed is terminal: the merge gate refuses a completed request and nothing reopens one, so setting it by hand blocked its branch from merging for good.
+Status is derived from the policy evaluation and is refreshed automatically, so it is not a field you set. It is read-only on the REST API and absent from the bulk edit form, because Completed is terminal: the merge gate refuses a completed request and only a revert of its branch returns it to Draft, so setting it by hand blocked its branch from merging for good.
 
 The two transitions a person makes by hand have an action each, and a permission each.
 
@@ -25,7 +25,7 @@ The two transitions a person makes by hand have an action each, and a permission
 | **Abandon** | The change request page, or `POST /change-requests/{id}/abandon/` | `netbox_change_control.abandon_changerequest` | Draft, Needs review, Approved, Rejected |
 | **Reopen** | The change request page, or `POST /change-requests/{id}/reopen/` | `netbox_change_control.reopen_changerequest` | Abandoned only |
 
-Reopening returns the request to Draft and recomputes from there, rather than restoring the status it held before. Completed is never reopened. See [what the states mean](#what-the-states-mean).
+Reopening returns the request to Draft and recomputes from there, rather than restoring the status it held before. Completed is never reopened by hand: only a [revert of its branch](#a-reverted-merge) returns it to Draft. See [what the states mean](#what-the-states-mean).
 
 ## The lifecycle
 
@@ -47,6 +47,7 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 | Rejected | Approved | The rejection cleared and the rules are satisfied | Automatic | none |
 | Needs review, Approved, Rejected | Draft | **Return to draft**, to take the change back off the table | Manual | `change_changerequest` |
 | Approved | Completed | The branch merged | Automatic, on the merge | `merge_branch` to merge |
+| Completed | Draft | The branch was reverted, so every review went stale | Automatic, on the revert | `revert_branch` to revert |
 | Any open state | Abandoned | **Abandon** | Manual | `abandon_changerequest` |
 | Abandoned | Draft | **Reopen** | Manual | `reopen_changerequest` |
 
@@ -56,11 +57,42 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 
 **Needs review**, **Approved** and **Rejected** are derived. They are a cached view of the policy evaluation, recomputed whenever anything that could change the answer happens, which is why they are not editable and why the arrows between them carry no permission: nobody sets them, they follow from the reviews.
 
-**Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened, because the branch is already in main. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
+**Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened by hand, because the branch is already in main; a [revert of the branch](#a-reverted-merge) returns it to Draft. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
 
 !!! note
 
     Only **Approved** opens the merge gate, and even then the checks and the change window are separate gates on top of it. See [approved is not the same as mergeable](#approved-is-not-the-same-as-mergeable).
+
+## A reverted merge
+
+Reverting the branch of a completed change request, through netbox-branching's **Revert**, returns the request to **Draft**:
+
+- Every review goes stale: the reviewers approved a merge that had to be undone. The reviews stay visible with a **Stale** badge, and they no longer count.
+- The author submits the request again, and the reviewers review it again. A review given after the revert counts.
+- The requester is notified, and the `change_request_reverted` event is emitted.
+
+The [history](#history) keeps the approvals that the revert made stale, so you can see who approved the merge that was undone.
+
+## History
+
+The **History** tab of a change request lists each step, oldest first, with the user and the time:
+
+| Action | When |
+|---|---|
+| Opened | The change request was created. |
+| Submitted | **Submit for review**. |
+| Approved | The rules became satisfied. **Reviewers** lists the approvals that counted. |
+| Rejected | A reviewer requested changes. **Reviewers** lists the rejections. |
+| Needs review | The request went back to review on its own, for example because the approvals went stale. |
+| Returned to draft | **Return to draft**. |
+| Merged | The branch merged. |
+| Reverted | The branch was reverted. |
+| Abandoned | **Abandon**. |
+| Reopened | **Reopen**. |
+
+The user of a step that the plugin takes on its own, such as Approved, is the person whose action caused it. A merge and a revert record the user who ran them.
+
+NetBox's changelog cannot show this: a merge runs in a background job, which records no change, and a reviewer's new decision replaces their previous review. The plugin keeps the history itself, so it stays after the branch is deleted. Steps from before the plugin recorded them are not there, except the merges and reverts, which the migration copies from netbox-branching.
 
 ## Approved is not the same as mergeable
 

@@ -2,11 +2,12 @@
 
 ## Automatic behaviours
 
-- **Stale reviews.** Each review records the timestamp of the newest change in its branch at the moment it was submitted. A review is stale when the branch has moved on since. Stale approvals and stale rejections are excluded from the evaluation, so an approval can never cover work the reviewer did not see. Stale reviews carry a badge.
+- **Stale reviews.** Each review records the timestamp of the newest change in its branch at the moment it was submitted. A review is stale when the branch has moved on since, or when the branch was reverted since. Stale approvals and stale rejections are excluded from the evaluation, so an approval can never cover work the reviewer did not see. Stale reviews carry a badge.
 - **Approval invalidation.** This falls out of staleness. When a branch is synced, reverted, or edited, its existing approvals go stale, the rules stop being satisfied, and the status returns to Needs review on its own.
 - **Policy reevaluation.** Signal receivers watch policies, rules, the rule's group and user lists, and user group membership. Any change re-evaluates every open change request bound to the affected policy. Raising a rule's minimum, or removing a reviewer from a group, revokes an approval that depended on it.
 - **Policy rematching.** Which policies govern a request is decided from the object types in its branch, and a branch keeps moving after its request is opened. The policies are matched again on every event that can make one newly apply: an edit inside the branch that brings in an object type or edits an object again, a branch sync or revert, and a policy created, enabled, re-scoped or given new conditions. The merge gate checks the match for itself and refuses a request a matching policy is not attached to, so the decision never depends on a receiver having fired. See [policies attach automatically](policies.md#policies-attach-automatically).
-- **Completion on merge.** A `post_merge` receiver sets the status to completed. Terminal statuses are never reopened.
+- **Completion on merge.** A `post_merge` receiver records the merge and sets the status to completed. Terminal statuses are never recomputed.
+- **Draft on revert.** A `post_revert` receiver records the revert and returns a completed request to Draft. See [a reverted merge](change-requests.md#a-reverted-merge).
 - **Check refresh.** Checks re-run when the branch content moves and when a comment thread is opened, resolved or removed.
 
 ## Notifications
@@ -18,8 +19,9 @@ Notifications use NetBox's own inbox and appear in the bell menu. They fire on a
 | To Needs review | The reviewers of rules that are still short. Rules colleagues have already satisfied are skipped, and the requester is always excluded. |
 | To Approved | The requester, who merges next. |
 | To Rejected | The requester. |
+| Back to Draft after a revert | The requester, who submits it again. |
 
-Six lifecycle event types are emitted, so a NetBox event rule can fire a webhook or run a script on any of them. They are separate from the notifications above: an event rule reaches other systems, a notification reaches a person. See [event rules](event-rules.md).
+Seven lifecycle event types are emitted, so a NetBox event rule can fire a webhook or run a script on any of them. They are separate from the notifications above: an event rule reaches other systems, a notification reaches a person. See [event rules](event-rules.md).
 
 Set `notify_reviewers` to `False` to turn the notifications off. The events are emitted either way, so an integration keeps working on a site that does not use the inbox.
 

@@ -20,7 +20,7 @@ Where that panel sits is configuration. `branch_page_placement` takes `right_pag
 
 While the merge is blocked the button is greyed out and states the reason. If you may approve but not merge, the panel says so rather than hiding the button. The branch page under **Branching > Branches** carries the same button, since the merge itself belongs to the branching plugin.
 
-After a successful merge the change request is marked **Completed**, and it cannot be reopened.
+After a successful merge the change request is marked **Completed**, and it cannot be reopened by hand. If the branch is reverted, the request returns to Draft and needs new reviews; see [a reverted merge](change-requests.md#a-reverted-merge).
 
 The gate is implemented as a netbox-branching pre-action validator, so a blocked branch also hides its merge button rather than failing after the click. It re-evaluates the policies at merge time instead of trusting the stored status.
 

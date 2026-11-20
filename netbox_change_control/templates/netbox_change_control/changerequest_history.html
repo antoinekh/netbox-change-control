@@ -1,0 +1,38 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="card">
+      <h2 class="card-header">{% trans "History" %}</h2>
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>{% trans "Time" %}</th>
+            <th>{% trans "Action" %}</th>
+            <th>{% trans "User" %}</th>
+            <th>{% trans "Reviewers" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-nowrap">{{ object.created|isodatetime:"minutes" }}</td>
+            <td><span class="badge text-bg-gray">{% trans "Opened" %}</span></td>
+            <td>{{ object.requester }}</td>
+            <td>{{ ''|placeholder }}</td>
+          </tr>
+          {% for entry in history %}
+          <tr>
+            <td class="text-nowrap">{{ entry.time|isodatetime:"minutes" }}</td>
+            <td>{% badge entry.get_action_display bg_color=entry.get_action_color %}</td>
+            <td>{{ entry.user|placeholder }}</td>
+            <td>{{ entry.reviewers.all|join:", "|placeholder }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

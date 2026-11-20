@@ -11,9 +11,10 @@ from dataclasses import dataclass, field
 from netbox_change_control.choices import (
     ChangeRequestStatusChoices,
     ConditionStateChoices,
+    HistoryActionChoices,
     ReviewDecisionChoices,
 )
-from netbox_change_control.models import ChangeRequestPolicy, Policy
+from netbox_change_control.models import ChangeRequestPolicy, HistoryEntry, Policy
 
 __all__ = (
     'PolicyEvaluation',
@@ -106,7 +107,10 @@ class PolicyEvaluation:
             messages.append(f'{review.reviewer} requested changes.')
         if self.stale:
             names = ', '.join(str(r.reviewer) for r in self.stale)
-            messages.append(f'The branch changed after these reviews were submitted, so they no longer count: {names}.')
+            messages.append(
+                f'The branch changed or was reverted after these reviews were submitted, '
+                f'so they no longer count: {names}.'
+            )
         if not self.rules:
             messages.append('No policy rules apply to this change request.')
         return messages
@@ -114,14 +118,23 @@ class PolicyEvaluation:
 
 def branch_last_change_time(branch):
     """
-    Return the timestamp of the most recent change staged in the branch, or None.
+    Return the timestamp of the most recent change staged in the branch or of its last revert,
+    or None.
 
-    Used to decide whether a review still reflects the branch it was made against. A deleted
+    Used to decide whether a review still reflects the branch it was made against. A revert
+    counts as a change, because the reviewers approved a merge that had to be undone. A deleted
     branch has no changes, so nothing can become stale against it.
     """
     if branch is None:
         return None
-    return branch.get_unmerged_changes().order_by('-time').values_list('time', flat=True).first()
+    times = [
+        branch.get_unmerged_changes().order_by('-time').values_list('time', flat=True).first(),
+        HistoryEntry.objects.filter(change_request__branch=branch, action=HistoryActionChoices.REVERTED)
+        .order_by('-time')
+        .values_list('time', flat=True)
+        .first(),
+    ]
+    return max((time for time in times if time is not None), default=None)
 
 
 def review_is_stale(review, latest_change):

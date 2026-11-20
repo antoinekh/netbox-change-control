@@ -21,6 +21,7 @@ from netbox_change_control.models import (
     ChangeComment,
     ChangeRequest,
     ChangeRequestPolicy,
+    HistoryEntry,
     MergeCheck,
     Policy,
     PolicyRule,
@@ -107,7 +108,8 @@ def _is_protected(instance):
     # Change-control records themselves must stay writable on main, otherwise protect_main
     # would stop anyone from opening a change request.
     if isinstance(
-        instance, (ChangeComment, ChangeRequest, ChangeRequestPolicy, MergeCheck, Policy, PolicyRule, Review)
+        instance,
+        (ChangeComment, ChangeRequest, ChangeRequestPolicy, HistoryEntry, MergeCheck, Policy, PolicyRule, Review),
     ):
         return False
 

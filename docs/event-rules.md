@@ -14,6 +14,7 @@ Six lifecycle event types are registered, and each is put through NetBox's event
 | `change_request_approved` | Every rule is satisfied and the status becomes **Approved**. |
 | `change_request_rejected` | A reviewer requests changes and the status becomes **Rejected**. |
 | `change_request_completed` | The branch has merged. |
+| `change_request_reverted` | The branch was reverted and the request returned to **Draft**. |
 
 The status ones fire on a **transition only**. `refresh_status` runs on many signals, so firing on every save would send a webhook per keystroke.
 

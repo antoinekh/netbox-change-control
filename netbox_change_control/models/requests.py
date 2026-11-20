@@ -1,18 +1,21 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel, PrimaryModel
 
 from netbox_change_control.choices import (
     ChangeRequestPriorityChoices,
     ChangeRequestStatusChoices,
+    HistoryActionChoices,
     ReviewDecisionChoices,
 )
 
 __all__ = (
     'ChangeRequest',
     'ChangeRequestPolicy',
+    'HistoryEntry',
     'Review',
 )
 
@@ -483,6 +486,65 @@ class ChangeRequestPolicy(models.Model):
 
     def __str__(self):
         return f'{self.change_request} / {self.policy}'
+
+
+class HistoryEntry(models.Model):
+    """
+    One step in the life of a change request: who did it, when, and which reviews counted.
+
+    The changelog cannot hold this: a merge and its status change run in a background job with
+    no request, so NetBox records nothing, and a reviewer's new decision replaces their previous
+    review. netbox-branching's branch events are deleted with the branch, and the change request
+    is kept as the record of the decision.
+    """
+
+    change_request = models.ForeignKey(
+        to=ChangeRequest,
+        on_delete=models.CASCADE,
+        related_name='history',
+        verbose_name=_('change request'),
+    )
+    action = models.CharField(
+        verbose_name=_('action'),
+        max_length=30,
+        choices=HistoryActionChoices,
+        editable=False,
+    )
+    user = models.ForeignKey(
+        to='users.User',
+        on_delete=models.PROTECT,
+        related_name='+',
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name=_('user'),
+    )
+    reviewers = models.ManyToManyField(
+        to='users.User',
+        related_name='+',
+        blank=True,
+        editable=False,
+        verbose_name=_('reviewers'),
+        help_text=_('The approvals that counted for Approved, or the rejections for Rejected.'),
+    )
+    time = models.DateTimeField(
+        verbose_name=_('time'),
+        default=timezone.now,
+        editable=False,
+    )
+
+    class Meta:
+        ordering = ('time', 'pk')
+        # Written by the status transitions only; nothing grants a write to them.
+        default_permissions = ()
+        verbose_name = _('history entry')
+        verbose_name_plural = _('history entries')
+
+    def __str__(self):
+        return f'{self.change_request} / {self.get_action_display()}'
+
+    def get_action_color(self):
+        return HistoryActionChoices.colors.get(self.action)
 
 
 class Review(NetBoxModel):

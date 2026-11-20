@@ -2,7 +2,8 @@
 The status transitions of a change request.
 
 Every move of `status` is made here. Each one locks the change request row, decides from the
-status read under that lock, writes, and then tells the reviewers and the event rules. When
+status read under that lock, writes, records the step in the request's history, and then tells
+the reviewers and the event rules. When
 the moves were spread across the model, the policy module, a signal receiver and the views,
 one transition was announced twice and a stale one could undo a merge; one home is what keeps
 each move decided once and announced once.
@@ -11,13 +12,15 @@ Two kinds of move:
 
 - **Manual**: submit, return to draft, abandon, reopen. A person makes them, behind a permission.
 - **Derived**: `refresh_status` recomputes Needs review, Approved or Rejected from the policy
-  evaluation, and `complete` records a merge. Signals call them, so no caller can forget.
+  evaluation, `complete` records a merge, and `revert` undoes one. Signals call them, so no
+  caller can forget.
 """
 
 from django.db import transaction
+from netbox.context import current_request
 
 from netbox_change_control import events, policy
-from netbox_change_control.choices import ChangeRequestStatusChoices
+from netbox_change_control.choices import ChangeRequestStatusChoices, HistoryActionChoices
 
 __all__ = (
     'abandon',
@@ -25,6 +28,7 @@ __all__ = (
     'refresh_status',
     'reopen',
     'return_to_draft',
+    'revert',
     'submit',
 )
 
@@ -48,9 +52,31 @@ def _announce(change_request, status, evaluation=None):
         events.emit(change_request, event_type)
 
 
+# The history entry each derived status records on entry.
+STATUS_ACTIONS = {
+    ChangeRequestStatusChoices.NEEDS_REVIEW: HistoryActionChoices.NEEDS_REVIEW,
+    ChangeRequestStatusChoices.APPROVED: HistoryActionChoices.APPROVED,
+    ChangeRequestStatusChoices.REJECTED: HistoryActionChoices.REJECTED,
+}
+
+
 def _move(change_request, status):
     change_request.status = status
     change_request.save(update_fields=['status'])
+
+
+def _record(change_request, action, user=None, reviewers=()):
+    """
+    Add a step to the request's history, by `user` or else by the user of the current request.
+    """
+    from netbox_change_control.models import HistoryEntry
+
+    if user is None:
+        request_user = getattr(current_request.get(), 'user', None)
+        user = request_user if request_user is not None and request_user.is_authenticated else None
+    entry = HistoryEntry.objects.create(change_request=change_request, action=action, user=user)
+    if reviewers:
+        entry.reviewers.set(reviewers)
 
 
 def submit(change_request):
@@ -70,6 +96,7 @@ def submit(change_request):
             return False
 
         _move(change_request, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        _record(change_request, HistoryActionChoices.SUBMITTED)
         with batched():
             policy.sync_policies(change_request)
             schedule_refresh(change_request)
@@ -99,6 +126,7 @@ def return_to_draft(change_request):
         if not change_request.lock_status() or not change_request.can_return_to_draft:
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
+        _record(change_request, HistoryActionChoices.RETURNED_TO_DRAFT)
         policy.refresh_cached_state(change_request)
     return True
 
@@ -111,6 +139,7 @@ def abandon(change_request):
         if not change_request.lock_status() or not change_request.can_be_abandoned:
             return False
         _move(change_request, ChangeRequestStatusChoices.ABANDONED)
+        _record(change_request, HistoryActionChoices.ABANDONED)
     return True
 
 
@@ -126,15 +155,16 @@ def reopen(change_request):
         if not change_request.lock_status() or not change_request.can_be_reopened:
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
+        _record(change_request, HistoryActionChoices.REOPENED)
         if not change_request.branch_deleted:
             policy.sync_policies(change_request)
         refresh_status(change_request)
     return True
 
 
-def complete(change_request):
+def complete(change_request, user=None):
     """
-    Record that the branch has merged. Returns True if the status moved.
+    Record that `user` merged the branch. Returns True if the status moved.
     """
     with transaction.atomic():
         if not change_request.lock_status():
@@ -142,10 +172,36 @@ def complete(change_request):
         if change_request.status == ChangeRequestStatusChoices.COMPLETED:
             return False
         _move(change_request, ChangeRequestStatusChoices.COMPLETED)
+        _record(change_request, HistoryActionChoices.MERGED, user)
         # Completion never passes through the refresh, so the cached columns the list shows
         # would otherwise keep reporting a merged request as ready to merge.
         policy.refresh_cached_state(change_request)
         _announce(change_request, ChangeRequestStatusChoices.COMPLETED)
+    return True
+
+
+def revert(change_request, user=None):
+    """
+    Record that `user` reverted the branch, and return a completed request to Draft. Returns
+    True if the status moved.
+
+    The revert is recorded whatever the status, because its time is what makes the reviews
+    stale. The author then submits the request again and the reviewers decide again, as after
+    a reopen.
+    """
+    from netbox_change_control.notifications import notify_revert
+
+    with transaction.atomic():
+        if not change_request.lock_status():
+            return False
+        _record(change_request, HistoryActionChoices.REVERTED, user)
+        if change_request.status != ChangeRequestStatusChoices.COMPLETED:
+            return False
+        _move(change_request, ChangeRequestStatusChoices.DRAFT)
+        policy.sync_policies(change_request)
+        refresh_status(change_request)
+        notify_revert(change_request)
+        events.emit(change_request, events.CHANGE_REQUEST_REVERTED)
     return True
 
 
@@ -192,6 +248,7 @@ def _refresh_locked_status(change_request, run_checks_on_approval):
 
     if status != change_request.status:
         _move(change_request, status)
+        _record(change_request, STATUS_ACTIONS[status], reviewers=_deciding_reviewers(status, evaluation))
         # Announced only on an actual transition, so a busy request does not spam reviewers or
         # fire a webhook per save.
         _announce(change_request, status, evaluation)
@@ -210,3 +267,14 @@ def _refresh_locked_status(change_request, run_checks_on_approval):
     # Last, so it reads the settled status.
     policy.refresh_cached_state(change_request)
     return status
+
+
+def _deciding_reviewers(status, evaluation):
+    """
+    The reviewers whose reviews decided `status`: the approvals that counted, or the rejections.
+    """
+    if status == ChangeRequestStatusChoices.APPROVED:
+        return {approval.reviewer for rule in evaluation.rules for approval in rule.approvals}
+    if status == ChangeRequestStatusChoices.REJECTED:
+        return {rejection.reviewer for rejection in evaluation.rejections}
+    return set()

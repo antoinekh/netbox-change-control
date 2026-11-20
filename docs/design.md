@@ -115,6 +115,12 @@ This is preferable to a `stale` boolean maintained by signals, because a flag ca
 
 The cost is bounded by ordering the guard cheaply. The first thing each receiver does is read `protect_main`, and with it off, which is the default, that is the whole cost of the call.
 
+### A merge is not a direct edit
+
+netbox-branching merges a branch by replaying each change on main, inside a request whose user is the author of that change. Without an exemption, `protect_main` would refuse the replay unless every author held `bypass_policy`, which also lets them edit main directly.
+
+`pre_merge` and `pre_revert` record the branch in a context variable, and the guard allows the write while that branch is `merging` or `reverting`. The context variable limits the exemption to the job that replays the branch, so a direct edit made at the same time is still refused. The status ends it: a failed merge sends no `post_merge`, but netbox-branching puts the branch back to `ready`. The status query runs only for a protected write in a context that has started a merge or a revert.
+
 ### `protect_main_scope`
 
 The commercial product's `protect_main` is all-or-nothing. In practice a team often wants branch discipline on one risky area, such as circuits, without forcing every IPAM edit through review.

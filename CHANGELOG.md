@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`protect_main` no longer blocks a branch merge or revert.** The authors of the changes no longer need `bypass_policy`.
+
 ## 0.7.0 - 2026-11-11
 
 ### Upgrading

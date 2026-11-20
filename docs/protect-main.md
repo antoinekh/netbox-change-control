@@ -16,6 +16,8 @@ A delete shows the same message as an error toast, and the REST API returns 400 
 
 Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-custom-actions). Writes with no request context, such as migrations, scripts and background jobs, are allowed: they are not interactive edits.
 
+Merging or reverting a branch is allowed too. It replays each change on main as the user who made it in the branch, and that user does not need `bypass_policy`: [`merge_branch`](permissions.md#permissions-from-netbox-branching) and the [merge gate](merging.md) already control what reaches main.
+
 !!! note
 
     Superusers hold every permission, so a superuser is never blocked.

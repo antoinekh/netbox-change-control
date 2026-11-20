@@ -5,15 +5,20 @@ The receivers refuse a write when there is no active branch, the model supports 
 and the user lacks the bypass permission.
 """
 
+import contextvars
 import uuid
 from unittest.mock import patch
 
 from django.test import RequestFactory, TestCase
 from netbox.context import current_request
+from netbox_branching.choices import BranchStatusChoices
+from netbox_branching.models import Branch
+from netbox_branching.signals import pre_merge, pre_revert
 from users.models import User
 from utilities.exceptions import AbortRequest
 
 from netbox_change_control.models import Policy
+from netbox_change_control.tests.base import make_branch
 
 
 def _plugin_config(name, setting, default=None):
@@ -122,6 +127,75 @@ class ProtectMainTest(TestCase):
                     site.delete()
         finally:
             current_request.reset(token)
+
+
+class BranchReplayTest(TestCase):
+    """
+    A merge or a revert replays the branch's changes on main as their original author.
+
+    The merge permission and the merge gate already decided that these changes may reach main,
+    so the author must not also need the bypass permission.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from dcim.models import Site
+
+        cls.author = User.objects.create(username='branch-author')
+        cls.branch = make_branch('protect-main', 'replay')
+        cls.site = Site.objects.create(name='Replayed', slug='replayed')
+
+    def _write_as_author(self):
+        request = RequestFactory().get('/')
+        request.user = self.author
+        request.id = uuid.uuid4()
+        token = current_request.set(request)
+        try:
+            with patch('netbox_change_control.receivers.protect_main.get_plugin_config', _plugin_config):
+                self.site.description = 'Changed'
+                self.site.save()
+        finally:
+            current_request.reset(token)
+
+    def _set_status(self, status):
+        Branch.objects.filter(pk=self.branch.pk).update(status=status)
+
+    def _replay(self, signal, status):
+        """
+        The order Branch.merge() and Branch.revert() follow: the signal, the status, the replay.
+        """
+        signal.send(sender=Branch, branch=self.branch, user=self.author)
+        self._set_status(status)
+        self._write_as_author()
+
+    def test_a_merge_writes_the_author_change_to_main(self):
+        contextvars.copy_context().run(self._replay, pre_merge, BranchStatusChoices.MERGING)
+
+        self.site.refresh_from_db()
+        self.assertEqual(self.site.description, 'Changed')
+
+    def test_a_revert_writes_to_main(self):
+        contextvars.copy_context().run(self._replay, pre_revert, BranchStatusChoices.REVERTING)
+
+        self.site.refresh_from_db()
+        self.assertEqual(self.site.description, 'Changed')
+
+    def test_a_direct_write_during_another_merge_is_refused(self):
+        contextvars.copy_context().run(pre_merge.send, sender=Branch, branch=self.branch, user=self.author)
+        self._set_status(BranchStatusChoices.MERGING)
+
+        with self.assertRaises(AbortRequest):
+            self._write_as_author()
+
+    def test_a_failed_merge_ends_the_exemption(self):
+        def merge_then_fail():
+            pre_merge.send(sender=Branch, branch=self.branch, user=self.author)
+            # A failed merge sends no post_merge signal; it only puts the branch back to ready.
+            self._set_status(BranchStatusChoices.READY)
+            with self.assertRaises(AbortRequest):
+                self._write_as_author()
+
+        contextvars.copy_context().run(merge_then_fail)
 
 
 class ProtectMainScopeTest(TestCase):

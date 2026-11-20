@@ -16,6 +16,10 @@
 
 - **`protect_main` no longer blocks a branch merge or revert.** The authors of the changes no longer need `bypass_policy`.
 
+### Documentation
+
+- The documentation site is built with zensical 0.1.3.
+
 ## 0.7.0 - 2026-11-11
 
 ### Upgrading

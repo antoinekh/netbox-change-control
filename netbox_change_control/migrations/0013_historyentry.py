@@ -24,10 +24,15 @@ def record_past_merges_and_reverts(apps, schema_editor):
         .order_by('time', 'pk')
         .values('branch__change_request', 'type', 'user_id', 'time')
     )
+    # netbox-branching runs this again in each branch it migrates, and the table is in main only.
+    copied = set(HistoryEntry.objects.values_list('change_request_id', 'action', 'time'))
     last_action = defaultdict(str)
     entries = []
     for event in events:
         change_request_id = event['branch__change_request']
+        last_action[change_request_id] = event['type']
+        if (change_request_id, event['type'], event['time']) in copied:
+            continue
         entries.append(
             HistoryEntry(
                 change_request_id=change_request_id,
@@ -36,7 +41,6 @@ def record_past_merges_and_reverts(apps, schema_editor):
                 time=event['time'],
             )
         )
-        last_action[change_request_id] = event['type']
     HistoryEntry.objects.bulk_create(entries)
 
     reverted = [pk for pk, action in last_action.items() if action == 'reverted']

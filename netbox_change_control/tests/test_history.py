@@ -116,3 +116,23 @@ class ManualHistoryTest(HistoryTestCase):
                 HistoryActionChoices.REOPENED,
             ],
         )
+
+
+class HistoryBackfillTest(HistoryTestCase):
+    """
+    netbox-branching runs the plugin migrations again in each branch it migrates.
+    """
+
+    def test_running_the_backfill_again_copies_nothing_twice(self):
+        from importlib import import_module
+
+        from django.apps import apps
+        from netbox_branching.models import BranchEvent
+
+        BranchEvent.objects.create(branch=self.branch, user=self.merger, type='merged')
+        backfill = import_module('netbox_change_control.migrations.0013_historyentry').record_past_merges_and_reverts
+
+        backfill(apps, None)
+        backfill(apps, None)
+
+        self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.MERGED).count(), 1)

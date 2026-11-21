@@ -14,7 +14,7 @@ A refused write keeps the user on the form they were filling in, with the reason
 
 A delete shows the same message as an error toast, and the REST API returns 400 with it as `detail`. The refusal is raised as NetBox's `AbortRequest`, which is the mechanism a signal receiver is given for exactly this. Raising `PermissionDenied` instead produced a bare **Access Denied** page with the explanation discarded, which reads like a misconfigured permission rather than a deliberate policy.
 
-Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-custom-actions). Writes with no request context, such as migrations, scripts and background jobs, are allowed: they are not interactive edits.
+Users holding `netbox_change_control.bypass_policy` are exempt; see [granting the exemptions](permissions.md#granting-the-custom-actions). Writes with no request context, such as migrations, management commands and background jobs, are allowed: they are not interactive edits. A custom script runs with the user who started it, so it is checked like an edit in the interface: run it with a branch selected, or grant that user the bypass.
 
 Merging or reverting a branch is allowed too. It replays each change on main as the user who made it in the branch, and that user does not need `bypass_policy`: [`merge_branch`](permissions.md#permissions-from-netbox-branching) and the [merge gate](merging.md) already control what reaches main.
 

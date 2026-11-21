@@ -46,7 +46,7 @@ The fix is `exempt_models: ['netbox_change_control.*']` in the branching config.
 
 ### `protect_main` is off by default
 
-Enabling it by default would break an existing install the moment the plugin is added. It is opt-in. It is implemented as `pre_save` and `pre_delete` receivers which refuse a write when `active_branch` is unset, the model supports branching, and the user lacks `netbox_change_control.bypass_policy`. Writes with no request context (migrations, scripts, jobs) are allowed, since they are not interactive edits.
+Enabling it by default would break an existing install the moment the plugin is added. It is opt-in. It is implemented as `pre_save` and `pre_delete` receivers which refuse a write when `active_branch` is unset, the model supports branching, and the user lacks `netbox_change_control.bypass_policy`. Writes with no request context (migrations, management commands, background jobs) are allowed, since they are not interactive edits. A custom script runs inside a request with the user who started it, so it is checked. A merge or a revert of a branch is allowed: see [a merge is not a direct edit](#a-merge-is-not-a-direct-edit).
 
 ## Data model
 

@@ -20,6 +20,7 @@
 ### Documentation
 
 - The documentation site is built with zensical 0.1.3.
+- The `protect_main` pages say that a custom script is checked like an edit in the interface. They said scripts were allowed.
 
 ## 0.7.0 - 2026-11-11
 

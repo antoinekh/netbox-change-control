@@ -294,6 +294,6 @@ Steps 8 and 9 are the ones worth repeating after any upgrade.
 
 **A user cannot see the Changes tab.** They are missing `netbox_branching.view_changediff`.
 
-**`protect_main` is blocking a script.** Writes with no request context are allowed, so a management command or a background job is not affected. An interactive write needs `netbox_change_control.bypass_policy`.
+**`protect_main` is blocking a script.** A custom script runs with the user who started it, so it is checked like an edit in the interface. Run it with a branch selected, or grant that user `netbox_change_control.bypass_policy`. A management command or a background job has no request context and is not affected.
 
 **A change with a window never merges automatically.** The sweep runs every `auto_merge_interval` minutes and can step over a shorter window. The request warns about this itself. See [the sweep interval](merging.md#the-sweep-interval).

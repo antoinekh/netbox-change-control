@@ -22,6 +22,8 @@ While the merge is blocked the button is greyed out and states the reason. If yo
 
 After a successful merge the change request is marked **Completed**, and it cannot be reopened by hand. If the branch is reverted, the request returns to Draft and needs new reviews; see [a reverted merge](change-requests.md#a-reverted-merge).
 
+The plugin does not gate a revert. netbox-branching's `revert_branch` permission controls it, with no review and no change window, so an incident can be undone at once.
+
 The gate is implemented as a netbox-branching pre-action validator, so a blocked branch also hides its merge button rather than failing after the click. It re-evaluates the policies at merge time instead of trusting the stored status.
 
 ## When there is no change request

@@ -13,7 +13,7 @@ A reviewer holds at most one review per change request. Submitting again replace
 
 !!! note
 
-    A user cannot review their own change request, and requesting changes requires a comment. Both are enforced on the model.
+    A user cannot review their own change request, and requesting changes requires a comment. Both are enforced on the model. Only the requester is blocked: a user who made changes in the branch, but did not open the request, can review it.
 
 A review records which branch state it was made against. Submitting the form always refreshes that snapshot, because pressing submit restates your position. Editing a review any other way, such as correcting a typo through the object edit form or a bulk edit, deliberately does **not** refresh it. Otherwise an incidental edit would silently revalidate a stale approval against branch content the reviewer never saw. Changing the decision does refresh it, since that is a genuine restatement.
 

@@ -75,7 +75,9 @@ The [history](#history) keeps the approvals that the revert made stale, so you c
 
 ## History
 
-The **History** tab of a change request lists each step, oldest first, with the user and the time:
+The **History** tab of a change request lists each step, oldest first, with the user and the time.
+
+![The History tab of a change request that was merged, reverted and approved again](img/history-tab.png)
 
 | Action | When |
 |---|---|

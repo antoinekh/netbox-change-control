@@ -118,11 +118,11 @@ def _is_protected(instance):
 
 @receiver(pre_save)
 def protect_main_on_save(sender, instance, **kwargs):
-    if _is_protected(instance) and not current_user_has_perm(BYPASS_PERMISSION, without_request=True):
+    if _is_protected(instance) and not current_user_has_perm(BYPASS_PERMISSION):
         raise AbortRequest(MESSAGE)
 
 
 @receiver(pre_delete)
 def protect_main_on_delete(sender, instance, **kwargs):
-    if _is_protected(instance) and not current_user_has_perm(BYPASS_PERMISSION, without_request=True):
+    if _is_protected(instance) and not current_user_has_perm(BYPASS_PERMISSION):
         raise AbortRequest(MESSAGE)

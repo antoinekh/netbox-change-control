@@ -7,9 +7,11 @@ is the author of the change.
 """
 
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.test import RequestFactory, TransactionTestCase, override_settings
+from django.utils import timezone
 from netbox.context import current_request
 from netbox.context_managers import event_tracking
 from netbox_branching.choices import BranchMergeStrategyChoices, BranchStatusChoices
@@ -20,7 +22,7 @@ from utilities.exceptions import AbortRequest, AbortTransaction
 
 from netbox_change_control.choices import ChangeRequestStatusChoices, HistoryActionChoices, ReviewDecisionChoices
 from netbox_change_control.models import ChangeRequest
-from netbox_change_control.tests.base import approve, make_policy
+from netbox_change_control.tests.base import approve, grant, make_policy
 
 PROTECT_MAIN = {
     **settings.PLUGINS_CONFIG,
@@ -96,6 +98,51 @@ class EndToEndTest(TransactionTestCase):
         review.decision = ReviewDecisionChoices.APPROVE
         review.save(refresh_snapshot=True)
         self.cr.refresh_from_db()
+
+    def _merge_in_a_job(self):
+        """
+        Run a merge the way the merge button does: in netbox-branching's job, with no request.
+        """
+        from core.models import Job, ObjectType
+        from netbox_branching.jobs import MergeBranchJob
+
+        job = Job.objects.create(
+            object_type=ObjectType.objects.get_for_model(Branch),
+            object_id=self.branch.pk,
+            name='Merge branch',
+            user=self.merger,
+            job_id=uuid.uuid4(),
+        )
+        MergeBranchJob.handle(job, commit=True)
+        job.refresh_from_db()
+        return job
+
+    def _close_the_window(self):
+        now = timezone.now()
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(
+            scheduled_start=now - timedelta(hours=2), scheduled_end=now - timedelta(hours=1)
+        )
+
+    def test_override_window_lets_the_merge_job_run_outside_the_window(self):
+        from core.choices import JobStatusChoices
+
+        self._close_the_window()
+        grant(self.merger, ['override_window'], ChangeRequest)
+
+        job = self._merge_in_a_job()
+
+        self.assertEqual(job.status, JobStatusChoices.STATUS_COMPLETED, job.error)
+        self.assertEqual(self._description_on_main(), 'Changed in the branch')
+
+    def test_without_override_the_merge_job_is_refused_outside_the_window(self):
+        from core.choices import JobStatusChoices
+
+        self._close_the_window()
+
+        job = self._merge_in_a_job()
+
+        self.assertEqual(job.status, JobStatusChoices.STATUS_ERRORED)
+        self.assertEqual(self._description_on_main(), 'Original')
 
     def test_the_change_of_an_author_without_bypass_is_merged(self):
         self.branch.merge(user=self.merger, commit=True)

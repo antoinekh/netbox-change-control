@@ -47,7 +47,7 @@ Users holding `netbox_change_control.override_window_changerequest` may merge ou
 
 !!! info "Important"
 
-    The window fails closed when there is no request context. `protect_main` deliberately exempts scripts and background jobs, because those are not interactive edits. A change window is the opposite: a script merging at the wrong hour is exactly what it exists to stop.
+    The window checks the user who merges: the user of the request, or else the user who started the merge job, because the merge button runs the merge in a background job. With neither, as in a management command, the window fails closed. `protect_main` deliberately allows writes with no request context, because those are not interactive edits. A change window is the opposite: a merge at the wrong hour is exactly what it exists to stop.
 
 ## Automatic merging
 

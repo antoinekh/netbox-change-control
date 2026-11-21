@@ -6,6 +6,8 @@ themselves: when each did its own, the interface and the API drifted apart, one 
 object constraint or an ownership rule that the other ignored.
 """
 
+from contextvars import ContextVar
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from netbox.context import current_request
@@ -21,10 +23,12 @@ __all__ = (
     'MERGE_PERMISSION',
     'OVERRIDE_WINDOW_PERMISSION',
     'REOPEN_PERMISSION',
+    'acting_user_has_perm',
     'current_user_has_perm',
     'may_rewrite',
     'own_statements',
     'restricted_or_404',
+    'running_job',
     'save_if_permitted',
 )
 
@@ -56,27 +60,41 @@ CHANGE_CHECK_PERMISSION = 'netbox_change_control.change_mergecheck'
 MERGE_PERMISSION = 'netbox_branching.merge_branch'
 
 
-def current_user_has_perm(permission, *, without_request):
+# The background job running in this context, set and cleared by NetBox's job signals.
+running_job = ContextVar('netbox_change_control.running_job', default=None)
+
+
+def current_user_has_perm(permission):
     """
     Return whether the current request's user holds `permission`.
 
-    `without_request` is the answer when there is no request at all, which the two callers
-    disagree about:
-
-    - `protect_main` passes True. A write with no request comes from a migration, a script or
-      a background job, which are not interactive edits.
-    - A change window passes False. A script merging at the wrong hour is exactly what a
-      window exists to stop.
+    True when there is no request: a write from a migration, a management command or a
+    background job is not an interactive edit. A custom script runs inside a request with the
+    user who started it, so it is checked like any other edit.
     """
     request = current_request.get()
     if request is None:
-        return without_request
+        return True
+    return _holds(getattr(request, 'user', None), permission)
 
-    user = getattr(request, 'user', None)
-    if user is None or not user.is_authenticated:
-        return False
 
-    return user.has_perm(permission)
+def acting_user_has_perm(permission):
+    """
+    Return whether the user acting now holds `permission`: the user of the current request, or
+    else the user who started the running background job. False when there is neither.
+
+    A merge runs in netbox-branching's background job, with no request, so the job's user is
+    the one who merges.
+    """
+    request = current_request.get()
+    if request is not None:
+        return _holds(getattr(request, 'user', None), permission)
+    job = running_job.get()
+    return job is not None and _holds(job.user, permission)
+
+
+def _holds(user, permission):
+    return user is not None and user.is_authenticated and user.has_perm(permission)
 
 
 def restricted_or_404(queryset, user, action, **lookup):

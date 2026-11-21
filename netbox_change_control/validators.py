@@ -8,7 +8,7 @@ hides the merge button in the UI.
 from netbox.plugins import get_plugin_config
 from netbox_branching.utilities import BranchActionIndicator
 
-from netbox_change_control.permissions import OVERRIDE_WINDOW_PERMISSION, current_user_has_perm
+from netbox_change_control.permissions import OVERRIDE_WINDOW_PERMISSION, acting_user_has_perm
 
 __all__ = (
     'blocking_checks',
@@ -68,9 +68,7 @@ def require_approved_change_request(branch):
 
     # A change window is a third, independent gate. Holders of override_window bypass it,
     # which is what an incident response needs.
-    if not change_request.window_is_open and not current_user_has_perm(
-        OVERRIDE_WINDOW_PERMISSION, without_request=False
-    ):
+    if not change_request.window_is_open and not acting_user_has_perm(OVERRIDE_WINDOW_PERMISSION):
         state = change_request.window_state()
         if state == 'early':
             return BranchActionIndicator(

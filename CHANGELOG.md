@@ -15,6 +15,7 @@
 ### Fixed
 
 - **`protect_main` no longer blocks a branch merge or revert.** The authors of the changes no longer need `bypass_policy`.
+- **`override_window` lets a merge run outside the change window.** Before, the merge job refused it, because it checked a request that a job does not have.
 
 ### Documentation
 

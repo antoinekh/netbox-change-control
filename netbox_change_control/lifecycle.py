@@ -3,10 +3,9 @@ The status transitions of a change request.
 
 Every move of `status` is made here. Each one locks the change request row, decides from the
 status read under that lock, writes, records the step in the request's history, and then tells
-the reviewers and the event rules. When
-the moves were spread across the model, the policy module, a signal receiver and the views,
-one transition was announced twice and a stale one could undo a merge; one home is what keeps
-each move decided once and announced once.
+the reviewers and the event rules. When the moves were spread across the model, the policy
+module, a signal receiver and the views, one transition was announced twice and a stale one
+could undo a merge; one home is what keeps each move decided once and announced once.
 
 Two kinds of move:
 

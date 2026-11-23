@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- The README starts with a 50-second video of the plugin.
+
 ## 0.8.0 - 2026-11-21
 
 ### Upgrading

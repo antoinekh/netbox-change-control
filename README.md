@@ -2,6 +2,7 @@
   <img src="docs/img/logo.svg" width="460" alt="netbox change control" />
   <p><strong>Policy-driven change control and mandatory review for NetBox branches</strong></p>
   <p>change requests &bull; policies &bull; checks &bull; comments</p>
+  <a href="https://pypi.org/project/netbox-change-control/"><img src="https://img.shields.io/pypi/v/netbox-change-control" alt="PyPI version" /></a>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
   <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.7.0%2C%20%3C%204.8-00857d" alt="NetBox compatibility" />
   <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.2.2-00857d" alt="netbox-branching compatibility" />
@@ -20,13 +21,6 @@ This plugin builds on [netbox-branching](https://github.com/netboxlabs/netbox-br
 
 The goal is change control that is **policy driven**: who must approve a change is decided by the objects it touches, not by whoever opened it. Around that sit two extension points, so the same gate can be driven by more than people. Pre-merge **checks** are pluggable, and an event fires on every status change, so a change request can call an external system, wait for a CI result, or ask a model to review the diff before anyone merges it. See [writing your own checks](https://antoinekh.github.io/netbox-change-control/custom-checks/), which includes an AI reviewer and a CI reporter.
 
-It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/docs/changes/)**, for policies and rules governing who must review a branch; from **GitHub**, for status checks that gate a merge independently of human approval and for review comments anchored to a specific change; and from **[Infrahub](https://docs.infrahub.app/topics/proposed-change)** by OpsMill, for treating a proposed change as a first-class object that carries its own validation.
-
-> [!NOTE]
-> **Independent community plugin.** Free, MIT licensed, not official, not certified and not endorsed by NetBox Labs. It bundles no netbox-branching code. You install that package yourself, and its own licence governs how you may use it.
->
-> No commercial support. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
-
 <p align="center">
   <a href="#how-it-works">How it works</a> |
   <a href="#documentation">Documentation</a> |
@@ -34,6 +28,24 @@ It takes ideas from **[NetBox Labs change management](https://netboxlabs.com/doc
   <a href="#requirements">Requirements</a> |
   <a href="#quick-install">Quick install</a>
 </p>
+
+https://github.com/user-attachments/assets/9084f634-e8b7-4dc0-9d38-cf4d4c36c35d
+
+> [!NOTE]
+> **Independent community plugin.** Free, MIT licensed, not official, not certified and not endorsed by NetBox Labs. It bundles no netbox-branching code. You install that package yourself, and its own licence governs how you may use it.
+>
+> No commercial support. If you need a supported product, use the [NetBox Labs](https://netboxlabs.com/docs/changes/) change management plugin.
+
+<details>
+<summary><strong>Inspiration</strong></summary>
+
+This plugin takes ideas from:
+
+- **[NetBox Labs change management](https://netboxlabs.com/docs/changes/)**: policies and rules governing who must review a branch.
+- **GitHub**: status checks that gate a merge independently of human approval, and review comments anchored to a specific change.
+- **[Infrahub](https://docs.infrahub.app/topics/proposed-change)** by OpsMill: a proposed change as a first-class object that carries its own validation.
+
+</details>
 
 <p align="center">
   <img src="docs/img/change-request-detail.png" width="800" alt="A change request, showing the approval status, the pre-merge checks and the conflict banner" />
@@ -54,7 +66,7 @@ Two gates guard the merge and they are independent: the people gate (policies an
 
 ## Documentation
 
-The documentation is a website: **[antoinekh.github.io/netbox-change-control](https://antoinekh.github.io/netbox-change-control/)**. Its sources are the Markdown files in [`docs/`](docs/), built with [Zensical](https://zensical.org/) and published by GitHub Actions on every push to `master`.
+The documentation is a website: **[antoinekh.github.io/netbox-change-control](https://antoinekh.github.io/netbox-change-control/)**.
 
 | Page | Covers |
 |---|---|

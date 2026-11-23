@@ -5,6 +5,7 @@
 ### Documentation
 
 - The README starts with a 50-second video of the plugin.
+- The README is shorter: features in groups, installation before the documentation, and only the main documentation pages.
 
 ## 0.8.0 - 2026-11-21
 

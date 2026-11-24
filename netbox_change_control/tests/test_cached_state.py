@@ -260,6 +260,28 @@ class CacheFollowsTheSignalsTest(TestCase):
         self.assertFalse(cr.cached_ready_to_merge)
         self.assert_agrees(cr)
 
+    def test_an_abandoned_request_is_no_longer_shown_as_ready(self):
+        cr, _branch = self.make_request()
+        approve(cr, self.reviewer)
+        cr.refresh_from_db()
+        self.assertTrue(cr.cached_ready_to_merge)
+
+        cr.abandon()
+
+        cr.refresh_from_db()
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.ABANDONED)
+        self.assertFalse(cr.cached_ready_to_merge)
+        self.assert_agrees(cr)
+
+    def test_a_request_abandoned_with_its_branch_is_no_longer_shown_as_ready(self):
+        cr, branch = self.make_request()
+        approve(cr, self.reviewer)
+
+        branch.delete()
+
+        cr.refresh_from_db()
+        self.assertFalse(cr.cached_ready_to_merge)
+
     def test_a_conflict_updates_the_cache_without_the_no_conflicts_check(self):
         """
         Only the no-conflicts check creates the row the diff receiver used to consult, so a

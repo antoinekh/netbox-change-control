@@ -113,7 +113,7 @@ def rerun_checks_on_diff_change(sender, instance, **kwargs):
     # row consulted below, so a request governed by a policy which does not require it had no
     # path back to the cache at all.
     if conflicted != change_request.cached_conflicted:
-        ChangeRequest.objects.filter(pk=change_request.pk).update(cached_conflicted=conflicted)
+        refresh_cached_state(change_request)
 
     stored = change_request.checks.filter(name='no-conflicts').first()
     if stored is None:

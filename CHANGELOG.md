@@ -23,6 +23,7 @@
 - **A check that no longer applies does not block the merge**, and the change request page does not show it.
 - **The REST API records the caller as the requester of a new change request.** A caller could name a colleague, approve the change as a reviewer, or have an automatic merge run as somebody else.
 - **A repeated notification is dated when it is raised again**, so it sorts with the new ones.
+- **An abandoned change request is no longer listed as ready to merge.** Every status change now refreshes the cached columns of the list.
 
 ### Documentation
 

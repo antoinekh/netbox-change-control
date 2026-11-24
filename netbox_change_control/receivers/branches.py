@@ -6,7 +6,7 @@ returns it to Draft, its deletion abandons it, its name is kept, and a sync re-e
 from core.choices import JobStatusChoices
 from core.signals import job_end
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 from netbox_branching.jobs import MergeBranchJob
 from netbox_branching.models import Branch
@@ -15,12 +15,13 @@ from netbox_branching.signals import post_merge, post_revert, post_sync
 from netbox_change_control import lifecycle
 from netbox_change_control.batching import batched, schedule_refresh
 from netbox_change_control.models import ChangeRequest
-from netbox_change_control.policy import sync_policies
+from netbox_change_control.policy import refresh_cached_state, sync_policies
 
 __all__ = (
     'abandon_on_branch_delete',
     'complete_on_merge',
     'record_failed_merge',
+    'refresh_after_branch_delete',
     'refresh_on_branch_change',
     'return_to_draft_on_revert',
     'track_branch_name',
@@ -83,6 +84,18 @@ def abandon_on_branch_delete(sender, instance, **kwargs):
     """
     if change_request := ChangeRequest.objects.filter(branch=instance).first():
         lifecycle.abandon(change_request)
+        instance._change_control_request_id = change_request.pk
+
+
+@receiver(post_delete, sender=Branch)
+def refresh_after_branch_delete(sender, instance, **kwargs):
+    """
+    Recompute the cached columns once the branch is gone: before the delete, its diffs still
+    report the conflicts of a branch that no longer exists.
+    """
+    request_id = getattr(instance, '_change_control_request_id', None)
+    if change_request := ChangeRequest.objects.filter(pk=request_id).first():
+        refresh_cached_state(change_request)
 
 
 @receiver(post_save, sender=Branch)

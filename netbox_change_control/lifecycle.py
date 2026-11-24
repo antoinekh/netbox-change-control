@@ -68,6 +68,8 @@ STATUS_ACTIONS = {
 def _move(change_request, status):
     change_request.status = status
     change_request.save(update_fields=['status'])
+    # The cached columns the list reads depend on the status, so every move refreshes them.
+    policy.refresh_cached_state(change_request)
 
 
 def _record(change_request, action, user=None, reviewers=()):
@@ -132,7 +134,6 @@ def return_to_draft(change_request):
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
         _record(change_request, HistoryActionChoices.RETURNED_TO_DRAFT)
-        policy.refresh_cached_state(change_request)
     return True
 
 
@@ -174,9 +175,6 @@ def complete(change_request, user=None):
             return False
         _move(change_request, ChangeRequestStatusChoices.COMPLETED)
         _record(change_request, HistoryActionChoices.MERGED, user)
-        # Completion never passes through the refresh, so the cached columns the list shows
-        # would otherwise keep reporting a merged request as ready to merge.
-        policy.refresh_cached_state(change_request)
         _announce(change_request, ChangeRequestStatusChoices.COMPLETED)
     return True
 

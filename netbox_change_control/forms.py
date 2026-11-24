@@ -186,6 +186,13 @@ class ChangeRequestForm(NetBoxModelForm):
             'scheduled_end': DateTimePicker(),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # The model refuses a move; an abandoned request may have no branch left to show.
+            self.fields['branch'].disabled = True
+            self.fields['branch'].required = False
+
 
 class ReviewForm(NetBoxModelForm):
     decision = forms.ChoiceField(

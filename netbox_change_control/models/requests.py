@@ -134,6 +134,16 @@ class ChangeRequest(PrimaryModel):
     def __str__(self):
         return f'CR{self.pk}: {self.title}'
 
+    @classmethod
+    def from_db(cls, db, field_names, values, **kwargs):
+        """
+        Remember the branch this row was loaded with, so `clean()` can refuse a move to another.
+        `**kwargs` carries the arguments Django adds between releases.
+        """
+        instance = super().from_db(db, field_names, values, **kwargs)
+        instance._loaded_branch_id = instance.__dict__.get('branch_id')
+        return instance
+
     def save(self, *args, **kwargs):
         # Keep the denormalised name in step while the branch exists, so it is still correct
         # after a rename and still present after a delete.
@@ -169,6 +179,12 @@ class ChangeRequest(PrimaryModel):
             )
         if self.is_open and not self.branch_id:
             raise ValidationError({'branch': _('An open change request needs a branch.')})
+        # The reviews, the policies and the checks all describe the branch the request was opened
+        # for, so moving the request would carry them over to changes nobody reviewed.
+        if not self._state.adding and self.branch_id != getattr(self, '_loaded_branch_id', self.branch_id):
+            raise ValidationError(
+                {'branch': _('A change request stays on its branch. Open a new change request for another branch.')}
+            )
         if self.scheduled_start and self.scheduled_end:
             if self.scheduled_end <= self.scheduled_start:
                 raise ValidationError(

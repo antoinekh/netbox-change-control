@@ -535,3 +535,44 @@ class ChangeRequestRequesterTest(ChangeControlAPITestCase):
 
         cr.refresh_from_db()
         self.assertEqual(cr.requester, self.user)
+
+
+class ChangeRequestBranchTest(ChangeControlAPITestCase):
+    """
+    A change request stays on its branch: its reviews, policies and checks describe that branch.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.cr = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='reviewed-branch'), title='T', requester=self.user
+        )
+        self.other = Branch.objects.create(name='unreviewed-branch')
+        self._grant(['view', 'change'], ChangeRequest)
+
+    def test_the_api_refuses_a_move(self):
+        url = reverse('plugins-api:netbox_change_control-api:changerequest-detail', args=[self.cr.pk])
+
+        response = self.client.patch(url, {'branch': self.other.pk}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.branch.name, 'reviewed-branch')
+
+    def test_the_model_refuses_a_move(self):
+        from django.core.exceptions import ValidationError
+
+        cr = ChangeRequest.objects.get(pk=self.cr.pk)
+        cr.branch = self.other
+
+        with self.assertRaises(ValidationError):
+            cr.full_clean()
+
+    def test_the_edit_form_keeps_the_branch(self):
+        from netbox_change_control.forms import ChangeRequestForm
+
+        cr = ChangeRequest.objects.get(pk=self.cr.pk)
+        form = ChangeRequestForm(data={'branch': self.other.pk, 'title': 'Renamed', 'priority': 'medium'}, instance=cr)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().branch.name, 'reviewed-branch')

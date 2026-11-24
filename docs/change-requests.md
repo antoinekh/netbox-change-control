@@ -6,7 +6,7 @@ One change request per branch.
 
 | Field | Meaning |
 |---|---|
-| Branch | The branch this request proposes to merge. |
+| Branch | The branch this request proposes to merge. It is set when the request is opened and cannot change, because the reviews, the policies and the checks describe that branch. |
 | Reference | An external reference: a ticket id, a change number, whatever your process uses. Optional, shown in the list, searchable and filterable. |
 | Title | A short summary. |
 | Description | A longer explanation of what is changing and why. Shown in the list and on the detail page. |

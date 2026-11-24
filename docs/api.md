@@ -83,7 +83,7 @@ The fields worth acting on:
 | `merge_blocked_reason` | Why not, in words, when `ready_to_merge` is false. |
 | `has_conflicts` | Whether the branch genuinely conflicts with main. |
 | `ref` | Your external reference, for correlating with a ticket or change record. |
-| `branch` / `branch_name` | The branch, and its name kept after the branch is deleted. |
+| `branch` / `branch_name` | The branch, and its name kept after the branch is deleted. `branch` is set on create; a change to another branch is refused with a 400. |
 | `branch_deleted` | Whether the branch is gone and the record is history only. |
 | `requester` | Who opened it: always the caller that created it, and **read-only**. An automatic merge runs as this user, and this user cannot review the request. |
 

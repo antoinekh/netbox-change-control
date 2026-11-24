@@ -19,6 +19,7 @@ reports the case where the window is too short for that sweep to be relied on.
 
 import logging
 from dataclasses import dataclass
+from enum import StrEnum
 
 from core.choices import JobStatusChoices
 from netbox.plugins import get_plugin_config
@@ -27,8 +28,10 @@ from netbox_change_control import lifecycle
 from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState
 
 __all__ = (
+    'AutoMergeStop',
     'UnreliableWindow',
     'run_due_auto_merges',
+    'stopped',
     'sweep_interval_minutes',
     'try_auto_merge',
     'unreliable_window',
@@ -45,6 +48,32 @@ class UnreliableWindow:
 
     window_minutes: int
     interval_minutes: int
+
+
+class AutoMergeStop(StrEnum):
+    """
+    Why an approved request that asks to merge itself no longer tries.
+    """
+
+    WINDOW_CLOSED = 'window-closed'
+    MERGE_FAILED = 'merge-failed'
+
+
+def stopped(change_request):
+    """
+    Return the AutoMergeStop that holds this approved request back, else None.
+
+    Both stops wait for a person: a later window, or a new approval.
+    """
+    if not get_plugin_config('netbox_change_control', 'enable_auto_merge'):
+        return None
+    if not change_request.auto_merge or change_request.status != ChangeRequestStatusChoices.APPROVED:
+        return None
+    if change_request.window_state() == ChangeWindowState.CLOSED:
+        return AutoMergeStop.WINDOW_CLOSED
+    if lifecycle.merge_failed_since_approval(change_request):
+        return AutoMergeStop.MERGE_FAILED
+    return None
 
 
 def sweep_interval_minutes():
@@ -111,8 +140,8 @@ def try_auto_merge(change_request):
 
     branch = change_request.branch
 
-    if lifecycle.merge_failed_since_approval(change_request):
-        logger.info('Auto-merge skipped for %s: a merge failed since its last approval', change_request)
+    if stop := stopped(change_request):
+        logger.info('Auto-merge skipped for %s: %s', change_request, stop)
         return False
 
     # The merge runs as the requester, so it must be a merge the requester may make.
@@ -175,7 +204,7 @@ def run_due_auto_merges():
     merged = 0
     for change_request in candidates:
         try:
-            if change_request.window_state() == ChangeWindowState.CLOSED:
+            if stopped(change_request) == AutoMergeStop.WINDOW_CLOSED:
                 lifecycle.record_closed_window(change_request)
             elif try_auto_merge(change_request):
                 merged += 1

@@ -215,6 +215,15 @@ class ChangeRequest(PrimaryModel):
         return unreliable_window(self)
 
     @property
+    def auto_merge_stopped(self):
+        """
+        The AutoMergeStop that holds this approved request back, else None.
+        """
+        from netbox_change_control.automerge import stopped
+
+        return stopped(self)
+
+    @property
     def requester_can_merge(self):
         """
         Whether the requester may merge this request's branch, which an automatic merge needs.

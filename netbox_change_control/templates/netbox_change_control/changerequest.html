@@ -79,6 +79,25 @@
   </div>
 </div>
 {% endif %}
+{% if auto_merge_stopped %}
+<div class="row">
+  <div class="col col-md-12">
+    <div class="alert alert-warning d-flex align-items-start">
+      <i class="mdi mdi-clock-remove-outline me-2" aria-hidden="true"></i>
+      <div>
+        <strong>{% trans "This change will not merge automatically." %}</strong>
+        <div class="small">
+          {% if auto_merge_stopped == 'window-closed' %}
+            {% trans "The change window closed before the merge. Set a later window, or merge it by hand." %}
+          {% else %}
+            {% trans "A merge of this branch failed. Fix the cause, then merge it by hand, or return it to draft and submit it again." %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% if window_warning %}
 <div class="row">
   <div class="col col-md-12">
@@ -149,6 +168,8 @@
             {% checkmark object.auto_merge %}
             {% if window_warning %}<span class="badge text-bg-orange">{% trans "Window too short" %}</span>{% endif %}
             {% if auto_merge_blocked %}<span class="badge text-bg-orange">{% trans "Requester cannot merge" %}</span>{% endif %}
+            {% if auto_merge_stopped == 'window-closed' %}<span class="badge text-bg-orange">{% trans "Window closed" %}</span>
+            {% elif auto_merge_stopped == 'merge-failed' %}<span class="badge text-bg-orange">{% trans "Merge failed" %}</span>{% endif %}
           </td>
         </tr>
       </table>

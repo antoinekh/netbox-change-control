@@ -13,6 +13,7 @@
 - **`completed` on a merge check is set for a reported result too.** It is empty while the check is pending or running.
 - **A failed merge stops the automatic merge until the next approval.** The history records it.
 - **A change window that closes before an automatic merge is recorded.** The requester is notified, and `change_request_window_closed` is emitted.
+- **The change request page warns when an automatic merge has stopped**, after a failed merge or a closed window.
 - Internal: the change window state is an enum, and the change request model holds every status guard.
 
 ### Fixed

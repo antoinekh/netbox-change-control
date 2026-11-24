@@ -79,6 +79,7 @@ class ChangeRequestView(generic.ObjectView):
             'conflicts': instance.conflicts,
             'window_warning': instance.auto_merge_window_warning,
             'auto_merge_blocked': instance.auto_merge_blocked,
+            'auto_merge_stopped': instance.auto_merge_stopped,
             'checks_blocking': [c for c in checks if c.blocks_merge],
             'can_review': can_review,
             'review_blocked_reason': reason,

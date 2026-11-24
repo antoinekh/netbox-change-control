@@ -375,6 +375,37 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
 
         self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.WINDOW_CLOSED).count(), 2)
 
+    def test_a_closed_window_stops_it(self):
+        from netbox_change_control.automerge import AutoMergeStop
+
+        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
+
+        self.assertEqual(self.cr.auto_merge_stopped, AutoMergeStop.WINDOW_CLOSED)
+
+    def test_a_failed_merge_stops_it(self):
+        from netbox_change_control.automerge import AutoMergeStop
+
+        self._fail_a_merge()
+
+        self.assertEqual(self.cr.auto_merge_stopped, AutoMergeStop.MERGE_FAILED)
+
+    def test_a_window_still_to_open_does_not_stop_it(self):
+        self.cr.scheduled_start = timezone.now() + timedelta(hours=1)
+
+        self.assertIsNone(self.cr.auto_merge_stopped)
+
+    def test_the_page_says_it_stopped(self):
+        from django.test import Client
+
+        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
+        self.cr.save()
+        client = Client()
+        client.force_login(self.privileged)
+
+        response = client.get(self.cr.get_absolute_url())
+
+        self.assertContains(response, 'The change window closed before the merge.')
+
 
 class AutoMergeIntervalTest(TestCase):
     """

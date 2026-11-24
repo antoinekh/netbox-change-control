@@ -41,9 +41,9 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 | Draft | Needs review | **Submit for review**, which also matches the policies | Manual | `change_changerequest` |
 | Needs review | Approved | Every rule of every attached policy has its approvals, and nobody has requested changes | Automatic, once the **required human action** of approving has happened | `add_review` to approve |
 | Needs review | Rejected | A reviewer requests changes | Automatic, on the **required human action** | `add_review` |
-| Approved | Needs review | The branch moved, so the approvals went stale; or a policy, rule or group membership changed | Automatic | none |
+| Approved | Needs review | The branch or the change window moved, so the approvals went stale; or a policy, rule or group membership changed | Automatic | none |
 | Approved | Rejected | A reviewer requests changes after approval | Automatic | `add_review` |
-| Rejected | Needs review | The rejection was withdrawn, or the branch moved and it went stale | Automatic | none |
+| Rejected | Needs review | The rejection was withdrawn, or the branch or the change window moved and it went stale | Automatic | none |
 | Rejected | Approved | The rejection cleared and the rules are satisfied | Automatic | none |
 | Needs review, Approved, Rejected | Draft | **Return to draft**, to take the change back off the table | Manual | `change_changerequest` |
 | Approved | Completed | The branch merged | Automatic, on the merge | `merge_branch` to merge |
@@ -94,6 +94,7 @@ The **History** tab of a change request lists each step, oldest first, with the 
 | Merged | The branch merged. |
 | Merge failed | A merge of the branch failed. An [automatic merge](merging.md#automatic-merging) stops until the next approval. |
 | Window closed before merge | The request was approved and set to merge automatically, but its change window closed first, so it did not merge. |
+| Window changed | The change window moved, so the reviews given before it are stale. |
 | Reverted | The branch was reverted. |
 | Abandoned | **Abandon**, or the branch was deleted. |
 | Reopened | **Reopen**. |

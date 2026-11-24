@@ -45,6 +45,8 @@ Either bound may be left empty. A start alone means "not before"; an end alone m
 
 The window is a **third, independent gate**, checked alongside the policies and the checks. When it blocks, the merge button states when the window opens or when it closed.
 
+The reviewers approve the window as well as the content. A new start or end, including adding or removing a bound, makes the reviews given before it stale: the request goes back to Needs review, and the history records **Window changed**. Change the window before the reviews, or ask for them again.
+
 Users holding `netbox_change_control.override_window_changerequest` may merge outside the window, which is what an incident needs. See [granting the exemptions](permissions.md#granting-the-custom-actions).
 
 !!! info "Important"
@@ -71,7 +73,7 @@ If the branch changes during the wait, the approvals go stale, the status return
 Two things stop an automatic merge. The [history](change-requests.md#history) records each one, and the change request page shows a warning until somebody acts:
 
 - **A merge fails.** The request stays Approved, and the automatic merge does not try again, because the same merge would fail at every sweep. Fix the cause, then merge by hand, or return the request to draft and submit it again: the new approval starts the automatic merge again. A failed dry run counts too, because it fails for the same reasons.
-- **The window closes first.** The requester is notified and the `change_request_window_closed` event is emitted, once per window. Set a later window to merge automatically again.
+- **The window closes first.** The requester is notified and the `change_request_window_closed` event is emitted, once per window. Set a later window and have it approved again to merge automatically.
 
 ## The sweep interval
 

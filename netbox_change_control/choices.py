@@ -108,6 +108,7 @@ class HistoryActionChoices(ChoiceSet):
     MERGED = 'merged'
     MERGE_FAILED = 'merge-failed'
     WINDOW_CLOSED = 'window-closed'
+    WINDOW_CHANGED = 'window-changed'
     REVERTED = 'reverted'
     ABANDONED = 'abandoned'
     REOPENED = 'reopened'
@@ -121,6 +122,7 @@ class HistoryActionChoices(ChoiceSet):
         (MERGED, _('Merged'), 'blue'),
         (MERGE_FAILED, _('Merge failed'), 'red'),
         (WINDOW_CLOSED, _('Window closed before merge'), 'orange'),
+        (WINDOW_CHANGED, _('Window changed'), 'yellow'),
         (REVERTED, _('Reverted'), 'purple'),
         (ABANDONED, _('Abandoned'), 'gray'),
         (REOPENED, _('Reopened'), 'teal'),

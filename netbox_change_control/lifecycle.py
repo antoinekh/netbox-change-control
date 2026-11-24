@@ -14,8 +14,9 @@ Two kinds of move:
   evaluation, `complete` records a merge, and `revert` undoes one. Signals call them, so no
   caller can forget.
 
-Two steps change no status but are recorded here too, as the history is: a merge that failed,
-and a change window that closed on an automatic merge.
+Three steps change no status by themselves but are recorded here too, as the history is: a
+merge that failed, a change window that closed on an automatic merge, and a change window that
+moved.
 """
 
 from django.db import transaction
@@ -30,6 +31,7 @@ __all__ = (
     'merge_failed_since_approval',
     'record_closed_window',
     'record_failed_merge',
+    'record_window_change',
     'refresh_status',
     'reopen',
     'return_to_draft',
@@ -247,6 +249,19 @@ def record_closed_window(change_request):
         _record(change_request, HistoryActionChoices.WINDOW_CLOSED)
         notify_window_closed(change_request)
         events.emit(change_request, events.CHANGE_REQUEST_WINDOW_CLOSED)
+    return True
+
+
+def record_window_change(change_request):
+    """
+    Record that the change window moved, which makes the reviews given before it stale: they
+    approved the old slot as well as the content.
+    """
+    with transaction.atomic():
+        if not change_request.lock_status():
+            return False
+        _record(change_request, HistoryActionChoices.WINDOW_CHANGED)
+        refresh_status(change_request)
     return True
 
 

@@ -2,13 +2,14 @@
 Keep `status` and the attached policies in step with what can change them.
 
 `status` is a cached view of the policy evaluation, so every write that can move the answer
-recomputes it: a review, a policy binding, a policy or rule edit, a membership change, and an
-edit inside the branch. A branch growing a new object type re-matches the policies too.
+recomputes it: a review, a policy binding, a policy or rule edit, a membership change, an edit
+inside the branch, and a move of the change window. A branch growing a new object type
+re-matches the policies too.
 """
 
 from core.models import ObjectChange
 from django.db import transaction
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 from netbox_branching.contextvars import active_branch
 from netbox_branching.models import ChangeDiff
@@ -16,7 +17,7 @@ from users.models import Group, User
 
 from netbox_change_control.batching import batched, schedule_refresh
 from netbox_change_control.choices import ChangeRequestStatusChoices
-from netbox_change_control.lifecycle import refresh_status
+from netbox_change_control.lifecycle import record_window_change, refresh_status
 from netbox_change_control.models import (
     ChangeRequest,
     ChangeRequestPolicy,
@@ -30,6 +31,8 @@ from netbox_change_control.receivers.deleting import is_being_deleted
 __all__ = (
     'emit_on_review_submitted',
     'invalidate_approval_on_branch_change',
+    'invalidate_approval_on_window_change',
+    'read_stored_window',
     'refresh_on_group_membership_change',
     'refresh_on_policy_binding_change',
     'refresh_on_policy_change',
@@ -211,6 +214,34 @@ def refresh_on_group_membership_change(sender, instance, action, reverse, pk_set
 
 m2m_changed.connect(refresh_on_group_membership_change, sender=User.groups.through)
 m2m_changed.connect(refresh_on_group_membership_change, sender=Group.users.through)
+
+
+WINDOW_FIELDS = ('scheduled_start', 'scheduled_end')
+
+
+@receiver(pre_save, sender=ChangeRequest)
+def read_stored_window(sender, instance, update_fields=None, **kwargs):
+    """
+    Read the window as stored, before the save replaces it, for the receiver below.
+
+    Read from the database, not from the instance, so the rule holds however the instance was
+    loaded.
+    """
+    if instance._state.adding or (update_fields is not None and not set(WINDOW_FIELDS) & set(update_fields)):
+        return
+    instance._change_control_stored_window = (
+        ChangeRequest.objects.filter(pk=instance.pk).values_list(*WINDOW_FIELDS).first()
+    )
+
+
+@receiver(post_save, sender=ChangeRequest)
+def invalidate_approval_on_window_change(sender, instance, **kwargs):
+    """
+    A new change window makes the reviews stale: they approved the slot as well as the content.
+    """
+    stored = instance.__dict__.pop('_change_control_stored_window', None)
+    if stored is not None and stored != tuple(getattr(instance, field) for field in WINDOW_FIELDS):
+        record_window_change(instance)
 
 
 @receiver(post_save, sender=ObjectChange)

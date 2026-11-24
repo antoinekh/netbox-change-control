@@ -96,22 +96,19 @@ class WindowGateTest(ApprovedRequestTestCase):
         self.assertTrue(require_approved_change_request(self.branch).permitted)
 
     def test_a_future_window_blocks_the_merge(self):
-        self.cr.scheduled_start = timezone.now() + timedelta(hours=2)
-        self.cr.save()
+        self.reschedule(scheduled_start=timezone.now() + timedelta(hours=2))
         indicator = require_approved_change_request(self.branch)
         self.assertFalse(indicator.permitted)
         self.assertIn('window opens', indicator.message)
 
     def test_a_closed_window_blocks_the_merge(self):
-        self.cr.scheduled_end = timezone.now() - timedelta(hours=2)
-        self.cr.save()
+        self.reschedule(scheduled_end=timezone.now() - timedelta(hours=2))
         indicator = require_approved_change_request(self.branch)
         self.assertFalse(indicator.permitted)
         self.assertIn('window closed', indicator.message)
 
     def test_the_override_permission_allows_a_merge_outside_the_window(self):
-        self.cr.scheduled_start = timezone.now() + timedelta(hours=2)
-        self.cr.save()
+        self.reschedule(scheduled_start=timezone.now() + timedelta(hours=2))
         token = self._as(self.privileged)
         try:
             self.assertTrue(require_approved_change_request(self.branch).permitted)
@@ -123,8 +120,7 @@ class WindowGateTest(ApprovedRequestTestCase):
         A script merging at the wrong hour is exactly what a window exists to stop, so an
         absent request context must not bypass it.
         """
-        self.cr.scheduled_start = timezone.now() + timedelta(hours=2)
-        self.cr.save()
+        self.reschedule(scheduled_start=timezone.now() + timedelta(hours=2))
         current_request.set(None)
         self.assertFalse(require_approved_change_request(self.branch).permitted)
 
@@ -179,8 +175,8 @@ class AutoMergeTest(ApprovedRequestTestCase):
             merge.assert_called_once()
 
     def test_it_waits_for_the_window(self):
+        self.reschedule(scheduled_start=timezone.now() + timedelta(hours=1))
         self.cr.auto_merge = True
-        self.cr.scheduled_start = timezone.now() + timedelta(hours=1)
         self.cr.save()
         with patch.object(MergeBranchJob, 'enqueue') as merge:
             self.assertFalse(self._try())
@@ -224,9 +220,8 @@ class AutoMergeTest(ApprovedRequestTestCase):
         from netbox_change_control.automerge import run_due_auto_merges
 
         opens_at = timezone.now() + timedelta(hours=7)
+        self.reschedule(scheduled_start=opens_at, scheduled_end=opens_at + timedelta(hours=2))
         self.cr.auto_merge = True
-        self.cr.scheduled_start = opens_at
-        self.cr.scheduled_end = opens_at + timedelta(hours=2)
         self.cr.save()
 
         # Midday: approved, but the window is shut.
@@ -251,8 +246,8 @@ class AutoMergeTest(ApprovedRequestTestCase):
         from netbox_change_control.automerge import run_due_auto_merges
 
         opens_at = timezone.now() + timedelta(hours=7)
+        self.reschedule(scheduled_start=opens_at)
         self.cr.auto_merge = True
-        self.cr.scheduled_start = opens_at
         self.cr.save()
 
         # The branch moves on while everyone waits for the window.
@@ -268,8 +263,8 @@ class AutoMergeTest(ApprovedRequestTestCase):
     def test_the_periodic_job_picks_up_an_opened_window(self):
         from netbox_change_control.automerge import run_due_auto_merges
 
+        self.reschedule(scheduled_start=timezone.now() - timedelta(minutes=1))
         self.cr.auto_merge = True
-        self.cr.scheduled_start = timezone.now() - timedelta(minutes=1)
         self.cr.save()
         with patch.object(MergeBranchJob, 'enqueue') as merge:
             self.assertEqual(run_due_auto_merges(), 1)
@@ -337,8 +332,7 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
     def test_a_closed_window_is_recorded_once(self):
         from netbox_change_control.automerge import run_due_auto_merges
 
-        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
-        self.cr.save()
+        self.reschedule(scheduled_end=timezone.now() - timedelta(minutes=5))
 
         run_due_auto_merges()
         run_due_auto_merges()
@@ -351,8 +345,7 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
         from netbox_change_control.automerge import run_due_auto_merges
         from netbox_change_control.events import CHANGE_REQUEST_WINDOW_CLOSED
 
-        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
-        self.cr.save()
+        self.reschedule(scheduled_end=timezone.now() - timedelta(minutes=5))
 
         run_due_auto_merges()
 
@@ -363,13 +356,11 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
     def test_a_window_moved_later_is_recorded_again_when_it_closes(self):
         from netbox_change_control.automerge import run_due_auto_merges
 
-        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
-        self.cr.save()
+        self.reschedule(scheduled_end=timezone.now() - timedelta(minutes=5))
         run_due_auto_merges()
 
         later = timezone.now() + timedelta(hours=1)
-        self.cr.scheduled_end = later
-        self.cr.save()
+        self.reschedule(scheduled_end=later)
         with patch('django.utils.timezone.now', return_value=later + timedelta(minutes=5)):
             run_due_auto_merges()
 
@@ -397,14 +388,49 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
     def test_the_page_says_it_stopped(self):
         from django.test import Client
 
-        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
-        self.cr.save()
+        self.reschedule(scheduled_end=timezone.now() - timedelta(minutes=5))
         client = Client()
         client.force_login(self.privileged)
 
         response = client.get(self.cr.get_absolute_url())
 
         self.assertContains(response, 'The change window closed before the merge.')
+
+
+class WindowChangeTest(ChangeControlTestCase):
+    """
+    The reviewers approve the slot as well as the content, so a new window needs new approvals.
+    """
+
+    branch_prefix = 'reschedule'
+    approved = True
+
+    def _edit(self, **fields):
+        cr = ChangeRequest.objects.get(pk=self.cr.pk)
+        for name, value in fields.items():
+            setattr(cr, name, value)
+        cr.save()
+        cr.refresh_from_db()
+        return cr
+
+    def test_a_new_window_sends_the_request_back_to_review(self):
+        cr = self._edit(scheduled_start=timezone.now() + timedelta(hours=2))
+
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.NEEDS_REVIEW)
+        self.assertTrue(cr.history.filter(action=HistoryActionChoices.WINDOW_CHANGED).exists())
+
+    def test_a_review_of_the_new_window_approves_it_again(self):
+        self._edit(scheduled_start=timezone.now() + timedelta(hours=2))
+
+        self.cr.reviews.get(reviewer=self.reviewer).save(refresh_snapshot=True)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
+
+    def test_another_edit_keeps_the_approval(self):
+        cr = self._edit(title='Renamed')
+
+        self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
 
 
 class AutoMergeIntervalTest(TestCase):

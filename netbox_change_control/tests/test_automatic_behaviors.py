@@ -56,7 +56,7 @@ class StaleReviewTest(AutomaticBehaviorTestCase):
         from unittest.mock import patch
 
         newer = timezone.now()
-        with patch('netbox_change_control.policy.branch_last_change_time', return_value=newer):
+        with patch('netbox_change_control.policy.last_change_time', return_value=newer):
             evaluation = self.cr.evaluate()
             self.assertEqual(len(evaluation.stale), 1)
             self.assertFalse(evaluation.satisfied)
@@ -214,7 +214,7 @@ class BranchClockTestCase(AutomaticBehaviorTestCase):
         super().setUp()
         self.clock = {'now': None if self.branch_starts_empty else timezone.now()}
         self.patcher = patch(
-            'netbox_change_control.policy.branch_last_change_time',
+            'netbox_change_control.policy.last_change_time',
             side_effect=lambda branch: self.clock['now'],
         )
         self.patcher.start()

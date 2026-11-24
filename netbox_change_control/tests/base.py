@@ -194,6 +194,21 @@ class ChangeControlTestCase(TestCase):
     def _approve(self, user=None, comment=''):
         return approve(self.cr, user or self.reviewer, comment)
 
+    def reschedule(self, **window):
+        """
+        Move the change window, then have the reviewer approve the new slot, as a new window needs.
+
+        The new approval runs the checks again, so the results the test set are put back.
+        """
+        results = dict(self.cr.checks.values_list('name', 'status'))
+        for name, value in window.items():
+            setattr(self.cr, name, value)
+        self.cr.save()
+        self.cr.reviews.get(reviewer=self.reviewer).save(refresh_snapshot=True)
+        for name, status in results.items():
+            self.cr.checks.filter(name=name).update(status=status)
+        self.cr.refresh_from_db()
+
     def require_checks(self, *names):
         """
         Have the fixture policy require these checks, which is what makes them apply.

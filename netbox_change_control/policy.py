@@ -19,9 +19,9 @@ from netbox_change_control.models import ChangeRequestPolicy, HistoryEntry, Poli
 __all__ = (
     'PolicyEvaluation',
     'RuleEvaluation',
-    'branch_last_change_time',
     'evaluate_change_request',
     'get_touched_object_types',
+    'last_change_time',
     'match_policies',
     'refresh_cached_state',
     'review_is_stale',
@@ -108,28 +108,32 @@ class PolicyEvaluation:
         if self.stale:
             names = ', '.join(str(r.reviewer) for r in self.stale)
             messages.append(
-                f'The branch changed or was reverted after these reviews were submitted, '
-                f'so they no longer count: {names}.'
+                f'The branch changed, was reverted, or the change window moved after these reviews were '
+                f'submitted, so they no longer count: {names}.'
             )
         if not self.rules:
             messages.append('No policy rules apply to this change request.')
         return messages
 
 
-def branch_last_change_time(branch):
+def last_change_time(branch):
     """
-    Return the timestamp of the most recent change staged in the branch or of its last revert,
-    or None.
+    Return the time of the newest change the reviews of this branch's request cover, or None:
+    a change staged in the branch, a revert, or a move of the change window.
 
-    Used to decide whether a review still reflects the branch it was made against. A revert
-    counts as a change, because the reviewers approved a merge that had to be undone. A deleted
-    branch has no changes, so nothing can become stale against it.
+    Used to decide whether a review still reflects what it approved. A revert counts, because
+    the reviewers approved a merge that had to be undone, and so does a new window, because they
+    approved the slot as well as the content. A deleted branch has no changes, so nothing can
+    become stale against it.
     """
     if branch is None:
         return None
     times = [
         branch.get_unmerged_changes().order_by('-time').values_list('time', flat=True).first(),
-        HistoryEntry.objects.filter(change_request__branch=branch, action=HistoryActionChoices.REVERTED)
+        HistoryEntry.objects.filter(
+            change_request__branch=branch,
+            action__in=(HistoryActionChoices.REVERTED, HistoryActionChoices.WINDOW_CHANGED),
+        )
         .order_by('-time')
         .values_list('time', flat=True)
         .first(),
@@ -162,7 +166,7 @@ def review_snapshot_time(branch):
         return None
     from django.utils import timezone
 
-    return branch_last_change_time(branch) or timezone.now()
+    return last_change_time(branch) or timezone.now()
 
 
 def get_touched_object_types(branch):
@@ -369,7 +373,7 @@ def evaluate_change_request(change_request):
     reviews = list(change_request.reviews.select_related('reviewer').all())
 
     # Evaluating staleness needs one query for the branch, not one per review.
-    latest_change = branch_last_change_time(change_request.branch)
+    latest_change = last_change_time(change_request.branch)
     stale = [r for r in reviews if review_is_stale(r, latest_change)]
     stale_ids = {r.pk for r in stale}
 

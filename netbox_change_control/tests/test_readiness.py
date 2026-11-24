@@ -35,8 +35,7 @@ class MergeReadinessTest(ChangeControlTestCase):
 
     def test_approved_but_outside_the_window_is_not_ready(self):
         pass_checks(self.cr)
-        self.cr.scheduled_start = timezone.now() + timedelta(hours=3)
-        self.cr.save()
+        self.reschedule(scheduled_start=timezone.now() + timedelta(hours=3))
 
         self.assertTrue(self.cr.is_approved)
         self.assertFalse(self.cr.is_ready_to_merge)

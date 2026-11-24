@@ -5,7 +5,7 @@ What a requester and a reviewer do in the interface, from opening a change to it
 import re
 import time
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from playwright.sync_api import expect
 
@@ -28,11 +28,29 @@ def submit(page):
     expect(page.get_by_text('Needs review').first).to_be_visible()
 
 
-def approve(page, url):
+def review(page, url, decision, comment=''):
     page.goto(url)
-    page.select_option('select[name=decision]', 'approve')
-    page.get_by_role('button', name='Submit review').click()
+    page.select_option('select[name=decision]', decision)
+    page.fill('textarea[name=comment]', comment)
+    page.get_by_role('button', name=re.compile('Submit review|Replace my review')).click()
     expect(page.get_by_text('Review recorded.')).to_be_visible()
+
+
+def approve(page, url):
+    review(page, url, 'approve')
+
+
+def status_of(page, url):
+    page.goto(url)
+    return page.locator('th:text-is("Status") + td .badge').first.inner_text().strip()
+
+
+def edit_branch(api, branch):
+    """
+    Make one more change inside the branch, as an author would.
+    """
+    name = f'{branch["name"]}-more'
+    api.call('POST', 'dcim/site-groups/', {'name': name, 'slug': name}, branch=branch)
 
 
 def report_check(api, url, name, status):
@@ -46,6 +64,9 @@ def test_a_change_is_reviewed_merged_and_kept_on_record(api, people, branch, log
     url = open_request(requester, api, branch)
     submit(requester)
     approve(reviewer, url)
+
+    requester.goto(f'/plugins/branching/branches/{branch["id"]}/')
+    expect(requester.locator(f'a[href="{urlparse(url).path}"]').first).to_be_visible()
 
     requester.goto(url)
     expect(requester.get_by_role('button', name='Merge branch')).to_be_disabled()
@@ -63,6 +84,12 @@ def test_a_change_is_reviewed_merged_and_kept_on_record(api, people, branch, log
     expect(requester.get_by_text('Completed', exact=True).first).to_be_visible()
     group = api.call('GET', f'dcim/site-groups/?name={branch["name"]}')['results'][0]
     api.created.append(f'dcim/site-groups/{group["id"]}/')
+
+    requester.goto(f'{url}history/')
+    for step in ('Opened', 'Submitted', 'Approved', 'Merged'):
+        expect(requester.get_by_text(step, exact=True).first).to_be_visible()
+    requester.goto(f'{url}edit/')
+    expect(requester.locator('input[name=title]')).to_be_disabled()
 
     api.call('DELETE', f'plugins/branching/branches/{branch["id"]}/')
     requester.goto(f'{url}changes/')
@@ -90,6 +117,11 @@ def test_resolving_from_a_stale_page_keeps_the_thread_resolved(api, people, bran
     reviewer.goto(reviewer.url)
     expect(reviewer.get_by_text('Resolved', exact=True)).to_be_visible()
     expect(reviewer.get_by_role('button', name='Reopen')).to_be_visible()
+
+    # Only the author may rewrite a comment.
+    expect(reviewer.get_by_title('Edit this comment')).to_be_visible()
+    requester.goto(reviewer.url)
+    expect(requester.get_by_title('Edit this comment')).to_have_count(0)
 
 
 def test_deleting_the_branch_abandons_the_request(api, people, branch, login):
@@ -122,3 +154,71 @@ def test_a_closed_window_stops_the_automatic_merge(api, people, branch, login):
     requester.goto(url)
     expect(requester.get_by_text('This change will not merge automatically.')).to_be_visible()
     expect(requester.get_by_text('The change window closed before the merge.')).to_be_visible()
+
+
+def test_a_rejection_an_approval_and_a_review_gone_stale(api, people, branch, login):
+    requester, reviewer = login(people.requester), login(people.reviewer)
+    url = open_request(requester, api, branch)
+    submit(requester)
+
+    review(reviewer, url, 'reject', 'Rename the **group** first.')
+    assert status_of(requester, url) == 'Rejected'
+    reviewer.goto(url)
+    expect(reviewer.locator('select[name=decision]')).to_have_value('reject')
+    expect(reviewer.locator('strong', has_text='group').first).to_be_visible()
+
+    approve(reviewer, url)
+    assert status_of(requester, url) == 'Approved'
+
+    edit_branch(api, branch)
+    assert status_of(requester, url) == 'Needs review'
+    expect(requester.get_by_text('Stale', exact=True).first).to_be_visible()
+
+
+def test_return_to_draft_abandon_and_reopen(api, people, branch, login):
+    requester = login(people.requester)
+    url = open_request(requester, api, branch)
+    submit(requester)
+
+    requester.get_by_role('button', name='Return to draft').click()
+    assert status_of(requester, url) == 'Draft'
+    requester.get_by_role('button', name='Abandon').click()
+    assert status_of(requester, url) == 'Abandoned'
+    requester.get_by_role('button', name='Reopen').click()
+    assert status_of(requester, url) == 'Draft'
+    expect(requester.get_by_role('button', name='Submit for review')).to_be_visible()
+
+
+def test_a_viewer_can_read_but_not_act(api, people, branch, login):
+    requester, viewer = login(people.requester), login(people.viewer)
+    url = open_request(requester, api, branch)
+    submit(requester)
+
+    viewer.goto(url)
+    expect(viewer.get_by_role('heading', name=re.compile(branch['name']))).to_be_visible()
+    for action in ('Return to draft', 'Abandon', 'Submit review'):
+        expect(viewer.get_by_role('button', name=action)).to_have_count(0)
+    expect(viewer.get_by_text('You do not have permission to review change requests.')).to_be_visible()
+
+
+def test_moving_the_window_needs_a_new_approval(api, people, branch, login):
+    requester, reviewer = login(people.requester), login(people.reviewer)
+    url = open_request(requester, api, branch)
+    submit(requester)
+    approve(reviewer, url)
+    assert status_of(requester, url) == 'Approved'
+
+    later = (datetime.now(UTC) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
+    requester.goto(f'{url}edit/')
+    requester.evaluate(
+        """(value) => {
+            const field = document.querySelector('[name=scheduled_start]');
+            if (field._flatpickr) { field._flatpickr.setDate(value, true); } else { field.value = value; }
+        }""",
+        later,
+    )
+    requester.click('button[name=_update]')
+
+    assert status_of(requester, url) == 'Needs review'
+    requester.goto(f'{url}history/')
+    expect(requester.get_by_text('Window changed', exact=True)).to_be_visible()

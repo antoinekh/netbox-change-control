@@ -18,7 +18,7 @@
 - **A new change window needs new approvals.** Moving the window makes the reviews stale, and the history records **Window changed**.
 - **A completed or abandoned change request is read-only**, except its tags and comments.
 - **A merge keeps the record of what it changed.** The Changes tab still shows the changes and their comment threads after the branch is deleted. A migration fills the record for completed requests whose branch still exists.
-- Internal: the change window state is an enum, the change request model holds every status guard, the templates read states from the model and the choice sets, a test checks the state machine against the documented transition table and its invariants, and browser tests cover four journeys of a requester and a reviewer.
+- Internal: the change window state is an enum, the change request model holds every status guard, the templates read states from the model and the choice sets, a test checks the state machine against the documented transition table and its invariants, and browser tests cover eight journeys of a requester, a reviewer and a viewer.
 
 ### Fixed
 

@@ -1,10 +1,10 @@
 """
 Browser tests against a running NetBox with the plugin installed.
 
-They prepare their data through the REST API and act through the browser as two people: a
-requester, who opens and merges the change, and a reviewer, who approves it. Every object they
-create is deleted at the end, and their policy covers only site groups, so the data of the
-NetBox they run against is left alone.
+They prepare their data through the REST API and act through the browser as three people: a
+requester, who opens and merges the change, a reviewer, who approves it, and a viewer, who may
+only read it. Every object they create is deleted at the end, and their policy covers only site
+groups, so the data of the NetBox they run against is left alone.
 
     NETBOX_URL=http://localhost:8889 E2E_AUTHORIZATION='Token ...' \\
         uv run --only-group e2e pytest e2e --browser-channel chrome
@@ -89,6 +89,7 @@ def api(playwright, base_url):
 class People:
     requester: str
     reviewer: str
+    viewer: str
     # The reported check the e2e policy requires.
     check: str = CHECK
 
@@ -96,7 +97,7 @@ class People:
 @pytest.fixture(scope='session')
 def people(api):
     """
-    A requester and a reviewer, and a policy needing one approval and one reported check.
+    A requester, a reviewer and a viewer, and a policy needing one approval and one reported check.
     """
     suffix = uuid.uuid4().hex[:6]
     group = api.create('users/groups/', {'name': f'e2e-reviewers-{suffix}'})
@@ -104,6 +105,7 @@ def people(api):
     reviewer = api.create(
         'users/users/', {'username': f'e2e-reviewer-{suffix}', 'password': PASSWORD, 'groups': [group['id']]}
     )
+    viewer = api.create('users/users/', {'username': f'e2e-viewer-{suffix}', 'password': PASSWORD})
     api.create(
         'users/permissions/',
         {
@@ -112,6 +114,10 @@ def people(api):
             'actions': ACTIONS,
             'users': [requester['id'], reviewer['id']],
         },
+    )
+    api.create(
+        'users/permissions/',
+        {'name': f'e2e-view-{suffix}', 'object_types': OBJECT_TYPES, 'actions': ['view'], 'users': [viewer['id']]},
     )
     site_group = api.call('GET', 'core/object-types/?app_label=dcim&model=sitegroup')['results'][0]
     policy = api.create(
@@ -122,7 +128,7 @@ def people(api):
         'plugins/change-control/policy-rules/',
         {'policy': policy['id'], 'name': 'One reviewer', 'min_reviews': 1, 'groups': [group['id']]},
     )
-    return People(requester=requester['username'], reviewer=reviewer['username'])
+    return People(requester=requester['username'], reviewer=reviewer['username'], viewer=viewer['username'])
 
 
 @pytest.fixture

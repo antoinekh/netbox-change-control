@@ -328,10 +328,11 @@ def scope_may_have_drifted(change_request):
 def sync_policies(change_request):
     """
     Attach every matching policy to the change request, and drop the ones that no longer match.
+
+    Does nothing unless the request's policies follow its branch; see
+    `ChangeRequest.policies_follow_branch`.
     """
-    if change_request.branch_deleted:
-        # The diff is gone, so there is nothing left to match against. Existing bindings are
-        # left alone: they record which policies governed the change at the time.
+    if not change_request.policies_follow_branch:
         return ChangeRequestPolicy.objects.filter(change_request=change_request)
 
     matches = {policy.pk: names for policy, names in match_policies(change_request.branch)}

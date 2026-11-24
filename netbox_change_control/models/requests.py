@@ -364,6 +364,18 @@ class ChangeRequest(PrimaryModel):
         return self.status in ChangeRequestStatusChoices.OPEN
 
     @property
+    def policies_follow_branch(self):
+        """
+        Whether the attached policies are kept matched to what the branch touches.
+
+        Only while the request is under review: submitting matches them, and from then on every
+        change to the branch or to a policy re-matches them. A draft is not evaluated, so it has
+        nothing to match yet, and a finished request or one without a branch keeps the policies
+        that governed it as part of its record.
+        """
+        return self.status in ChangeRequestStatusChoices.UNDER_REVIEW and not self.branch_deleted
+
+    @property
     def can_be_submitted(self):
         """
         A draft is the only thing there is to submit.

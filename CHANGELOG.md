@@ -9,6 +9,7 @@
 ### Changed
 
 - **Deleting a branch abandons its open change request.** A migration abandons the open requests whose branch is already gone.
+- **The policies follow the branch only while the request is under review.** Reopen and revert no longer match them; submitting does.
 - Internal: the change window state is an enum.
 
 ### Fixed

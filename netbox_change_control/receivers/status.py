@@ -139,15 +139,11 @@ def refresh_on_policy_change(sender, instance, **kwargs):
 
 def _rematch_open_requests():
     """
-    Attach every enabled policy to the submitted, open requests it now matches.
-
-    A draft is left out: its policies are matched when it is submitted, as its page says.
+    Attach every enabled policy to the requests under review it now matches.
     """
-    requests = (
-        ChangeRequest.objects.filter(status__in=ChangeRequestStatusChoices.OPEN, branch__isnull=False)
-        .exclude(status=ChangeRequestStatusChoices.DRAFT)
-        .select_related('branch')
-    )
+    requests = ChangeRequest.objects.filter(
+        status__in=ChangeRequestStatusChoices.UNDER_REVIEW, branch__isnull=False
+    ).select_related('branch')
     with batched():
         for change_request in requests:
             if not is_being_deleted(change_request.pk) and scope_may_have_drifted(change_request):
@@ -292,7 +288,7 @@ def resync_policies_on_diff_change(sender, instance, created, **kwargs):
     """
     change_request = ChangeRequest.objects.filter(
         branch_id=instance.branch_id,
-        status__in=ChangeRequestStatusChoices.OPEN,
+        status__in=ChangeRequestStatusChoices.UNDER_REVIEW,
     ).first()
     if change_request is None or is_being_deleted(change_request.pk):
         return

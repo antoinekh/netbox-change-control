@@ -41,6 +41,9 @@ class ChangeRequestStatusChoices(ChoiceSet):
     # Statuses whose policy evaluation is still meaningful.
     OPEN = (DRAFT, NEEDS_REVIEW, APPROVED, REJECTED)
 
+    # Submitted and still open: the statuses the evaluation computes.
+    UNDER_REVIEW = (NEEDS_REVIEW, APPROVED, REJECTED)
+
 
 class ChangeWindowState(StrEnum):
     """

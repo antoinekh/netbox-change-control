@@ -147,15 +147,14 @@ def reopen(change_request):
     Bring an abandoned request back, then let the evaluation decide where it lands.
 
     It returns to Draft rather than to whatever it held before, because the reviews it carried
-    may since have gone stale and the policies may since have changed. Refreshing computes the
-    honest answer instead of restoring a remembered one.
+    may since have gone stale and the policies may since have changed. Submitting it again
+    matches the policies and computes the honest answer instead of restoring a remembered one.
     """
     with transaction.atomic():
         if not change_request.lock_status() or not change_request.can_be_reopened:
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
         _record(change_request, HistoryActionChoices.REOPENED)
-        policy.sync_policies(change_request)
         refresh_status(change_request)
     return True
 
@@ -196,7 +195,6 @@ def revert(change_request, user=None):
         if change_request.status != ChangeRequestStatusChoices.COMPLETED:
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
-        policy.sync_policies(change_request)
         refresh_status(change_request)
         notify_revert(change_request)
         events.emit(change_request, events.CHANGE_REQUEST_REVERTED)

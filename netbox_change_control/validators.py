@@ -25,7 +25,7 @@ def require_approved_change_request(branch):
     if not get_plugin_config('netbox_change_control', 'enforce_merge_gate'):
         return BranchActionIndicator(True)
 
-    from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState
+    from netbox_change_control.choices import ChangeWindowState
     from netbox_change_control.models import ChangeRequest
 
     change_request = ChangeRequest.objects.filter(branch=branch).first()
@@ -35,7 +35,7 @@ def require_approved_change_request(branch):
             'This branch has no change request. Open one and obtain approval before merging.',
         )
 
-    if change_request.status == ChangeRequestStatusChoices.COMPLETED:
+    if change_request.is_completed:
         return BranchActionIndicator(False, f'{change_request} is already completed.')
 
     if not change_request.is_approved:

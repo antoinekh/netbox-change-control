@@ -14,9 +14,9 @@ reviewer finds it in either place.
       to turn a "Request changes" into an approval.
       {% endcomment %}
       <select name="decision" class="form-select">
-        <option value="approve" {% if own_review.decision == 'approve' %}selected{% endif %}>{% trans "Approve" %}</option>
-        <option value="reject" {% if own_review.decision == 'reject' %}selected{% endif %}>{% trans "Request changes" %}</option>
-        <option value="comment" {% if own_review.decision == 'comment' %}selected{% endif %}>{% trans "Comment" %}</option>
+        {% for value, label, color in decision_choices %}
+        <option value="{{ value }}" {% if own_review.decision == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="mb-2">

@@ -21,7 +21,7 @@ from netbox_change_control.permissions import (
     save_if_permitted,
 )
 
-from .reviews import review_eligibility
+from .reviews import review_form_context
 
 __all__ = (
     'AbandonChangeRequestView',
@@ -58,7 +58,6 @@ class ChangeRequestView(generic.ObjectView):
     queryset = ChangeRequest.objects.all()
 
     def get_extra_context(self, request, instance):
-        can_review, reason = review_eligibility(request, instance)
         evaluation = instance.evaluate()
 
         # The merge itself belongs to netbox-branching. Surface its form here so an approver
@@ -81,9 +80,7 @@ class ChangeRequestView(generic.ObjectView):
             'auto_merge_blocked': instance.auto_merge_blocked,
             'auto_merge_stopped': instance.auto_merge_stopped,
             'checks_blocking': [c for c in checks if c.blocks_merge],
-            'can_review': can_review,
-            'review_blocked_reason': reason,
-            'own_review': instance.reviews.filter(reviewer=request.user).first(),
+            **review_form_context(request, instance),
             'can_merge': instance.is_ready_to_merge,
             'merge_blocked_reason': instance.merge_blocked_reason,
             'can_merge_perm': not instance.branch_deleted and request.user.has_perm(MERGE_PERMISSION, instance.branch),
@@ -142,16 +139,7 @@ class ChangeRequestReviewsView(generic.ObjectChildrenView):
         return parent.reviews.select_related('reviewer')
 
     def get_extra_context(self, request, instance):
-        context = super().get_extra_context(request, instance)
-        can_review, reason = review_eligibility(request, instance)
-        context.update(
-            {
-                'can_review': can_review,
-                'review_blocked_reason': reason,
-                'own_review': instance.reviews.filter(reviewer=request.user).first(),
-            }
-        )
-        return context
+        return {**super().get_extra_context(request, instance), **review_form_context(request, instance)}
 
 
 class SubmitReviewView(View):

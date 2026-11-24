@@ -3,6 +3,7 @@ from netbox.views import generic
 from utilities.views import register_model_view
 
 from netbox_change_control import forms
+from netbox_change_control.choices import ReviewDecisionChoices
 from netbox_change_control.models import Review
 from netbox_change_control.permissions import ADD_REVIEW_PERMISSION, own_statements
 
@@ -11,6 +12,7 @@ __all__ = (
     'ReviewEditView',
     'ReviewView',
     'review_eligibility',
+    'review_form_context',
 )
 
 
@@ -64,3 +66,16 @@ def review_eligibility(request, change_request):
     if not request.user.has_perm(ADD_REVIEW_PERMISSION):
         return False, _('You do not have permission to review change requests.')
     return True, ''
+
+
+def review_form_context(request, change_request):
+    """
+    What the review form needs, on every page that renders it.
+    """
+    can_review, reason = review_eligibility(request, change_request)
+    return {
+        'can_review': can_review,
+        'review_blocked_reason': reason,
+        'own_review': change_request.reviews.filter(reviewer=request.user).first(),
+        'decision_choices': ReviewDecisionChoices.CHOICES,
+    }

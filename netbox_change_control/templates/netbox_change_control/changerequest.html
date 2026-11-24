@@ -251,7 +251,7 @@
             <i class="mdi mdi-archive-outline"></i>
             {% trans "The branch has been deleted. This record is kept for audit." %}
           </span>
-        {% elif object.status == 'completed' %}
+        {% elif object.is_completed %}
           <span class="text-muted"><i class="mdi mdi-check-all"></i> {% trans "This change request has been merged." %}</span>
         {% elif can_merge and can_merge_perm %}
           <a href="{% url 'plugins:netbox_branching:branch_merge' pk=object.branch.pk %}" class="btn btn-primary">

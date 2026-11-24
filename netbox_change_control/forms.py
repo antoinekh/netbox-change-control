@@ -192,6 +192,9 @@ class ChangeRequestForm(NetBoxModelForm):
             # The model refuses a move; an abandoned request may have no branch left to show.
             self.fields['branch'].disabled = True
             self.fields['branch'].required = False
+        if self.instance.pk and not self.instance.is_open:
+            for name in ChangeRequest.RECORD_FIELDS:
+                self.fields[name].disabled = True
 
 
 class ReviewForm(NetBoxModelForm):

@@ -61,6 +61,8 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 
 **Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened by hand, because the branch is already in main; a [revert of the branch](#a-reverted-merge) returns it to Draft. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
 
+A completed or abandoned request is read-only, because it is the record of a decision: only its tags and comments can still change, for notes after the fact. Reopening an abandoned request makes it editable again.
+
 An open request always has a branch. Deleting the branch abandons the request, because nothing is left to merge, and a request without a branch cannot be reopened. The request stays as the record of the change.
 
 !!! note

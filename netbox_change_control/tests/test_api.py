@@ -576,3 +576,39 @@ class ChangeRequestBranchTest(ChangeControlAPITestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.save().branch.name, 'reviewed-branch')
+
+
+class FinishedRequestIsReadOnlyTest(ChangeControlAPITestCase):
+    """
+    A finished request is the record of a decision. Its tags and comments stay open for notes.
+    """
+
+    def setUp(self):
+        from netbox_change_control.choices import ChangeRequestStatusChoices
+
+        super().setUp()
+        self.cr = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='finished'), title='T', requester=self.user
+        )
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.COMPLETED)
+        self.url = reverse('plugins-api:netbox_change_control-api:changerequest-detail', args=[self.cr.pk])
+        self._grant(['view', 'change'], ChangeRequest)
+
+    def test_the_record_cannot_be_rewritten(self):
+        response = self.client.patch(self.url, {'title': 'Rewritten'}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.title, 'T')
+
+    def test_comments_can_still_be_added(self):
+        response = self.client.patch(self.url, {'comments': 'Post-merge note'}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+    def test_the_edit_form_shows_the_record_as_read_only(self):
+        from netbox_change_control.forms import ChangeRequestForm
+
+        form = ChangeRequestForm(instance=ChangeRequest.objects.get(pk=self.cr.pk))
+
+        self.assertTrue(all(form.fields[name].disabled for name in ChangeRequest.RECORD_FIELDS))

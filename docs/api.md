@@ -85,6 +85,7 @@ The fields worth acting on:
 | `ref` | Your external reference, for correlating with a ticket or change record. |
 | `branch` / `branch_name` | The branch, and its name kept after the branch is deleted. `branch` is set on create; a change to another branch is refused with a 400. |
 | `branch_deleted` | Whether the branch is gone and the record is history only. |
+| Record fields | `ref`, `title`, `description`, `priority`, the window and `auto_merge` are refused with a 400 once the request is completed or abandoned. `comments` and `tags` stay writable. |
 | `requester` | Who opened it: always the caller that created it, and **read-only**. An automatic merge runs as this user, and this user cannot review the request. |
 
 `ready_to_merge` and `has_conflicts` are computed at read time on this endpoint, from the policies, the checks, the change window and the branch itself, so neither is what the list filters on. Two cached counterparts are, and they are what the change request list displays:

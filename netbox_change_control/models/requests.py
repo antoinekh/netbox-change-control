@@ -117,6 +117,9 @@ class ChangeRequest(PrimaryModel):
         verbose_name=_('policies'),
     )
 
+    # What the request says about the change. Frozen once the request is finished.
+    RECORD_FIELDS = ('ref', 'title', 'description', 'priority', 'scheduled_start', 'scheduled_end', 'auto_merge')
+
     class Meta:
         ordering = ('-created',)
         # Each codename is the action alone; see Policy.Meta.permissions.
@@ -137,11 +140,12 @@ class ChangeRequest(PrimaryModel):
     @classmethod
     def from_db(cls, db, field_names, values, **kwargs):
         """
-        Remember the branch this row was loaded with, so `clean()` can refuse a move to another.
-        `**kwargs` carries the arguments Django adds between releases.
+        Remember the values this row was loaded with, so `clean()` can refuse a move to another
+        branch, or an edit of a finished request. `**kwargs` carries the arguments Django adds
+        between releases.
         """
         instance = super().from_db(db, field_names, values, **kwargs)
-        instance._loaded_branch_id = instance.__dict__.get('branch_id')
+        instance._loaded_values = {name: instance.__dict__.get(name) for name in ('branch_id', *cls.RECORD_FIELDS)}
         return instance
 
     def save(self, *args, **kwargs):
@@ -179,12 +183,6 @@ class ChangeRequest(PrimaryModel):
             )
         if self.is_open and not self.branch_id:
             raise ValidationError({'branch': _('An open change request needs a branch.')})
-        # The reviews, the policies and the checks all describe the branch the request was opened
-        # for, so moving the request would carry them over to changes nobody reviewed.
-        if not self._state.adding and self.branch_id != getattr(self, '_loaded_branch_id', self.branch_id):
-            raise ValidationError(
-                {'branch': _('A change request stays on its branch. Open a new change request for another branch.')}
-            )
         if self.scheduled_start and self.scheduled_end:
             if self.scheduled_end <= self.scheduled_start:
                 raise ValidationError(
@@ -192,6 +190,22 @@ class ChangeRequest(PrimaryModel):
                         'scheduled_end': _('The window must close after it opens.'),
                     }
                 )
+        loaded = getattr(self, '_loaded_values', None)
+        if self._state.adding or loaded is None:
+            return
+        # The reviews, the policies and the checks all describe the branch the request was opened
+        # for, so moving the request would carry them over to changes nobody reviewed.
+        if self.branch_id != loaded['branch_id']:
+            raise ValidationError(
+                {'branch': _('A change request stays on its branch. Open a new change request for another branch.')}
+            )
+        # A finished request is the record of a decision; its tags and comments stay open for notes.
+        if self.status in ChangeRequestStatusChoices.TERMINAL:
+            if changed := [name for name in self.RECORD_FIELDS if getattr(self, name) != loaded[name]]:
+                message = _('This change request is %(status)s, so it is kept as it was.') % {
+                    'status': self.get_status_display().lower()
+                }
+                raise ValidationError(dict.fromkeys(changed, message))
 
     @property
     def has_window(self):

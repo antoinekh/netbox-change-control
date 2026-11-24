@@ -8,6 +8,7 @@ from netbox.models import NetBoxModel, PrimaryModel
 from netbox_change_control.choices import (
     ChangeRequestPriorityChoices,
     ChangeRequestStatusChoices,
+    ChangeWindowState,
     HistoryActionChoices,
     ReviewDecisionChoices,
 )
@@ -180,25 +181,23 @@ class ChangeRequest(PrimaryModel):
 
     def window_state(self):
         """
-        Return one of 'none', 'early', 'open' or 'closed'.
+        Return the ChangeWindowState the clock is in now.
 
         A window with only one bound is half-open: a start alone means "not before", an end
         alone means "not after".
         """
-        from django.utils import timezone
-
         if not self.has_window:
-            return 'none'
+            return ChangeWindowState.NONE
         now = timezone.now()
         if self.scheduled_start and now < self.scheduled_start:
-            return 'early'
+            return ChangeWindowState.EARLY
         if self.scheduled_end and now > self.scheduled_end:
-            return 'closed'
-        return 'open'
+            return ChangeWindowState.CLOSED
+        return ChangeWindowState.OPEN
 
     @property
     def window_is_open(self):
-        return self.window_state() in ('none', 'open')
+        return self.window_state() in (ChangeWindowState.NONE, ChangeWindowState.OPEN)
 
     @property
     def auto_merge_window_warning(self):

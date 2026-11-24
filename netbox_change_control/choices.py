@@ -1,9 +1,12 @@
+from enum import StrEnum
+
 from django.utils.translation import gettext_lazy as _
 from utilities.choices import ChoiceSet
 
 __all__ = (
     'ChangeRequestPriorityChoices',
     'ChangeRequestStatusChoices',
+    'ChangeWindowState',
     'ConditionStateChoices',
     'HistoryActionChoices',
     'MergeCheckStatusChoices',
@@ -37,6 +40,17 @@ class ChangeRequestStatusChoices(ChoiceSet):
 
     # Statuses whose policy evaluation is still meaningful.
     OPEN = (DRAFT, NEEDS_REVIEW, APPROVED, REJECTED)
+
+
+class ChangeWindowState(StrEnum):
+    """
+    Where the clock stands against a change request's window.
+    """
+
+    NONE = 'none'
+    EARLY = 'early'
+    OPEN = 'open'
+    CLOSED = 'closed'
 
 
 class ChangeRequestPriorityChoices(ChoiceSet):

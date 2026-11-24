@@ -11,7 +11,7 @@ from rest_framework import status
 from users.models import Group, ObjectPermission, User
 from utilities.testing import APITestCase
 
-from netbox_change_control.choices import MergeCheckStatusChoices, ReviewDecisionChoices
+from netbox_change_control.choices import ChangeWindowState, MergeCheckStatusChoices, ReviewDecisionChoices
 from netbox_change_control.models import (
     ChangeComment,
     ChangeRequest,
@@ -121,7 +121,7 @@ class ChangeRequestAPITest(ChangeControlAPITestCase):
         self.assertHttpStatus(response, status.HTTP_200_OK)
         self.cr.refresh_from_db()
         self.assertTrue(self.cr.auto_merge)
-        self.assertEqual(self.cr.window_state(), 'early')
+        self.assertEqual(self.cr.window_state(), ChangeWindowState.EARLY)
 
 
 class MergeCheckAPITest(ChangeControlAPITestCase):

@@ -25,7 +25,7 @@ def require_approved_change_request(branch):
     if not get_plugin_config('netbox_change_control', 'enforce_merge_gate'):
         return BranchActionIndicator(True)
 
-    from netbox_change_control.choices import ChangeRequestStatusChoices
+    from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState
     from netbox_change_control.models import ChangeRequest
 
     change_request = ChangeRequest.objects.filter(branch=branch).first()
@@ -69,8 +69,7 @@ def require_approved_change_request(branch):
     # A change window is a third, independent gate. Holders of override_window bypass it,
     # which is what an incident response needs.
     if not change_request.window_is_open and not acting_user_has_perm(OVERRIDE_WINDOW_PERMISSION):
-        state = change_request.window_state()
-        if state == 'early':
+        if change_request.window_state() == ChangeWindowState.EARLY:
             return BranchActionIndicator(
                 False,
                 f'The change window opens at {change_request.scheduled_start:%Y-%m-%d %H:%M %Z}.',

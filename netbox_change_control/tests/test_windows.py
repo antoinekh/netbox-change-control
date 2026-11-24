@@ -13,7 +13,7 @@ from netbox_branching.jobs import MergeBranchJob
 from netbox_branching.models import Branch
 from users.models import User
 
-from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
+from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState, MergeCheckStatusChoices
 from netbox_change_control.models import ChangeRequest
 from netbox_change_control.tests.base import ChangeControlTestCase, grant_merge, make_branch, pass_checks
 from netbox_change_control.validators import require_approved_change_request
@@ -30,17 +30,17 @@ class WindowStateTest(TestCase):
 
     def test_no_window_is_always_open(self):
         cr = self._request()
-        self.assertEqual(cr.window_state(), 'none')
+        self.assertEqual(cr.window_state(), ChangeWindowState.NONE)
         self.assertTrue(cr.window_is_open)
 
     def test_a_future_window_is_not_yet_open(self):
         cr = self._request(scheduled_start=timezone.now() + timedelta(hours=1))
-        self.assertEqual(cr.window_state(), 'early')
+        self.assertEqual(cr.window_state(), ChangeWindowState.EARLY)
         self.assertFalse(cr.window_is_open)
 
     def test_a_past_window_is_closed(self):
         cr = self._request(scheduled_end=timezone.now() - timedelta(hours=1))
-        self.assertEqual(cr.window_state(), 'closed')
+        self.assertEqual(cr.window_state(), ChangeWindowState.CLOSED)
         self.assertFalse(cr.window_is_open)
 
     def test_a_current_window_is_open(self):
@@ -48,12 +48,12 @@ class WindowStateTest(TestCase):
             scheduled_start=timezone.now() - timedelta(hours=1),
             scheduled_end=timezone.now() + timedelta(hours=1),
         )
-        self.assertEqual(cr.window_state(), 'open')
+        self.assertEqual(cr.window_state(), ChangeWindowState.OPEN)
         self.assertTrue(cr.window_is_open)
 
     def test_a_start_alone_means_not_before(self):
         cr = self._request(scheduled_start=timezone.now() - timedelta(minutes=1))
-        self.assertEqual(cr.window_state(), 'open')
+        self.assertEqual(cr.window_state(), ChangeWindowState.OPEN)
 
     def test_the_window_must_close_after_it_opens(self):
         now = timezone.now()

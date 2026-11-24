@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Internal: the change window state is an enum.
+
 ### Documentation
 
 - The README starts with a 50-second video of the plugin.

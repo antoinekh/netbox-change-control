@@ -100,6 +100,20 @@ class ChangeRequestSerializer(NetBoxModelSerializer):
     status = serializers.CharField(read_only=True)
     merge_blocked_reason = serializers.CharField(read_only=True)
     has_conflicts = serializers.BooleanField(read_only=True)
+    # The caller, as on the change request form. A chosen requester could approve their own
+    # change under a colleague's name, or have an automatic merge run as somebody else.
+    requester = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    def validate(self, attrs):
+        """
+        Record a new change request as the caller's. See ReviewSerializer.validate for why this
+        is assigned here rather than through a default.
+        """
+        if self.instance is None and not self.nested:
+            request = self.context.get('request')
+            if request is not None:
+                attrs['requester'] = request.user
+        return super().validate(attrs)
 
     class Meta:
         model = ChangeRequest

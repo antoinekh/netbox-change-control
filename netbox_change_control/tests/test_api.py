@@ -493,3 +493,34 @@ class ReportedCheckRowTest(ChangeControlAPITestCase):
         self._report({'status': 'failure'})
 
         self.assertIsNone(self._report({'status': 'running'}).completed)
+
+
+class ChangeRequestRequesterTest(ChangeControlAPITestCase):
+    """
+    The requester is the caller. A chosen one could approve their own change under a colleague's
+    name, or have an automatic merge run as somebody else.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.colleague = User.objects.create(username='colleague')
+        self.branch = Branch.objects.create(name='requester-branch')
+        self._grant(['view', 'add', 'change'], ChangeRequest)
+
+    def test_a_new_request_belongs_to_the_caller(self):
+        url = reverse('plugins-api:netbox_change_control-api:changerequest-list')
+        response = self.client.post(
+            url, {'branch': self.branch.pk, 'title': 'T', 'requester': self.colleague.pk}, format='json', **self.header
+        )
+
+        self.assertHttpStatus(response, status.HTTP_201_CREATED)
+        self.assertEqual(ChangeRequest.objects.get(pk=response.data['id']).requester, self.user)
+
+    def test_the_requester_cannot_be_changed(self):
+        cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.user)
+        url = reverse('plugins-api:netbox_change_control-api:changerequest-detail', args=[cr.pk])
+
+        self.client.patch(url, {'requester': self.colleague.pk}, format='json', **self.header)
+
+        cr.refresh_from_db()
+        self.assertEqual(cr.requester, self.user)

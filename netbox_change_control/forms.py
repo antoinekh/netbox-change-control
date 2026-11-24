@@ -268,16 +268,6 @@ class MergeCheckForm(NetBoxModelForm):
         model = MergeCheck
         fields = (*MergeCheck.RESULT_FIELDS, 'tags')
 
-    def clean(self):
-        super().clean()
-        if self.instance.is_reported:
-            return
-        if any(self.cleaned_data.get(field) != getattr(self.instance, field) for field in MergeCheck.RESULT_FIELDS):
-            raise forms.ValidationError(
-                _('%(check)s runs inside NetBox, so its result cannot be set by hand.')
-                % {'check': self.instance.display_label}
-            )
-
 
 class PolicyFilterForm(NetBoxModelFilterSetForm):
     model = Policy

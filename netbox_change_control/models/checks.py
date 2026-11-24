@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -108,6 +109,30 @@ class MergeCheck(NetBoxModel):
                 kwargs['update_fields'] = {*update_fields, 'completed'}
         super().save(*args, **kwargs)
         self._loaded_result = self.result
+
+    def clean(self):
+        """
+        Refuse a result written by hand when only the check run may write it, or when the request
+        is finished and its results are part of its record.
+
+        Every writer except the check run goes through here: the edit form and the REST API.
+        """
+        super().clean()
+        loaded = getattr(self, '_loaded_result', None)
+        if self._state.adding or loaded is None or loaded == self.result:
+            return
+        changed = [field for field, old in zip(self.RESULT_FIELDS, loaded, strict=True) if getattr(self, field) != old]
+        if not self.is_reported:
+            message = _('%(check)s runs inside NetBox, so its result cannot be set by hand.') % {
+                'check': self.display_label
+            }
+        elif not self.change_request.is_open:
+            message = _('This change request is %(status)s, so its check results are kept as they are.') % {
+                'status': self.change_request.get_status_display().lower()
+            }
+        else:
+            return
+        raise ValidationError(dict.fromkeys(changed, message))
 
     @property
     def result(self):

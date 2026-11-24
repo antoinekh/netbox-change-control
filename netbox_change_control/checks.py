@@ -233,10 +233,15 @@ def run_checks(change_request):
     """
     Run every registered check and store its result. Externally reported checks are left
     untouched, since only their reporter knows the answer.
+
+    A finished request keeps the results it ended with, as part of its record.
     """
     from netbox_change_control.automerge import try_auto_merge
     from netbox_change_control.models import MergeCheck
     from netbox_change_control.policy import refresh_cached_state
+
+    if not change_request.is_open:
+        return MergeCheck.objects.filter(change_request=change_request)
 
     applicable = expected_checks(change_request)
     token = _running.set(_running.get() | {change_request.pk})

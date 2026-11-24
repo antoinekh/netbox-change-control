@@ -489,6 +489,17 @@ class ReportedCheckRowTest(ChangeControlAPITestCase):
 
         self.assertIsNotNone(self._report({'status': 'failure'}).completed)
 
+    def test_a_finished_request_refuses_a_report(self):
+        from netbox_change_control.choices import ChangeRequestStatusChoices
+
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.COMPLETED)
+
+        response = self.client.patch(self.url, {'status': 'success'}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.check.refresh_from_db()
+        self.assertEqual(self.check.status, MergeCheckStatusChoices.PENDING)
+
     def test_a_check_waiting_for_a_result_has_no_date(self):
         self._report({'status': 'failure'})
 

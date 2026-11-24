@@ -209,4 +209,4 @@ curl -X PATCH "$NETBOX/api/plugins/change-control/checks/$CHECK_ID/" \
 
 Set `status` to `running` when the job starts, so reviewers can see it is in progress.
 
-The API deliberately does not let a reporter decide whether its own check counts. Report `status`, `summary` and `details_url`; the `required` flag is read from your configuration, and `name` and `label` are read-only. A registered check runs inside NetBox, so the API refuses a result for it with a 400.
+The API deliberately does not let a reporter decide whether its own check counts. Report `status`, `summary` and `details_url`; the `required` flag is read from your configuration, and `name` and `label` are read-only. A registered check runs inside NetBox, so the API refuses a result for it with a 400. A completed or abandoned change request keeps its results, so a report on it is refused the same way.

@@ -65,6 +65,13 @@ class RunChecksView(View):
 
     def post(self, request, pk):
         change_request = restricted_or_404(ChangeRequest.objects.all(), request.user, 'view', pk=pk)
+        if not change_request.is_open:
+            messages.error(
+                request,
+                _('This change request is %(status)s, so its check results are kept as they are.')
+                % {'status': change_request.get_status_display().lower()},
+            )
+            return redirect(change_request.get_absolute_url())
         # A re-run writes the result of every check that runs in-process, so the caller must be
         # allowed to change each of those rows, constraints included.
         rows = change_request.checks.filter(name__in=get_registered_checks())

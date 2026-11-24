@@ -922,3 +922,37 @@ class CheckFormTest(ChangeControlTestCase):
         check = MergeCheck.objects.create(change_request=self.cr, name='probe', status=MergeCheckStatusChoices.FAILURE)
 
         self.assertFalse(self._form(check, MergeCheckStatusChoices.SUCCESS).is_valid())
+
+
+class FinishedRequestChecksTest(CheckTestCase):
+    """
+    A finished request keeps the check results it ended with, as part of its record.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.outcome = CheckResult.passed('fine')
+        register_check('probe', 'Probe', lambda cr: self.outcome)
+        self.require_checks('probe')
+        run_checks(self.cr)
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.COMPLETED)
+        self.cr.refresh_from_db()
+        self.outcome = CheckResult.failed('broken')
+
+    def _stored(self):
+        return self.cr.checks.get(name='probe').status
+
+    def test_a_run_writes_nothing(self):
+        run_checks(self.cr)
+
+        self.assertEqual(self._stored(), MergeCheckStatusChoices.SUCCESS)
+
+    def test_the_re_run_button_refuses(self):
+        from django.test import Client
+        from django.urls import reverse
+
+        client = Client()
+        client.force_login(User.objects.create(username='finished-admin', is_superuser=True))
+        client.post(reverse('plugins:netbox_change_control:changerequest_run_checks', args=[self.cr.pk]))
+
+        self.assertEqual(self._stored(), MergeCheckStatusChoices.SUCCESS)

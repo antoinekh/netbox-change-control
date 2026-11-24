@@ -235,7 +235,7 @@
           {% endfor %}
         </table>
       </div>
-      {% if perms.netbox_change_control.change_mergecheck %}
+      {% if perms.netbox_change_control.change_mergecheck and object.is_open %}
       <div class="card-footer">
         <form action="{% url 'plugins:netbox_change_control:changerequest_run_checks' pk=object.pk %}" method="post">
           {% csrf_token %}

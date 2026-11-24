@@ -221,19 +221,6 @@ class MergeCheckSerializer(NetBoxModelSerializer):
     # detach a result from what it was measuring.
     change_request = serializers.PrimaryKeyRelatedField(read_only=True)
 
-    def validate(self, attrs):
-        """
-        Refuse a result for a check that runs inside the plugin.
-
-        Only its function knows the answer, and a reported pass would open the gate until the
-        next run overwrote it.
-        """
-        if not self.nested and self.instance is not None and not self.instance.is_reported:
-            if reported := sorted(_changed_fields(self.instance, attrs) & set(MergeCheck.RESULT_FIELDS)):
-                message = f'{self.instance.display_label} runs inside NetBox, so its result cannot be reported.'
-                raise serializers.ValidationError(dict.fromkeys(reported, message))
-        return super().validate(attrs)
-
     class Meta:
         model = MergeCheck
         fields = (

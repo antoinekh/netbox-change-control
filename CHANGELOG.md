@@ -14,6 +14,7 @@
 - **A failed merge stops the automatic merge until the next approval.** The history records it.
 - **A change window that closes before an automatic merge is recorded.** The requester is notified, and `change_request_window_closed` is emitted.
 - **The change request page warns when an automatic merge has stopped**, after a failed merge or a closed window.
+- **A completed or abandoned change request keeps the check results it ended with.** Its checks no longer run, and a report on it is refused.
 - Internal: the change window state is an enum, the change request model holds every status guard, and the templates read states from the model and the choice sets.
 
 ### Fixed

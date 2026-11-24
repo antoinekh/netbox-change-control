@@ -44,6 +44,8 @@ A result that moves is recorded in the object's changelog, so the machine half o
 
 Only the function of a registered check writes its result. The REST API and the edit form accept a result for a reported check only.
 
+A completed or abandoned change request keeps the check results it ended with, as part of its record. Nothing runs its checks any more, **Re-run checks** is gone from its page, and a report on it is refused with a 400.
+
 ## Built-in checks
 
 Four ship, available to any policy. Together they catch the merges that damage data rather than merely lack approval. None of them applies until a policy names it.

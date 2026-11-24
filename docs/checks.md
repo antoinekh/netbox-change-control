@@ -11,7 +11,7 @@ A **required** check that is not passing blocks the merge on its own, regardless
 | `success` | Yes | The check passed. |
 | `skipped` | Yes | The check did not apply to this change. |
 | `pending` | No | Declared but never reported. |
-| `running` | No | In progress. |
+| `running` | No | In progress. Only a reported check uses it. |
 | `failure` | No | The check found a problem. |
 | `error` | No | The check itself broke. |
 
@@ -40,7 +40,9 @@ Externally reported checks are never overwritten by a run: only the system that 
 
 Several of those moments arrive together. Attaching policies is one event per policy, so submitting a request would otherwise run every check once per policy for the same answer; the run is collapsed to one per change request instead. It still happens before the page you submitted from comes back, so a result is never a refresh behind.
 
-A result that moves is recorded in the object's changelog, so the machine half of a merge decision is auditable alongside the human half. A re-run that finds the same answer writes nothing, which keeps the log to real transitions; `completed` therefore marks when the result last changed, not when a check last ran.
+A result that moves is recorded in the object's changelog, so the machine half of a merge decision is auditable alongside the human half. A re-run that finds the same answer writes nothing, which keeps the log to real transitions; `completed` therefore marks when the check reached its current result, not when it last ran. It is empty while the check is `pending` or `running`.
+
+Only the function of a registered check writes its result. The REST API and the edit form accept a result for a reported check only.
 
 ## Built-in checks
 

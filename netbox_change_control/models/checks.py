@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from netbox.models import NetBoxModel
 
@@ -61,6 +62,9 @@ class MergeCheck(NetBoxModel):
         blank=True,
     )
 
+    # What a check run or a report writes; everything else on the row belongs to the plugin.
+    RESULT_FIELDS = ('status', 'summary', 'details_url')
+
     class Meta:
         ordering = ('change_request', 'name')
         constraints = (
@@ -80,6 +84,43 @@ class MergeCheck(NetBoxModel):
 
     def get_status_color(self):
         return MergeCheckStatusChoices.colors.get(self.status)
+
+    @classmethod
+    def from_db(cls, db, field_names, values, **kwargs):
+        """
+        Remember the result this row was loaded with, so `save()` can tell a new result from an
+        incidental write. `**kwargs` carries the arguments Django adds between releases.
+        """
+        instance = super().from_db(db, field_names, values, **kwargs)
+        instance._loaded_result = instance.result
+        return instance
+
+    def save(self, *args, **kwargs):
+        """
+        Date the result whenever it moves, whoever wrote it.
+
+        `completed` is when the check reached its current result, and is empty while it waits
+        for one, so a reported result and a result from a run read the same way.
+        """
+        if self._state.adding or getattr(self, '_loaded_result', None) != self.result:
+            self.completed = timezone.now() if self.status in MergeCheckStatusChoices.FINISHED else None
+            if (update_fields := kwargs.get('update_fields')) is not None:
+                kwargs['update_fields'] = {*update_fields, 'completed'}
+        super().save(*args, **kwargs)
+        self._loaded_result = self.result
+
+    @property
+    def result(self):
+        return tuple(getattr(self, field) for field in self.RESULT_FIELDS)
+
+    @property
+    def is_reported(self):
+        """
+        Whether a system outside the plugin reports this check, rather than a registered function.
+        """
+        from netbox_change_control.checks import get_registered_checks
+
+        return self.name not in get_registered_checks()
 
     @property
     def display_label(self):

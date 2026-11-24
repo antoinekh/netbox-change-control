@@ -253,20 +253,30 @@ class ChangeCommentForm(NetBoxModelForm):
 
 
 class MergeCheckForm(NetBoxModelForm):
-    change_request = DynamicModelChoiceField(
-        queryset=ChangeRequest.objects.all(),
-        label=_('Change request'),
-    )
+    """
+    Record the result of a reported check by hand.
+
+    The plugin creates each row and owns its identity: the configuration and the policies name
+    it, label it and decide whether it is required.
+    """
+
     status = forms.ChoiceField(choices=MergeCheckStatusChoices, label=_('Status'))
 
-    fieldsets = (
-        FieldSet('change_request', 'name', 'label', 'required', name=_('Check')),
-        FieldSet('status', 'summary', 'details_url', name=_('Result')),
-    )
+    fieldsets = (FieldSet('status', 'summary', 'details_url', name=_('Result')),)
 
     class Meta:
         model = MergeCheck
-        fields = ('change_request', 'name', 'label', 'required', 'status', 'summary', 'details_url', 'tags')
+        fields = (*MergeCheck.RESULT_FIELDS, 'tags')
+
+    def clean(self):
+        super().clean()
+        if self.instance.is_reported:
+            return
+        if any(self.cleaned_data.get(field) != getattr(self.instance, field) for field in MergeCheck.RESULT_FIELDS):
+            raise forms.ValidationError(
+                _('%(check)s runs inside NetBox, so its result cannot be set by hand.')
+                % {'check': self.instance.display_label}
+            )
 
 
 class PolicyFilterForm(NetBoxModelFilterSetForm):

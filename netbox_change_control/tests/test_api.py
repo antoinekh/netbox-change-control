@@ -426,3 +426,70 @@ class CheckRequirednessTest(ChangeControlAPITestCase):
         self.check.refresh_from_db()
         self.assertEqual(self.check.status, MergeCheckStatusChoices.SUCCESS)
         self.assertEqual(self.check.summary, '42 tests passed')
+
+
+class InProcessCheckResultTest(ChangeControlAPITestCase):
+    """
+    Only the function registered for a check knows its result, so the API refuses one.
+    """
+
+    def setUp(self):
+        from netbox_change_control.checks import CheckResult, register_check
+        from netbox_change_control.checks import _registry as check_registry
+
+        super().setUp()
+        register_check('probe', 'Probe', lambda cr: CheckResult.failed('broken'))
+        self.addCleanup(check_registry.pop, 'probe', None)
+        self.cr = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='in-process'), title='T', requester=User.objects.create(username='r')
+        )
+        self.check = self.cr.checks.get(name='probe')
+        self.url = reverse('plugins-api:netbox_change_control-api:mergecheck-detail', args=[self.check.pk])
+        self._grant(['view', 'change'], MergeCheck)
+
+    def test_a_result_is_refused(self):
+        response = self.client.patch(self.url, {'status': 'success'}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_400_BAD_REQUEST)
+        self.check.refresh_from_db()
+        self.assertEqual(self.check.status, MergeCheckStatusChoices.FAILURE)
+
+    def test_sending_the_stored_result_back_is_accepted(self):
+        response = self.client.patch(self.url, {'status': 'failure', 'summary': 'broken'}, format='json', **self.header)
+
+        self.assertHttpStatus(response, status.HTTP_200_OK)
+
+
+class ReportedCheckRowTest(ChangeControlAPITestCase):
+    """
+    A report writes a result. The row's name and label belong to the configuration.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.cr = ChangeRequest.objects.create(
+            branch=Branch.objects.create(name='reported'), title='T', requester=User.objects.create(username='r')
+        )
+        self.check = MergeCheck.objects.create(change_request=self.cr, name='ci', label='CI')
+        self.url = reverse('plugins-api:netbox_change_control-api:mergecheck-detail', args=[self.check.pk])
+        self._grant(['view', 'change'], MergeCheck)
+
+    def _report(self, data):
+        self.assertHttpStatus(self.client.patch(self.url, data, format='json', **self.header), status.HTTP_200_OK)
+        self.check.refresh_from_db()
+        return self.check
+
+    def test_the_name_and_label_cannot_be_written(self):
+        check = self._report({'name': 'other', 'label': 'Other'})
+
+        self.assertEqual((check.name, check.label), ('ci', 'CI'))
+
+    def test_a_reported_result_is_dated(self):
+        self.assertIsNone(self.check.completed)
+
+        self.assertIsNotNone(self._report({'status': 'failure'}).completed)
+
+    def test_a_check_waiting_for_a_result_has_no_date(self):
+        self._report({'status': 'failure'})
+
+        self.assertIsNone(self._report({'status': 'running'}).completed)

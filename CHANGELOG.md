@@ -10,11 +10,14 @@
 
 - **Deleting a branch abandons its open change request.** A migration abandons the open requests whose branch is already gone.
 - **The policies follow the branch only while the request is under review.** Reopen and revert no longer match them; submitting does.
+- **`completed` on a merge check is set for a reported result too.** It is empty while the check is pending or running.
 - Internal: the change window state is an enum, and the change request model holds every status guard.
 
 ### Fixed
 
 - **A double click on Resolve or Reopen no longer undoes it.** The button sends the state it asks for.
+- **A result for a registered check is refused** by the REST API and the edit form. A user with `change_mergecheck` could mark a failing check as passed.
+- **A check that no longer applies does not block the merge**, and the change request page does not show it.
 
 ### Documentation
 

@@ -200,19 +200,14 @@ class AutomaticApprovalTest(TestCase):
         The point of a zero rule is to drop the people gate, not the machine one.
         """
         from netbox_change_control.choices import MergeCheckStatusChoices
-        from netbox_change_control.models import MergeCheck
 
+        self.policy.checks = ['ci']
+        self.policy.save(update_fields=['checks'])
         cr = self._request()
-        MergeCheck.objects.create(
-            change_request=cr,
-            name='ci',
-            label='CI',
-            required=True,
-            status=MergeCheckStatusChoices.FAILURE,
-        )
+        cr.checks.filter(name='ci').update(status=MergeCheckStatusChoices.FAILURE)
         self.assertTrue(cr.is_approved)
         self.assertFalse(cr.is_ready_to_merge)
-        self.assertIn('CI', cr.merge_blocked_reason)
+        self.assertIn('ci (failed)', cr.merge_blocked_reason)
 
     def test_a_rejection_still_blocks(self):
         """

@@ -112,16 +112,12 @@ class CheckGateTest(CheckTestCase):
         pointless.
         """
         self._approve_status()
-        MergeCheck.objects.create(
-            change_request=self.cr,
-            name='external-ci',
-            label='External CI',
-            required=True,
-            status=MergeCheckStatusChoices.PENDING,
-        )
+        self.require_checks('external-ci')
+
+        self.assertEqual(self.cr.checks.get(name='external-ci').status, MergeCheckStatusChoices.PENDING)
         indicator = require_approved_change_request(self.branch)
         self.assertFalse(indicator.permitted)
-        self.assertIn('External CI', indicator.message)
+        self.assertIn('external-ci', indicator.message)
 
     def test_a_skipped_check_clears_the_gate(self):
         self._approve_status()
@@ -875,3 +871,54 @@ class RunChecksDoesItsWorkOnceTest(CheckTestCase):
         self.assertFalse(self.cr.checks.filter(status=MergeCheckStatusChoices.PENDING).exists())
         self.assertEqual(refreshes.call_count, 1)
         self.assertEqual(merges.call_count, 1)
+
+
+class ObsoleteCheckRowTest(ChangeControlTestCase):
+    """
+    The configuration and the policies decide which checks apply, not the rows already stored.
+    """
+
+    branch_prefix = 'obsolete'
+    policy_checks = ()
+
+    def setUp(self):
+        super().setUp()
+        self.row = MergeCheck.objects.create(
+            change_request=self.cr, name='retired', label='Retired', status=MergeCheckStatusChoices.FAILURE
+        )
+
+    def test_a_row_no_longer_expected_does_not_block(self):
+        from netbox_change_control.validators import blocking_checks
+
+        self.assertEqual(blocking_checks(self.cr), [])
+
+    def test_a_row_no_longer_expected_is_not_shown(self):
+        from netbox_change_control.checks import checks_for_display
+
+        self.assertNotIn('retired', [check.name for check in checks_for_display(self.cr)])
+
+
+class CheckFormTest(ChangeControlTestCase):
+    """
+    The edit form records a reported result, and refuses one for a check run inside NetBox.
+    """
+
+    branch_prefix = 'check-form'
+    policy_checks = ()
+
+    def _form(self, check, status):
+        from netbox_change_control.forms import MergeCheckForm
+
+        return MergeCheckForm(data={'status': status, 'summary': '', 'details_url': ''}, instance=check)
+
+    def test_a_reported_result_is_accepted(self):
+        check = MergeCheck.objects.create(change_request=self.cr, name='ci', status=MergeCheckStatusChoices.PENDING)
+
+        self.assertTrue(self._form(check, MergeCheckStatusChoices.SUCCESS).is_valid())
+
+    def test_an_in_process_result_is_refused(self):
+        register_check('probe', 'Probe', lambda cr: CheckResult.failed('broken'))
+        self.addCleanup(_registry.pop, 'probe', None)
+        check = MergeCheck.objects.create(change_request=self.cr, name='probe', status=MergeCheckStatusChoices.FAILURE)
+
+        self.assertFalse(self._form(check, MergeCheckStatusChoices.SUCCESS).is_valid())

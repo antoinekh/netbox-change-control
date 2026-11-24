@@ -137,6 +137,9 @@ class ReviewDecisionChoices(ChoiceSet):
 class MergeCheckStatusChoices(ChoiceSet):
     """
     Outcome of a pre-merge check. Only SUCCESS and SKIPPED clear the gate.
+
+    RUNNING is for reported checks: an in-process check runs within one call, so it goes
+    straight from one result to the next.
     """
 
     PENDING = 'pending'
@@ -157,3 +160,6 @@ class MergeCheckStatusChoices(ChoiceSet):
 
     # A required check in any other state blocks the merge.
     PASSING = (SUCCESS, SKIPPED)
+
+    # The results a check finishes with, as opposed to waiting for one.
+    FINISHED = (SUCCESS, FAILURE, ERROR, SKIPPED)

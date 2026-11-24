@@ -18,7 +18,6 @@ import logging
 from contextvars import ContextVar
 from dataclasses import dataclass
 
-from django.utils import timezone
 from netbox.plugins import get_plugin_config
 
 from netbox_change_control.choices import MergeCheckStatusChoices
@@ -209,11 +208,13 @@ def checks_for_display(change_request):
 
     A check registered after the request was created has no row until the checks next run, and
     the gate already treats it as blocking, so the page must show it; a placeholder shows it
-    without a page view writing a row.
+    without a page view writing a row. A row no longer expected is left out, as the gate ignores
+    it until the next run deletes it.
     """
     from netbox_change_control.models import MergeCheck
 
-    rows = list(change_request.checks.all())
+    expected = expected_checks(change_request)
+    rows = [row for row in change_request.checks.all() if row.name in expected]
     stored = {row.name for row in rows}
     return rows + [
         MergeCheck(
@@ -223,7 +224,7 @@ def checks_for_display(change_request):
             required=required,
             status=MergeCheckStatusChoices.PENDING,
         )
-        for name, (label, required) in expected_checks(change_request).items()
+        for name, (label, required) in expected.items()
         if name not in stored
     ]
 
@@ -267,13 +268,12 @@ def run_checks(change_request):
             row.status = result.status
             row.summary = summary
             row.details_url = result.details_url
-            row.completed = timezone.now()
             # save(), not queryset.update(). update() writes straight to the database and fires no
             # post_save, so NetBox never recorded a change: a required check going from failed to
             # passed, which is what opens the gate, left no entry in the changelog at all. For a
             # plugin whose job is the record of who allowed what, "the pipeline went green at
             # 14:02" is exactly the fact worth keeping.
-            row.save(update_fields=['status', 'summary', 'details_url', 'completed'])
+            row.save(update_fields=['status', 'summary', 'details_url'])
     finally:
         _running.reset(token)
 

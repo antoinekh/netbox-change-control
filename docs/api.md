@@ -69,7 +69,7 @@ curl -X PATCH "$NETBOX/api/plugins/change-control/checks/$CHECK_ID/" \
 
 `status` takes `pending`, `running`, `success`, `failure`, `error` or `skipped`. Set `running` when a job starts, so reviewers can see it is in progress.
 
-A reporter cannot decide whether its own check counts. `required` is read-only on this endpoint, and the merge gate reads requiredness from the configuration and the policies rather than from the row, so the token your pipeline uses cannot neutralise the gate it reports to. `change_request` is read-only too: a result belongs to the request it was measured against.
+A reporter cannot decide whether its own check counts. `required` is read-only on this endpoint, and the merge gate reads requiredness from the configuration and the policies rather than from the row, so the token your pipeline uses cannot neutralise the gate it reports to. `change_request`, `name` and `label` are read-only too: a result belongs to the request it was measured against, and the configuration names the check. A registered check runs inside NetBox, so a result sent for it is refused with a 400.
 
 ## Reading a change request
 

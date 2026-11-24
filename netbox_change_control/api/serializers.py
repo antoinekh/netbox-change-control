@@ -196,6 +196,9 @@ class MergeCheckSerializer(NetBoxModelSerializer):
 
     url = serializers.HyperlinkedIdentityField(view_name='plugins-api:netbox_change_control-api:mergecheck-detail')
     blocks_merge = serializers.BooleanField(read_only=True)
+    # The configuration and the policies name a check, and a report finds its row by that name.
+    name = serializers.CharField(read_only=True)
+    label = serializers.CharField(read_only=True)
     # A reporter must not decide whether its own check counts. Requiredness comes from the
     # configuration or the policy, and the gate reads it from there rather than from this row,
     # so a writable field here would only mislead.
@@ -203,6 +206,19 @@ class MergeCheckSerializer(NetBoxModelSerializer):
     # The check belongs to the change request which created it. Moving it elsewhere would
     # detach a result from what it was measuring.
     change_request = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    def validate(self, attrs):
+        """
+        Refuse a result for a check that runs inside the plugin.
+
+        Only its function knows the answer, and a reported pass would open the gate until the
+        next run overwrote it.
+        """
+        if not self.nested and self.instance is not None and not self.instance.is_reported:
+            if reported := sorted(_changed_fields(self.instance, attrs) & set(MergeCheck.RESULT_FIELDS)):
+                message = f'{self.instance.display_label} runs inside NetBox, so its result cannot be reported.'
+                raise serializers.ValidationError(dict.fromkeys(reported, message))
+        return super().validate(attrs)
 
     class Meta:
         model = MergeCheck

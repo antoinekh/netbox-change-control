@@ -106,7 +106,8 @@ def blocking_checks(change_request):
 
     A check registered after this change request was created has no stored row yet. Such a
     check is treated as not run, and therefore blocking: reading the stored rows alone would
-    let a request merge past a check nobody had run.
+    let a request merge past a check nobody had run. A stored row that is no longer expected
+    does not count, since the configuration and the policies decide which checks apply.
     """
     from netbox_change_control.checks import expected_checks
 
@@ -121,12 +122,6 @@ def blocking_checks(change_request):
         if row is None:
             blocking.append(f'{label} (not run)')
         elif not row.is_passing:
-            blocking.append(f'{row.display_label} ({row.get_status_display().lower()})')
-
-    # A stored required check which is no longer expected still blocks while it is failing,
-    # so removing a check from the configuration is a deliberate act, not an accident.
-    for name, row in rows.items():
-        if name not in expected and row.blocks_merge:
             blocking.append(f'{row.display_label} ({row.get_status_display().lower()})')
 
     return blocking

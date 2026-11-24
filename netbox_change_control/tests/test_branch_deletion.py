@@ -2,11 +2,20 @@
 A change request is the record of who approved what. It must survive its branch.
 """
 
+from importlib import import_module
+
+from django.apps import apps
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from netbox_branching.models import Branch
 from users.models import User
 
-from netbox_change_control.choices import MergeCheckStatusChoices, ReviewDecisionChoices
+from netbox_change_control.choices import (
+    ChangeRequestStatusChoices,
+    HistoryActionChoices,
+    MergeCheckStatusChoices,
+    ReviewDecisionChoices,
+)
 from netbox_change_control.models import ChangeRequest, Policy
 from netbox_change_control.tests.base import ChangeControlTestCase
 
@@ -123,6 +132,57 @@ class BranchDeletionTest(ChangeControlTestCase):
         self.cr.refresh_from_db()
         bindings = sync_policies(self.cr)
         self.assertEqual([b.policy.name for b in bindings], ['One review'])
+
+
+class BranchDeletionAbandonsTest(ChangeControlTestCase):
+    """
+    An open change request always has a branch: deleting the branch abandons the request.
+    """
+
+    branch_prefix = 'abandoned-with'
+    approved = True
+
+    def _status(self):
+        self.cr.refresh_from_db()
+        return self.cr.status
+
+    def test_deleting_the_branch_abandons_an_open_request(self):
+        self.branch.delete()
+
+        self.assertEqual(self._status(), ChangeRequestStatusChoices.ABANDONED)
+        self.assertEqual(self.cr.history.last().action, HistoryActionChoices.ABANDONED)
+
+    def test_a_completed_request_stays_completed(self):
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.COMPLETED)
+
+        self.branch.delete()
+
+        self.assertEqual(self._status(), ChangeRequestStatusChoices.COMPLETED)
+
+    def test_a_request_without_a_branch_cannot_be_reopened(self):
+        self.branch.delete()
+        self.cr.refresh_from_db()
+
+        self.assertFalse(self.cr.can_be_reopened)
+        self.assertFalse(self.cr.reopen())
+        self.assertEqual(self._status(), ChangeRequestStatusChoices.ABANDONED)
+
+    def test_an_open_request_needs_a_branch(self):
+        orphan = ChangeRequest(title='No branch', requester=self.requester)
+
+        with self.assertRaises(ValidationError) as raised:
+            orphan.full_clean()
+        self.assertIn('branch', raised.exception.message_dict)
+
+    def test_the_migration_abandons_requests_left_open_without_a_branch(self):
+        ChangeRequest.objects.filter(pk=self.cr.pk).update(branch=None)
+        migration = import_module('netbox_change_control.migrations.0014_abandon_requests_without_a_branch')
+
+        migration.abandon_requests_without_a_branch(apps, None)
+        migration.abandon_requests_without_a_branch(apps, None)
+
+        self.assertEqual(self._status(), ChangeRequestStatusChoices.ABANDONED)
+        self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.ABANDONED).count(), 1)
 
 
 class OrphanedRequestPagesTest(TestCase):

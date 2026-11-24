@@ -149,7 +149,7 @@ class ChangeRequestViewSet(NetBoxModelViewSet):
         change_request = self._restricted(request, 'reopen', pk)
         if not change_request.reopen():
             return Response(
-                {'detail': 'Only an abandoned change request can be reopened.'},
+                {'detail': 'Only an abandoned change request whose branch still exists can be reopened.'},
                 status=status.HTTP_409_CONFLICT,
             )
 

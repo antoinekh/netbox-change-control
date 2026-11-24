@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Upgrading
+
+- **Migrate every open branch.** This release adds a migration, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
+
 ### Changed
 
+- **Deleting a branch abandons its open change request.** A migration abandons the open requests whose branch is already gone.
 - Internal: the change window state is an enum.
 
 ### Fixed

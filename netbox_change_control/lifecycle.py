@@ -155,8 +155,7 @@ def reopen(change_request):
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
         _record(change_request, HistoryActionChoices.REOPENED)
-        if not change_request.branch_deleted:
-            policy.sync_policies(change_request)
+        policy.sync_policies(change_request)
         refresh_status(change_request)
     return True
 

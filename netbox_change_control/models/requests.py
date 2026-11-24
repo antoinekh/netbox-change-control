@@ -167,6 +167,8 @@ class ChangeRequest(PrimaryModel):
                     % {'requester': self.requester}
                 }
             )
+        if self.is_open and not self.branch_id:
+            raise ValidationError({'branch': _('An open change request needs a branch.')})
         if self.scheduled_start and self.scheduled_end:
             if self.scheduled_end <= self.scheduled_start:
                 raise ValidationError(
@@ -406,12 +408,13 @@ class ChangeRequest(PrimaryModel):
     @property
     def can_be_reopened(self):
         """
-        Only an abandoned request comes back.
+        Only an abandoned request comes back, and only while its branch exists.
 
         Completed is the record of a merge that actually happened, so reopening it would
-        invite a second merge of a branch that is already in main.
+        invite a second merge of a branch that is already in main. A request without a branch
+        has nothing left to merge, which is why deleting the branch abandoned it.
         """
-        return self.status == ChangeRequestStatusChoices.ABANDONED
+        return self.status == ChangeRequestStatusChoices.ABANDONED and not self.branch_deleted
 
     def abandon(self):
         """

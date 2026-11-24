@@ -23,7 +23,7 @@ The two transitions a person makes by hand have an action each, and a permission
 | Action | Where | Permission | Allowed from |
 |---|---|---|---|
 | **Abandon** | The change request page, or `POST /change-requests/{id}/abandon/` | `netbox_change_control.abandon_changerequest` | Draft, Needs review, Approved, Rejected |
-| **Reopen** | The change request page, or `POST /change-requests/{id}/reopen/` | `netbox_change_control.reopen_changerequest` | Abandoned only |
+| **Reopen** | The change request page, or `POST /change-requests/{id}/reopen/` | `netbox_change_control.reopen_changerequest` | Abandoned, while its branch exists |
 
 Reopening returns the request to Draft and recomputes from there, rather than restoring the status it held before. Completed is never reopened by hand: only a [revert of its branch](#a-reverted-merge) returns it to Draft. See [what the states mean](#what-the-states-mean).
 
@@ -49,7 +49,8 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 | Approved | Completed | The branch merged | Automatic, on the merge | `merge_branch` to merge |
 | Completed | Draft | The branch was reverted, so every review went stale | Automatic, on the revert | `revert_branch` to revert |
 | Any open state | Abandoned | **Abandon** | Manual | `abandon_changerequest` |
-| Abandoned | Draft | **Reopen** | Manual | `reopen_changerequest` |
+| Any open state | Abandoned | Its branch is deleted | Automatic, on the deletion | `delete_branch` to delete |
+| Abandoned | Draft | **Reopen**, while its branch exists | Manual | `reopen_changerequest` |
 
 ### What the states mean
 
@@ -58,6 +59,8 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 **Needs review**, **Approved** and **Rejected** are derived. They are a cached view of the policy evaluation, recomputed whenever anything that could change the answer happens, which is why they are not editable and why the arrows between them carry no permission: nobody sets them, they follow from the reviews.
 
 **Completed** and **Abandoned** are terminal. Completed records a merge that happened and is never reopened by hand, because the branch is already in main; a [revert of the branch](#a-reverted-merge) returns it to Draft. Abandoned can be reopened, which returns the request to Draft rather than to whatever it held before: its reviews may have gone stale and its policies may have changed while it was set aside, so the author submits it again and the evaluation works out the honest answer.
+
+An open request always has a branch. Deleting the branch abandons the request, because nothing is left to merge, and a request without a branch cannot be reopened. The request stays as the record of the change.
 
 !!! note
 
@@ -89,7 +92,7 @@ The **History** tab of a change request lists each step, oldest first, with the 
 | Returned to draft | **Return to draft**. |
 | Merged | The branch merged. |
 | Reverted | The branch was reverted. |
-| Abandoned | **Abandon**. |
+| Abandoned | **Abandon**, or the branch was deleted. |
 | Reopened | **Reopen**. |
 
 The user of a step that the plugin takes on its own, such as Approved, is the person whose action caused it. A merge and a revert record the user who ran them.

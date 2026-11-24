@@ -245,7 +245,7 @@ class ReopenChangeRequestView(View):
         elif change_request.reopen():
             messages.success(request, _('Change request reopened.'))
         else:
-            messages.error(request, _('Only an abandoned change request can be reopened.'))
+            messages.error(request, _('Only an abandoned change request whose branch still exists can be reopened.'))
 
         return redirect(change_request.get_absolute_url())
 

@@ -1,9 +1,9 @@
 """
-Follow the branch: its merge completes the request, its revert returns it to Draft, its name
-is kept, and a sync re-evaluates.
+Follow the branch: its merge completes the request, its revert returns it to Draft, its
+deletion abandons it, its name is kept, and a sync re-evaluates.
 """
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from netbox_branching.models import Branch
 from netbox_branching.signals import post_merge, post_revert, post_sync
@@ -14,6 +14,7 @@ from netbox_change_control.models import ChangeRequest
 from netbox_change_control.policy import sync_policies
 
 __all__ = (
+    'abandon_on_branch_delete',
     'complete_on_merge',
     'refresh_on_branch_change',
     'return_to_draft_on_revert',
@@ -46,6 +47,19 @@ def return_to_draft_on_revert(sender, branch, user=None, **kwargs):
 
     if not lifecycle.revert(change_request, user):
         _rematch(change_request)
+
+
+@receiver(pre_delete, sender=Branch)
+def abandon_on_branch_delete(sender, instance, **kwargs):
+    """
+    Abandon the open change request of a branch being deleted.
+
+    An open request without a branch can never merge, so it would wait for reviews that decide
+    nothing. Run before the delete, while the request still points at the branch, and inside
+    the delete's transaction, so a delete that fails leaves the request open.
+    """
+    if change_request := ChangeRequest.objects.filter(branch=instance).first():
+        lifecycle.abandon(change_request)
 
 
 @receiver(post_save, sender=Branch)

@@ -178,6 +178,17 @@ class CompletionOnMergeTest(AutomaticBehaviorTestCase):
         self.cr.refresh_from_db()
         self.assertEqual(self.cr.status, ChangeRequestStatusChoices.COMPLETED)
 
+    def test_a_merge_completes_a_request_that_was_not_approved(self):
+        """
+        With the merge gate off any branch can merge, and the record must say it did.
+        """
+        self.cr.abandon()
+
+        post_merge.send(sender=Branch, branch=self.branch, user=self.requester)
+
+        self.cr.refresh_from_db()
+        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.COMPLETED)
+
     def test_merge_gate_refuses_a_completed_request(self):
         from netbox_change_control.validators import require_approved_change_request
 

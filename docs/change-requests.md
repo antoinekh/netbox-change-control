@@ -47,6 +47,7 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 | Rejected | Approved | The rejection cleared and the rules are satisfied | Automatic | none |
 | Needs review, Approved, Rejected | Draft | **Return to draft**, to take the change back off the table | Manual | `change_changerequest` |
 | Approved | Completed | The branch merged | Automatic, on the merge | `merge_branch` to merge |
+| Any other status | Completed | The branch merged while the merge gate was off (`enforce_merge_gate = False`) | Automatic, on the merge | `merge_branch` to merge |
 | Completed | Draft | The branch was reverted, so every review went stale | Automatic, on the revert | `revert_branch` to revert |
 | Any open state | Abandoned | **Abandon** | Manual | `abandon_changerequest` |
 | Any open state | Abandoned | Its branch is deleted | Automatic, on the deletion | `delete_branch` to delete |

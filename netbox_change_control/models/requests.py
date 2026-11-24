@@ -428,6 +428,23 @@ class ChangeRequest(PrimaryModel):
         """
         return self.status == ChangeRequestStatusChoices.ABANDONED and not self.branch_deleted
 
+    @property
+    def can_be_completed(self):
+        """
+        A merge completes a request whatever its status, except one already completed.
+
+        With the merge gate on, only an approved request can merge. With it off, any branch can,
+        and the record must still say that the change went into main.
+        """
+        return self.status != ChangeRequestStatusChoices.COMPLETED
+
+    @property
+    def can_be_reverted(self):
+        """
+        Only a completed request has a merge to undo.
+        """
+        return self.status == ChangeRequestStatusChoices.COMPLETED
+
     def abandon(self):
         """
         Give up on this change request. Returns True if the status moved.

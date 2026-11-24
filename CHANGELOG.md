@@ -10,7 +10,7 @@
 
 - **Deleting a branch abandons its open change request.** A migration abandons the open requests whose branch is already gone.
 - **The policies follow the branch only while the request is under review.** Reopen and revert no longer match them; submitting does.
-- Internal: the change window state is an enum.
+- Internal: the change window state is an enum, and the change request model holds every status guard.
 
 ### Fixed
 
@@ -20,6 +20,7 @@
 
 - The README starts with a 50-second video of the plugin.
 - The README is shorter: features in groups, installation before the documentation, and only the main documentation pages.
+- The lifecycle table shows that a merge completes a request that is not approved when the merge gate is off.
 
 ## 0.8.0 - 2026-11-21
 

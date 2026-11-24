@@ -164,9 +164,7 @@ def complete(change_request, user=None):
     Record that `user` merged the branch. Returns True if the status moved.
     """
     with transaction.atomic():
-        if not change_request.lock_status():
-            return False
-        if change_request.status == ChangeRequestStatusChoices.COMPLETED:
+        if not change_request.lock_status() or not change_request.can_be_completed:
             return False
         _move(change_request, ChangeRequestStatusChoices.COMPLETED)
         _record(change_request, HistoryActionChoices.MERGED, user)
@@ -192,7 +190,7 @@ def revert(change_request, user=None):
         if not change_request.lock_status():
             return False
         _record(change_request, HistoryActionChoices.REVERTED, user)
-        if change_request.status != ChangeRequestStatusChoices.COMPLETED:
+        if not change_request.can_be_reverted:
             return False
         _move(change_request, ChangeRequestStatusChoices.DRAFT)
         refresh_status(change_request)

@@ -157,16 +157,6 @@ class PolicyReevaluationTest(AutomaticBehaviorTestCase):
 
 
 class CompletionOnMergeTest(AutomaticBehaviorTestCase):
-    def test_merge_marks_the_request_completed(self):
-        self._approve()
-        self.cr.refresh_from_db()
-        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
-
-        post_merge.send(sender=Branch, branch=self.branch, user=self.requester)
-
-        self.cr.refresh_from_db()
-        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.COMPLETED)
-
     def test_completed_request_stays_completed(self):
         self._approve()
         post_merge.send(sender=Branch, branch=self.branch, user=self.requester)

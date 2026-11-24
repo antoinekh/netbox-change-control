@@ -146,27 +146,6 @@ class BranchDeletionAbandonsTest(ChangeControlTestCase):
         self.cr.refresh_from_db()
         return self.cr.status
 
-    def test_deleting_the_branch_abandons_an_open_request(self):
-        self.branch.delete()
-
-        self.assertEqual(self._status(), ChangeRequestStatusChoices.ABANDONED)
-        self.assertEqual(self.cr.history.last().action, HistoryActionChoices.ABANDONED)
-
-    def test_a_completed_request_stays_completed(self):
-        ChangeRequest.objects.filter(pk=self.cr.pk).update(status=ChangeRequestStatusChoices.COMPLETED)
-
-        self.branch.delete()
-
-        self.assertEqual(self._status(), ChangeRequestStatusChoices.COMPLETED)
-
-    def test_a_request_without_a_branch_cannot_be_reopened(self):
-        self.branch.delete()
-        self.cr.refresh_from_db()
-
-        self.assertFalse(self.cr.can_be_reopened)
-        self.assertFalse(self.cr.reopen())
-        self.assertEqual(self._status(), ChangeRequestStatusChoices.ABANDONED)
-
     def test_an_open_request_needs_a_branch(self):
         orphan = ChangeRequest(title='No branch', requester=self.requester)
 

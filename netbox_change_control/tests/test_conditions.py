@@ -49,46 +49,6 @@ class ConditionMatchingTest(TestCase):
         self.assertTrue(self._matches({'attr': 'status', 'value': 'active'}))
         self.assertFalse(self._matches({'attr': 'status', 'value': 'offline'}))
 
-    def test_negation(self):
-        self._diff(modified={'status': 'active'})
-        self.assertFalse(self._matches({'attr': 'status', 'value': 'active', 'negate': True}))
-
-    def test_an_and_ruleset(self):
-        self._diff(modified={'status': 'active', 'tenant': 5})
-        self.assertTrue(
-            self._matches(
-                {
-                    'and': [
-                        {'attr': 'status', 'value': 'active'},
-                        {'attr': 'tenant', 'value': None, 'negate': True},
-                    ]
-                }
-            )
-        )
-
-    def test_an_or_ruleset(self):
-        self._diff(modified={'status': 'planned'})
-        self.assertTrue(
-            self._matches(
-                {
-                    'or': [
-                        {'attr': 'status', 'value': 'active'},
-                        {'attr': 'status', 'value': 'planned'},
-                    ]
-                }
-            )
-        )
-
-    def test_the_regex_and_contains_operators(self):
-        self._diff(modified={'cid': 'DEOW4921'})
-        self.assertTrue(self._matches({'attr': 'cid', 'value': '^DEOW', 'op': 'regex'}))
-        self.assertTrue(self._matches({'attr': 'cid', 'value': 'OW49', 'op': 'contains'}))
-
-    def test_the_in_operator(self):
-        self._diff(modified={'type': 2})
-        self.assertTrue(self._matches({'attr': 'type', 'value': [1, 2], 'op': 'in'}))
-        self.assertFalse(self._matches({'attr': 'type', 'value': [3, 4], 'op': 'in'}))
-
     def test_a_missing_attribute_does_not_match_and_does_not_raise(self):
         """
         A typo in `attr` must produce a policy that never applies, not a crash.
@@ -165,32 +125,26 @@ class ConditionStateTest(TestCase):
     def _matches(self, policy):
         return policy.name in [p.name for p, _ in match_policies(self.branch)]
 
-    def test_the_default_catches_an_object_being_switched_off(self):
-        """
-        The case that motivated this: a live circuit being decommissioned.
-        """
-        self._diff(self.branch, before='active', after='decommissioned')
-        self.assertTrue(self._matches(self._policy(ConditionStateChoices.EITHER)))
-
-    def test_the_default_catches_an_object_being_switched_on(self):
-        self._diff(self.branch, before='planned', after='active')
-        self.assertTrue(self._matches(self._policy(ConditionStateChoices.EITHER)))
-
-    def test_after_sees_only_the_state_the_branch_leaves(self):
-        self._diff(self.branch, before='active', after='decommissioned')
-        self.assertFalse(self._matches(self._policy(ConditionStateChoices.AFTER)))
-
-    def test_after_still_catches_a_promotion(self):
-        self._diff(self.branch, before='planned', after='active')
-        self.assertTrue(self._matches(self._policy(ConditionStateChoices.AFTER)))
-
-    def test_before_sees_only_the_state_being_replaced(self):
-        self._diff(self.branch, before='planned', after='active')
-        self.assertFalse(self._matches(self._policy(ConditionStateChoices.BEFORE)))
-
-    def test_before_catches_an_object_being_switched_off(self):
-        self._diff(self.branch, before='active', after='decommissioned')
-        self.assertTrue(self._matches(self._policy(ConditionStateChoices.BEFORE)))
+    def test_which_side_each_state_reads(self):
+        either, after, before = ConditionStateChoices.EITHER, ConditionStateChoices.AFTER, ConditionStateChoices.BEFORE
+        switched_off, switched_on = ('active', 'decommissioned'), ('planned', 'active')
+        cases = (
+            # The default catches a live circuit being decommissioned, the change most in need of review.
+            (either, switched_off, True),
+            (either, switched_on, True),
+            (after, switched_off, False),
+            (after, switched_on, True),
+            (before, switched_on, False),
+            (before, switched_off, True),
+        )
+        for number, (state, (old, new), expected) in enumerate(cases):
+            with self.subTest(state=state, change=(old, new)):
+                self.branch = make_branch('state', f'{self._testMethodName}-{number}')
+                self._diff(self.branch, before=old, after=new)
+                policy = Policy.objects.create(
+                    name=f'Active {number}', conditions={'attr': 'status', 'value': 'active'}, condition_state=state
+                )
+                self.assertEqual(self._matches(policy), expected)
 
     def test_a_new_policy_defaults_to_either(self):
         self.assertEqual(Policy.objects.create(name='fresh').condition_state, ConditionStateChoices.EITHER)

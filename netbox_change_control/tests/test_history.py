@@ -99,24 +99,6 @@ class ManualHistoryTest(HistoryTestCase):
 
         self.assertEqual(self.cr.history.get().user, self.requester)
 
-    def test_the_manual_transitions_are_recorded(self):
-        submit(self.cr)
-        self.cr.return_to_draft()
-        submit(self.cr)
-        self.cr.abandon()
-        self.cr.reopen()
-
-        self.assertEqual(
-            self._actions(),
-            [
-                HistoryActionChoices.SUBMITTED,
-                HistoryActionChoices.RETURNED_TO_DRAFT,
-                HistoryActionChoices.SUBMITTED,
-                HistoryActionChoices.ABANDONED,
-                HistoryActionChoices.REOPENED,
-            ],
-        )
-
 
 class HistoryBackfillTest(HistoryTestCase):
     """

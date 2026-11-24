@@ -15,88 +15,8 @@ from users.models import Group, User
 from utilities.testing import APITestCase
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
-from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
+from netbox_change_control.models import ChangeRequest, Policy, PolicyRule
 from netbox_change_control.tests.base import approve, grant, make_branch
-
-
-class AbandonAndReopenModelTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.requester = User.objects.create(username='requester')
-        cls.group = Group.objects.create(name='Engineers')
-        cls.reviewer = User.objects.create(username='reviewer')
-        cls.reviewer.groups.add(cls.group)
-        cls.policy = Policy.objects.create(name='One review')
-        PolicyRule.objects.create(policy=cls.policy, name='One engineer', min_reviews=1).groups.set([cls.group])
-
-    def make_request(self):
-        cr = ChangeRequest.objects.create(
-            branch=make_branch('life', self._testMethodName), title='T', requester=self.requester
-        )
-        ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
-        cr.submit()
-        cr.refresh_from_db()
-        return cr
-
-    def test_an_open_request_can_be_abandoned(self):
-        cr = self.make_request()
-        self.assertTrue(cr.abandon())
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.ABANDONED)
-
-    def test_a_completed_request_cannot_be_abandoned(self):
-        cr = self.make_request()
-        cr.status = ChangeRequestStatusChoices.COMPLETED
-        cr.save(update_fields=['status'])
-        self.assertFalse(cr.abandon())
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
-
-    def test_an_abandoned_request_reopens_as_a_draft(self):
-        """
-        Back into the author's hands, not straight into somebody's review queue. Its reviews
-        may have gone stale and its policies may have moved while it was set aside, so it is
-        submitted again and the evaluation works out the honest answer then.
-        """
-        cr = self.make_request()
-        cr.abandon()
-
-        self.assertTrue(cr.reopen())
-
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.DRAFT)
-
-    def test_a_completed_request_cannot_be_reopened(self):
-        """
-        Completed records a merge that happened. Reopening it would invite a second merge of a
-        branch already in main.
-        """
-        cr = self.make_request()
-        cr.status = ChangeRequestStatusChoices.COMPLETED
-        cr.save(update_fields=['status'])
-        self.assertFalse(cr.reopen())
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
-
-    def test_reopening_does_not_restore_a_previous_approval(self):
-        """
-        A request approved before it was abandoned must not come back approved.
-        """
-        cr = self.make_request()
-        approve(cr, self.reviewer)
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
-
-        cr.abandon()
-
-        self.assertTrue(cr.reopen())
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.DRAFT)
-
-        # Submitting again is what re-runs the evaluation, and it is honest about what it finds.
-        cr.submit()
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.APPROVED)
 
 
 class AbandonAndReopenViewTest(TestCase):

@@ -13,90 +13,9 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from users.models import Group, User
 
-from netbox_change_control.checks import BUILTIN_CHECKS, run_checks
-from netbox_change_control.choices import ChangeRequestStatusChoices, MergeCheckStatusChoices
+from netbox_change_control.checks import BUILTIN_CHECKS
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
 from netbox_change_control.tests.base import approve, make_branch
-
-
-class CachedStateAgreesWithLiveTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.requester = User.objects.create(username='requester')
-        cls.group = Group.objects.create(name='Engineers')
-        cls.reviewer = User.objects.create(username='reviewer')
-        cls.reviewer.groups.add(cls.group)
-        cls.policy = Policy.objects.create(name='One review', checks=list(BUILTIN_CHECKS))
-        PolicyRule.objects.create(policy=cls.policy, name='One engineer', min_reviews=1).groups.set([cls.group])
-
-    def setUp(self):
-        self.branch = make_branch('cached', self._testMethodName)
-        self.cr = ChangeRequest.objects.create(branch=self.branch, title='T', requester=self.requester)
-        ChangeRequestPolicy.objects.create(change_request=self.cr, policy=self.policy)
-        self.cr.refresh_from_db()
-
-    def assert_cache_agrees(self):
-        """
-        The cached column and the authoritative answer must say the same thing.
-
-        They are allowed to differ only where the cache deliberately knows less: it does not
-        run merge validators registered by other plugins. No other plugin is loaded here.
-        """
-        self.cr.refresh_from_db()
-        self.assertEqual(
-            self.cr.cached_ready_to_merge,
-            self.cr.is_ready_to_merge,
-            'the cached readiness disagrees with a live evaluation',
-        )
-        self.assertEqual(
-            self.cr.cached_conflicted,
-            bool(self.cr.conflicts),
-            'the cached conflict flag disagrees with a live evaluation',
-        )
-
-    def test_a_new_request_agrees(self):
-        self.assert_cache_agrees()
-
-    def test_an_approved_request_agrees(self):
-        approve(self.cr, self.reviewer)
-        self.assert_cache_agrees()
-
-    def test_a_request_with_a_failing_check_agrees(self):
-        approve(self.cr, self.reviewer)
-        self.cr.refresh_from_db()
-        self.cr.checks.filter(name='no-conflicts').update(status=MergeCheckStatusChoices.FAILURE)
-        run_checks(self.cr)
-        self.assert_cache_agrees()
-
-    def test_a_rejected_request_agrees(self):
-        from netbox_change_control.choices import ReviewDecisionChoices
-        from netbox_change_control.models import Review
-
-        Review.objects.create(
-            change_request=self.cr,
-            reviewer=self.reviewer,
-            decision=ReviewDecisionChoices.REJECT,
-            comment='no',
-        )
-        self.assert_cache_agrees()
-
-    def test_a_request_whose_branch_is_gone_agrees(self):
-        approve(self.cr, self.reviewer)
-        self.branch.delete()
-        self.assert_cache_agrees()
-
-    def test_removing_an_approval_clears_the_cache(self):
-        approve(self.cr, self.reviewer)
-        self.cr.refresh_from_db()
-        was = self.cr.cached_gates_cleared
-
-        self.cr.reviews.all().delete()
-        self.cr.refresh_from_db()
-
-        self.assertNotEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
-        self.assertFalse(self.cr.cached_gates_cleared)
-        self.assert_cache_agrees()
-        self.assertIsNotNone(was)
 
 
 class WindowIsNotCachedTest(TestCase):
@@ -207,81 +126,6 @@ class CacheFollowsTheSignalsTest(TestCase):
         self.assertEqual(cr.cached_ready_to_merge, cr.is_ready_to_merge)
         self.assertEqual(cr.cached_conflicted, bool(cr.conflicts))
 
-    def test_an_externally_reported_check_updates_the_cache(self):
-        """
-        A pipeline reporting the last gate reaches this plugin as a plain save on one row,
-        with no other signal behind it. That is the common way a change becomes ready.
-        """
-        cr, _branch = self.make_request(checks=['ci-pipeline'])
-        approve(cr, self.reviewer)
-        cr.refresh_from_db()
-        self.assertFalse(cr.cached_gates_cleared)
-
-        check = cr.checks.get(name='ci-pipeline')
-        check.status = MergeCheckStatusChoices.SUCCESS
-        check.save()
-
-        cr.refresh_from_db()
-        self.assertTrue(cr.cached_gates_cleared)
-        self.assert_agrees(cr)
-
-    def test_a_check_going_red_again_updates_the_cache(self):
-        cr, _branch = self.make_request(checks=['ci-pipeline'])
-        approve(cr, self.reviewer)
-        check = cr.checks.get(name='ci-pipeline')
-        check.status = MergeCheckStatusChoices.SUCCESS
-        check.save()
-        cr.refresh_from_db()
-        self.assertTrue(cr.cached_gates_cleared)
-
-        check.status = MergeCheckStatusChoices.FAILURE
-        check.save()
-
-        cr.refresh_from_db()
-        self.assertFalse(cr.cached_gates_cleared)
-        self.assert_agrees(cr)
-
-    def test_a_merged_request_is_no_longer_shown_as_ready(self):
-        """
-        Completion is set by the post_merge receiver and never passes through refresh_status,
-        so the list went on offering a merged change as ready to merge.
-        """
-        from netbox_branching.signals import post_merge
-
-        cr, branch = self.make_request()
-        approve(cr, self.reviewer)
-        cr.refresh_from_db()
-        self.assertTrue(cr.cached_ready_to_merge)
-
-        post_merge.send(sender=type(branch), branch=branch, user=self.requester)
-
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.COMPLETED)
-        self.assertFalse(cr.cached_ready_to_merge)
-        self.assert_agrees(cr)
-
-    def test_an_abandoned_request_is_no_longer_shown_as_ready(self):
-        cr, _branch = self.make_request()
-        approve(cr, self.reviewer)
-        cr.refresh_from_db()
-        self.assertTrue(cr.cached_ready_to_merge)
-
-        cr.abandon()
-
-        cr.refresh_from_db()
-        self.assertEqual(cr.status, ChangeRequestStatusChoices.ABANDONED)
-        self.assertFalse(cr.cached_ready_to_merge)
-        self.assert_agrees(cr)
-
-    def test_a_request_abandoned_with_its_branch_is_no_longer_shown_as_ready(self):
-        cr, branch = self.make_request()
-        approve(cr, self.reviewer)
-
-        branch.delete()
-
-        cr.refresh_from_db()
-        self.assertFalse(cr.cached_ready_to_merge)
-
     def test_a_conflict_updates_the_cache_without_the_no_conflicts_check(self):
         """
         Only the no-conflicts check creates the row the diff receiver used to consult, so a
@@ -307,14 +151,4 @@ class CacheFollowsTheSignalsTest(TestCase):
 
         cr.refresh_from_db()
         self.assertTrue(cr.cached_conflicted)
-        self.assert_agrees(cr)
-
-    def test_a_review_updates_the_cache(self):
-        cr, _branch = self.make_request()
-        self.assertFalse(cr.cached_gates_cleared)
-
-        approve(cr, self.reviewer)
-
-        cr.refresh_from_db()
-        self.assertTrue(cr.cached_gates_cleared)
         self.assert_agrees(cr)

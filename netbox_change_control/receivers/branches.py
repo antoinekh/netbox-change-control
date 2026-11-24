@@ -1,10 +1,14 @@
 """
-Follow the branch: its merge completes the request, its revert returns it to Draft, its
-deletion abandons it, its name is kept, and a sync re-evaluates.
+Follow the branch: its merge completes the request, a failed merge is recorded, its revert
+returns it to Draft, its deletion abandons it, its name is kept, and a sync re-evaluates.
 """
 
+from core.choices import JobStatusChoices
+from core.signals import job_end
+from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
+from netbox_branching.jobs import MergeBranchJob
 from netbox_branching.models import Branch
 from netbox_branching.signals import post_merge, post_revert, post_sync
 
@@ -16,6 +20,7 @@ from netbox_change_control.policy import sync_policies
 __all__ = (
     'abandon_on_branch_delete',
     'complete_on_merge',
+    'record_failed_merge',
     'refresh_on_branch_change',
     'return_to_draft_on_revert',
     'track_branch_name',
@@ -34,6 +39,24 @@ def complete_on_merge(sender, branch, user=None, **kwargs):
     """
     if change_request := ChangeRequest.objects.filter(branch=branch).first():
         lifecycle.complete(change_request, user)
+
+
+@receiver(job_end)
+def record_failed_merge(sender, **kwargs):
+    """
+    Record a merge job that failed on the change request of its branch.
+
+    netbox-branching puts the branch back to ready and sends no signal, so the job is the only
+    trace of the failure.
+    """
+    if sender.name != MergeBranchJob.name:
+        return
+    if sender.status not in (JobStatusChoices.STATUS_ERRORED, JobStatusChoices.STATUS_FAILED):
+        return
+    if sender.object_type_id != ContentType.objects.get_for_model(Branch).pk:
+        return
+    if change_request := ChangeRequest.objects.filter(branch_id=sender.object_id).first():
+        lifecycle.record_failed_merge(change_request, sender.user)
 
 
 @receiver(post_revert)

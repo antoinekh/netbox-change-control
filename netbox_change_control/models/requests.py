@@ -566,7 +566,7 @@ class HistoryEntry(models.Model):
 
     class Meta:
         ordering = ('time', 'pk')
-        # Written by the status transitions only; nothing grants a write to them.
+        # Written by the lifecycle only; nothing grants a write to them.
         default_permissions = ()
         verbose_name = _('history entry')
         verbose_name_plural = _('history entries')

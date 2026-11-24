@@ -11,6 +11,8 @@
 - **Deleting a branch abandons its open change request.** A migration abandons the open requests whose branch is already gone.
 - **The policies follow the branch only while the request is under review.** Reopen and revert no longer match them; submitting does.
 - **`completed` on a merge check is set for a reported result too.** It is empty while the check is pending or running.
+- **A failed merge stops the automatic merge until the next approval.** The history records it.
+- **A change window that closes before an automatic merge is recorded.** The requester is notified, and `change_request_window_closed` is emitted.
 - Internal: the change window state is an enum, and the change request model holds every status guard.
 
 ### Fixed

@@ -8,7 +8,10 @@ Two triggers, because a request can become mergeable either by something happeni
 approval, a check reporting) or by time passing (the window opening):
 
 - `try_auto_merge` runs on the events that can satisfy the last gate;
-- `run_due_auto_merges` is a periodic job that catches windows opening.
+- `run_due_auto_merges` is a periodic job that catches windows opening, and records the windows
+  that closed before the merge.
+
+A merge that fails stops the automatic merge until the request is approved again.
 
 The second trigger only fires as often as `auto_merge_interval`, so `unreliable_window`
 reports the case where the window is too short for that sweep to be relied on.
@@ -20,7 +23,8 @@ from dataclasses import dataclass
 from core.choices import JobStatusChoices
 from netbox.plugins import get_plugin_config
 
-from netbox_change_control.choices import ChangeRequestStatusChoices
+from netbox_change_control import lifecycle
+from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState
 
 __all__ = (
     'UnreliableWindow',
@@ -107,6 +111,10 @@ def try_auto_merge(change_request):
 
     branch = change_request.branch
 
+    if lifecycle.merge_failed_since_approval(change_request):
+        logger.info('Auto-merge skipped for %s: a merge failed since its last approval', change_request)
+        return False
+
     # The merge runs as the requester, so it must be a merge the requester may make.
     if not change_request.requester_can_merge:
         logger.info('Auto-merge skipped for %s: %s cannot merge this branch', change_request, change_request.requester)
@@ -149,11 +157,14 @@ def try_auto_merge(change_request):
 
 def run_due_auto_merges():
     """
-    Merge every request whose gates are now satisfied.
+    Merge every request whose gates are now satisfied, and record each window that closed first.
 
     Called on a schedule so a request waiting only on its window opening is picked up.
     """
     from netbox_change_control.models import ChangeRequest
+
+    if not get_plugin_config('netbox_change_control', 'enable_auto_merge'):
+        return 0
 
     candidates = ChangeRequest.objects.filter(
         auto_merge=True,
@@ -164,7 +175,9 @@ def run_due_auto_merges():
     merged = 0
     for change_request in candidates:
         try:
-            if try_auto_merge(change_request):
+            if change_request.window_state() == ChangeWindowState.CLOSED:
+                lifecycle.record_closed_window(change_request)
+            elif try_auto_merge(change_request):
                 merged += 1
         except Exception:
             logger.exception('Auto-merge failed for %s', change_request)

@@ -13,7 +13,12 @@ from netbox_branching.jobs import MergeBranchJob
 from netbox_branching.models import Branch
 from users.models import User
 
-from netbox_change_control.choices import ChangeRequestStatusChoices, ChangeWindowState, MergeCheckStatusChoices
+from netbox_change_control.choices import (
+    ChangeRequestStatusChoices,
+    ChangeWindowState,
+    HistoryActionChoices,
+    MergeCheckStatusChoices,
+)
 from netbox_change_control.models import ChangeRequest
 from netbox_change_control.tests.base import ChangeControlTestCase, grant_merge, make_branch, pass_checks
 from netbox_change_control.validators import require_approved_change_request
@@ -269,6 +274,106 @@ class AutoMergeTest(ApprovedRequestTestCase):
         with patch.object(MergeBranchJob, 'enqueue') as merge:
             self.assertEqual(run_due_auto_merges(), 1)
             merge.assert_called_once()
+
+
+class AutoMergeStopsTest(ApprovedRequestTestCase):
+    """
+    An automatic merge stops after a failed merge, and records a window that closed first.
+    """
+
+    def setUp(self):
+        super().setUp()
+        grant_merge(self.requester)
+        self.cr.auto_merge = True
+        self.cr.save()
+
+    def _fail_a_merge(self):
+        import uuid
+
+        from core.choices import JobStatusChoices
+        from core.models import Job
+        from django.contrib.contenttypes.models import ContentType
+
+        job = Job.objects.create(
+            name=MergeBranchJob.name,
+            object_type=ContentType.objects.get_for_model(Branch),
+            object_id=self.branch.pk,
+            status=JobStatusChoices.STATUS_RUNNING,
+            user=self.requester,
+            job_id=uuid.uuid4(),
+        )
+        job.terminate(status=JobStatusChoices.STATUS_ERRORED, error='boom')
+
+    def _try(self):
+        from netbox_change_control.automerge import try_auto_merge
+
+        self.cr.refresh_from_db()
+        with patch.object(MergeBranchJob, 'enqueue') as merge:
+            try_auto_merge(self.cr)
+        return merge.called
+
+    def test_a_failed_merge_is_recorded(self):
+        self._fail_a_merge()
+
+        entry = self.cr.history.last()
+        self.assertEqual(entry.action, HistoryActionChoices.MERGE_FAILED)
+        self.assertEqual(entry.user, self.requester)
+
+    def test_a_failed_merge_stops_the_automatic_merge(self):
+        self._fail_a_merge()
+
+        self.assertFalse(self._try())
+
+    def test_a_new_approval_resumes_it(self):
+        self._fail_a_merge()
+
+        with patch.object(MergeBranchJob, 'enqueue'):
+            self.cr.return_to_draft()
+            self.cr.submit()
+        pass_checks(self.cr)
+
+        self.assertTrue(self._try())
+
+    def test_a_closed_window_is_recorded_once(self):
+        from netbox_change_control.automerge import run_due_auto_merges
+
+        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
+        self.cr.save()
+
+        run_due_auto_merges()
+        run_due_auto_merges()
+
+        self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.WINDOW_CLOSED).count(), 1)
+
+    def test_a_closed_window_notifies_the_requester(self):
+        from extras.models import Notification
+
+        from netbox_change_control.automerge import run_due_auto_merges
+        from netbox_change_control.events import CHANGE_REQUEST_WINDOW_CLOSED
+
+        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
+        self.cr.save()
+
+        run_due_auto_merges()
+
+        self.assertTrue(
+            Notification.objects.filter(user=self.requester, event_type=CHANGE_REQUEST_WINDOW_CLOSED).exists()
+        )
+
+    def test_a_window_moved_later_is_recorded_again_when_it_closes(self):
+        from netbox_change_control.automerge import run_due_auto_merges
+
+        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
+        self.cr.save()
+        run_due_auto_merges()
+
+        later = timezone.now() + timedelta(hours=1)
+        self.cr.scheduled_end = later
+        self.cr.save()
+        with patch('django.utils.timezone.now', return_value=later + timedelta(minutes=5)):
+            run_due_auto_merges()
+
+        self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.WINDOW_CLOSED).count(), 2)
 
 
 class AutoMergeIntervalTest(TestCase):

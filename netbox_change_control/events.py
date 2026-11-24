@@ -21,6 +21,7 @@ __all__ = (
     'CHANGE_REQUEST_REVERTED',
     'CHANGE_REQUEST_REVIEW_REQUESTED',
     'CHANGE_REQUEST_SUBMITTED',
+    'CHANGE_REQUEST_WINDOW_CLOSED',
     'REVIEW_SUBMITTED',
     'emit',
     'refresh_event_rule_form_choices',
@@ -33,6 +34,7 @@ CHANGE_REQUEST_APPROVED = 'change_request_approved'
 CHANGE_REQUEST_REJECTED = 'change_request_rejected'
 CHANGE_REQUEST_COMPLETED = 'change_request_completed'
 CHANGE_REQUEST_REVERTED = 'change_request_reverted'
+CHANGE_REQUEST_WINDOW_CLOSED = 'change_request_window_closed'
 
 EventType(CHANGE_REQUEST_SUBMITTED, _('Change request submitted'), kind=EVENT_TYPE_KIND_INFO).register()
 EventType(CHANGE_REQUEST_REVIEW_REQUESTED, _('Change request needs review'), kind=EVENT_TYPE_KIND_INFO).register()
@@ -41,6 +43,9 @@ EventType(CHANGE_REQUEST_APPROVED, _('Change request approved'), kind=EVENT_TYPE
 EventType(CHANGE_REQUEST_REJECTED, _('Change request rejected'), kind=EVENT_TYPE_KIND_WARNING).register()
 EventType(CHANGE_REQUEST_COMPLETED, _('Change request completed'), kind=EVENT_TYPE_KIND_SUCCESS).register()
 EventType(CHANGE_REQUEST_REVERTED, _('Change request reverted'), kind=EVENT_TYPE_KIND_WARNING).register()
+EventType(
+    CHANGE_REQUEST_WINDOW_CLOSED, _('Change request window closed before merge'), kind=EVENT_TYPE_KIND_WARNING
+).register()
 
 
 def refresh_event_rule_form_choices():

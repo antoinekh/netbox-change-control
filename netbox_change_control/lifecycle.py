@@ -13,6 +13,9 @@ Two kinds of move:
 - **Derived**: `refresh_status` recomputes Needs review, Approved or Rejected from the policy
   evaluation, `complete` records a merge, and `revert` undoes one. Signals call them, so no
   caller can forget.
+
+Two steps change no status but are recorded here too, as the history is: a merge that failed,
+and a change window that closed on an automatic merge.
 """
 
 from django.db import transaction
@@ -24,6 +27,9 @@ from netbox_change_control.choices import ChangeRequestStatusChoices, HistoryAct
 __all__ = (
     'abandon',
     'complete',
+    'merge_failed_since_approval',
+    'record_closed_window',
+    'record_failed_merge',
     'refresh_status',
     'reopen',
     'return_to_draft',
@@ -196,6 +202,53 @@ def revert(change_request, user=None):
         refresh_status(change_request)
         notify_revert(change_request)
         events.emit(change_request, events.CHANGE_REQUEST_REVERTED)
+    return True
+
+
+def record_failed_merge(change_request, user=None):
+    """
+    Record that `user`'s merge of the branch failed. The status stays, so the merge can be tried
+    again once its cause is fixed.
+    """
+    _record(change_request, HistoryActionChoices.MERGE_FAILED, user)
+
+
+def merge_failed_since_approval(change_request):
+    """
+    Whether a merge has failed since the request was last approved.
+
+    An automatic merge stops there: the same merge would fail again at every sweep. Approving
+    the request again is the decision to try again; a person can still merge it by hand.
+    """
+    last = (
+        change_request.history.filter(action__in=(HistoryActionChoices.APPROVED, HistoryActionChoices.MERGE_FAILED))
+        .order_by('-time', '-pk')
+        .values_list('action', flat=True)
+        .first()
+    )
+    return last == HistoryActionChoices.MERGE_FAILED
+
+
+def record_closed_window(change_request):
+    """
+    Record that the change window closed before the automatic merge, and tell the requester.
+    Returns True if it was recorded.
+
+    Once per window: a step recorded after the window closed covers it, and moving the window
+    later makes the next close a new one.
+    """
+    from netbox_change_control.notifications import notify_window_closed
+
+    with transaction.atomic():
+        if not change_request.lock_status():
+            return False
+        if change_request.history.filter(
+            action=HistoryActionChoices.WINDOW_CLOSED, time__gte=change_request.scheduled_end
+        ).exists():
+            return False
+        _record(change_request, HistoryActionChoices.WINDOW_CLOSED)
+        notify_window_closed(change_request)
+        events.emit(change_request, events.CHANGE_REQUEST_WINDOW_CLOSED)
     return True
 
 

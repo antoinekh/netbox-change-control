@@ -96,7 +96,8 @@ class ConditionStateChoices(ChoiceSet):
 
 class HistoryActionChoices(ChoiceSet):
     """
-    What happened to a change request: each status change, and each merge or revert of its branch.
+    What happened to a change request: each status change, each merge, failed merge or revert of
+    its branch, and each change window that closed on an automatic merge.
     """
 
     SUBMITTED = 'submitted'
@@ -105,6 +106,8 @@ class HistoryActionChoices(ChoiceSet):
     REJECTED = 'rejected'
     RETURNED_TO_DRAFT = 'returned-to-draft'
     MERGED = 'merged'
+    MERGE_FAILED = 'merge-failed'
+    WINDOW_CLOSED = 'window-closed'
     REVERTED = 'reverted'
     ABANDONED = 'abandoned'
     REOPENED = 'reopened'
@@ -116,6 +119,8 @@ class HistoryActionChoices(ChoiceSet):
         (REJECTED, _('Rejected'), 'red'),
         (RETURNED_TO_DRAFT, _('Returned to draft'), 'gray'),
         (MERGED, _('Merged'), 'blue'),
+        (MERGE_FAILED, _('Merge failed'), 'red'),
+        (WINDOW_CLOSED, _('Window closed before merge'), 'orange'),
         (REVERTED, _('Reverted'), 'purple'),
         (ABANDONED, _('Abandoned'), 'gray'),
         (REOPENED, _('Reopened'), 'teal'),

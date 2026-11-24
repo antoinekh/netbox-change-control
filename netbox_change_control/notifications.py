@@ -15,11 +15,13 @@ from netbox_change_control.events import (
     CHANGE_REQUEST_REJECTED,
     CHANGE_REQUEST_REVERTED,
     CHANGE_REQUEST_REVIEW_REQUESTED,
+    CHANGE_REQUEST_WINDOW_CLOSED,
 )
 
 __all__ = (
     'notify_revert',
     'notify_status_change',
+    'notify_window_closed',
     'pending_reviewers',
 )
 
@@ -79,6 +81,17 @@ def notify_revert(change_request):
         return
 
     _deliver(change_request, [change_request.requester], CHANGE_REQUEST_REVERTED)
+
+
+def notify_window_closed(change_request):
+    """
+    Tell the requester that the change window closed before the automatic merge, since they act
+    next by setting a new window or merging by hand.
+    """
+    if not get_plugin_config('netbox_change_control', 'notify_reviewers'):
+        return
+
+    _deliver(change_request, [change_request.requester], CHANGE_REQUEST_WINDOW_CLOSED)
 
 
 def _deliver(change_request, recipients, event_type):

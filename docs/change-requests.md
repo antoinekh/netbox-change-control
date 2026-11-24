@@ -92,6 +92,8 @@ The **History** tab of a change request lists each step, oldest first, with the 
 | Needs review | The request went back to review on its own, for example because the approvals went stale. |
 | Returned to draft | **Return to draft**. |
 | Merged | The branch merged. |
+| Merge failed | A merge of the branch failed. An [automatic merge](merging.md#automatic-merging) stops until the next approval. |
+| Window closed before merge | The request was approved and set to merge automatically, but its change window closed first, so it did not merge. |
 | Reverted | The branch was reverted. |
 | Abandoned | **Abandon**, or the branch was deleted. |
 | Reopened | **Reopen**. |

@@ -20,8 +20,11 @@ Notifications use NetBox's own inbox and appear in the bell menu. They fire on a
 | To Approved | The requester, who merges next. |
 | To Rejected | The requester. |
 | Back to Draft after a revert | The requester, who submits it again. |
+| Window closed before an automatic merge | The requester, who sets a new window or merges by hand. |
 
-Seven lifecycle event types are emitted, so a NetBox event rule can fire a webhook or run a script on any of them. They are separate from the notifications above: an event rule reaches other systems, a notification reaches a person. See [event rules](event-rules.md).
+A failed merge is a NetBox job that failed, so NetBox itself tells the user who ran it.
+
+Eight lifecycle event types are emitted, so a NetBox event rule can fire a webhook or run a script on any of them. They are separate from the notifications above: an event rule reaches other systems, a notification reaches a person. See [event rules](event-rules.md).
 
 Set `notify_reviewers` to `False` to turn the notifications off. The events are emitted either way, so an integration keeps working on a site that does not use the inbox.
 

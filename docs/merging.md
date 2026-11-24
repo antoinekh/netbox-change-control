@@ -68,6 +68,11 @@ The merge is **enqueued as a background job**, the same path the branching plugi
 
 If the branch changes during the wait, the approvals go stale, the status returns to Needs review, and the evening merge does not happen. Approval is only valid for the branch state it was given against.
 
+Two things stop an automatic merge, and the [history](change-requests.md#history) records each one:
+
+- **A merge fails.** The request stays Approved, and the automatic merge does not try again, because the same merge would fail at every sweep. Fix the cause, then merge by hand, or return the request to draft and submit it again: the new approval starts the automatic merge again. A failed dry run counts too, because it fails for the same reasons.
+- **The window closes first.** The requester is notified and the `change_request_window_closed` event is emitted, once per window. Set a later window to merge automatically again.
+
 ## The sweep interval
 
 The sweep is a NetBox **system job**, `Change control: automatic merges`, run by the worker. It is not an event rule. One indexed query finds the candidates, which are the approved requests that opted in; each candidate then costs a full re-evaluation of its gates. With no opted-in request waiting, a run is a single query and nothing else.

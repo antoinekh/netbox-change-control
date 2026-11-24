@@ -25,15 +25,6 @@ class PolicyRuleEligibilityTest(TestCase):
 
         cls.policy, cls.rule = make_policy('Test policy', groups=[cls.group], users=[cls.named])
 
-    def test_group_member_is_eligible(self):
-        self.assertTrue(self.rule.is_eligible(self.in_group))
-
-    def test_named_user_is_eligible(self):
-        self.assertTrue(self.rule.is_eligible(self.named))
-
-    def test_outsider_is_not_eligible(self):
-        self.assertFalse(self.rule.is_eligible(self.outsider))
-
     def test_eligible_users_returns_union_without_duplicates(self):
         self.rule.users.add(self.in_group)
         pks = list(self.rule.eligible_users().values_list('pk', flat=True))

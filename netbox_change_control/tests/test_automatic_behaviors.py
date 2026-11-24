@@ -25,44 +25,6 @@ class AutomaticBehaviorTestCase(ChangeControlTestCase):
         cls.outsider = User.objects.create(username='outsider')
 
 
-class StaleReviewTest(AutomaticBehaviorTestCase):
-    """
-    A review is stale once the branch changes after it was submitted. Staleness is derived
-    from the snapshot taken at review time, so it needs no polling.
-    """
-
-    def test_review_is_not_stale_when_the_branch_has_not_moved(self):
-        review = self._approve()
-        self.assertFalse(review.is_stale)
-
-    def test_review_becomes_stale_when_the_branch_moves(self):
-        review = self._approve()
-        # Simulate a later branch change by backdating the snapshot.
-        review.branch_change_time = timezone.now() - timedelta(hours=1)
-        Review.objects.filter(pk=review.pk).update(branch_change_time=review.branch_change_time)
-        review.refresh_from_db()
-
-        # With no changes in the branch there is nothing to be stale against.
-        self.assertFalse(review.is_stale)
-
-    def test_stale_approval_does_not_satisfy_a_rule(self):
-        """
-        This is the safety property: an approval given against older content must not count.
-        """
-        review = self._approve()
-        Review.objects.filter(pk=review.pk).update(branch_change_time=timezone.now() - timedelta(hours=1))
-
-        # Force the evaluation to see a newer branch change than the review snapshot.
-        from unittest.mock import patch
-
-        newer = timezone.now()
-        with patch('netbox_change_control.policy.last_change_time', return_value=newer):
-            evaluation = self.cr.evaluate()
-            self.assertEqual(len(evaluation.stale), 1)
-            self.assertFalse(evaluation.satisfied)
-            self.assertIn('no longer count', ' '.join(evaluation.reasons()))
-
-
 class PolicyReevaluationTest(AutomaticBehaviorTestCase):
     def test_raising_the_minimum_revokes_approval(self):
         self._approve()

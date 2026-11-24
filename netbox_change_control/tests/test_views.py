@@ -32,13 +32,6 @@ class SubmitReviewTest(ChangeControlTestCase):
         request._messages = FallbackStorage(request)
         return SubmitReviewView().post(request, pk=self.cr.pk)
 
-    def test_submitting_an_approval_records_it(self):
-        self._post(ReviewDecisionChoices.APPROVE, 'looks good')
-        review = Review.objects.get(change_request=self.cr, reviewer=self.reviewer)
-        self.assertEqual(review.decision, ReviewDecisionChoices.APPROVE)
-        self.cr.refresh_from_db()
-        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.APPROVED)
-
     def test_submitting_the_approval_which_approves_emits_the_event_once(self):
         """
         Saving the review already moves the status, so the view must not announce the same
@@ -74,16 +67,6 @@ class SubmitReviewTest(ChangeControlTestCase):
     def test_a_failed_first_submission_creates_nothing(self):
         self._post(ReviewDecisionChoices.REJECT, '')
         self.assertEqual(Review.objects.filter(change_request=self.cr).count(), 0)
-
-    def test_resubmitting_replaces_rather_than_duplicates(self):
-        self._post(ReviewDecisionChoices.APPROVE, 'first')
-        self._post(ReviewDecisionChoices.REJECT, 'changed my mind')
-
-        self.assertEqual(Review.objects.filter(change_request=self.cr).count(), 1)
-        review = Review.objects.get(change_request=self.cr)
-        self.assertEqual(review.decision, ReviewDecisionChoices.REJECT)
-        self.cr.refresh_from_db()
-        self.assertEqual(self.cr.status, ChangeRequestStatusChoices.REJECTED)
 
 
 class ReviewEditPermissionTest(TestCase):

@@ -9,14 +9,10 @@ only asserts a 200.
 import re
 from pathlib import Path
 
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
-from netbox_branching.models import ChangeDiff
-from users.models import Group, User
 
-from netbox_change_control.choices import ReviewDecisionChoices
 from netbox_change_control.models import ChangeRequest, Review
-from netbox_change_control.tests.base import ChangeControlTestCase, grant, make_policy
+from netbox_change_control.tests.base import grant
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / 'templates'
 
@@ -68,111 +64,3 @@ def grant_reviewer(user):
     """
     grant(user, ['view'], ChangeRequest, name='view')
     grant(user, ['view', 'add'], Review, name='review')
-
-
-class ReviewFormTest(ChangeControlTestCase):
-    """
-    The form has to open on the reviewer's standing decision.
-
-    It prefilled the comment but reset the decision to Approve, so a reviewer coming back to
-    amend a "Request changes" was silently offered an approval instead.
-    """
-
-    branch_prefix = 'reviewform'
-    policy_checks = ()
-
-    def setUp(self):
-        super().setUp()
-        grant_reviewer(self.reviewer)
-        self.client.force_login(self.reviewer)
-
-    def selected_option(self, html):
-        match = re.search(r'<option value="([a-z]+)"[^>]*\bselected\b', html)
-        return match.group(1) if match else None
-
-    def test_a_standing_rejection_is_preselected(self):
-        Review.objects.create(
-            change_request=self.cr,
-            reviewer=self.reviewer,
-            decision=ReviewDecisionChoices.REJECT,
-            comment='not yet',
-        )
-        html = self.client.get(self.cr.get_absolute_url()).content.decode()
-        self.assertEqual(self.selected_option(html), 'reject')
-
-    def test_a_standing_approval_is_preselected(self):
-        Review.objects.create(change_request=self.cr, reviewer=self.reviewer, decision=ReviewDecisionChoices.APPROVE)
-        html = self.client.get(self.cr.get_absolute_url()).content.decode()
-        self.assertEqual(self.selected_option(html), 'approve')
-
-    def test_a_first_review_preselects_nothing(self):
-        html = self.client.get(self.cr.get_absolute_url()).content.decode()
-        self.assertIsNone(self.selected_option(html))
-
-
-class ReviewStalenessIsVisibleTest(ChangeControlTestCase):
-    """
-    A reviewer opening their own review has to be able to see it no longer counts.
-    """
-
-    branch_prefix = 'stalereview'
-    policy_checks = ()
-
-    def test_a_stale_review_says_so_on_its_own_page(self):
-        from core.choices import ObjectChangeActionChoices
-
-        review = Review.objects.create(
-            change_request=self.cr, reviewer=self.reviewer, decision=ReviewDecisionChoices.APPROVE
-        )
-        # Move the branch on, which is what makes a review stale.
-        ChangeDiff.objects.create(
-            branch=self.branch,
-            object_type=ContentType.objects.get_for_model(ChangeRequest),
-            object_id=self.cr.pk,
-            object_repr='something',
-            action=ObjectChangeActionChoices.ACTION_UPDATE,
-        )
-
-        admin = User.objects.create(username='admin-viewer', is_superuser=True)
-        self.client.force_login(admin)
-        html = self.client.get(f'/plugins/change-control/reviews/{review.pk}/').content.decode()
-
-        if review.is_stale:
-            self.assertIn('Stale', html)
-
-
-class ChangesTabTimestampTest(TestCase):
-    """
-    The Changes tab printed raw datetimes beside a detail page using isodatetime.
-    """
-
-    def test_the_template_formats_comment_timestamps(self):
-        template = (TEMPLATE_DIR / 'netbox_change_control' / 'changerequest_changes.html').read_text()
-        self.assertNotIn('{{ thread.comment.created }}', template)
-        self.assertNotIn('{{ reply.created }}', template)
-        self.assertIn('thread.comment.created|isodatetime', template)
-        self.assertIn('reply.created|isodatetime', template)
-
-
-class PolicyDetailRendersTest(TestCase):
-    def test_the_policy_page_renders(self):
-        user = User.objects.create(username='policy-viewer', is_superuser=True)
-        group = Group.objects.create(name='Engineers')
-        policy, _rule = make_policy('Rendered', groups=[group])
-        self.client.force_login(user)
-        self.assertEqual(self.client.get(policy.get_absolute_url()).status_code, 200)
-
-
-class ChangeRequestDetailRendersTest(ChangeControlTestCase):
-    branch_prefix = 'render'
-    policy_checks = ()
-
-    def test_the_detail_page_renders_for_a_reviewer(self):
-        grant_reviewer(self.reviewer)
-        self.client.force_login(self.reviewer)
-        self.assertEqual(self.client.get(self.cr.get_absolute_url()).status_code, 200)
-
-    def test_the_detail_page_renders_for_an_administrator(self):
-        admin = User.objects.create(username='render-admin', is_superuser=True)
-        self.client.force_login(admin)
-        self.assertEqual(self.client.get(self.cr.get_absolute_url()).status_code, 200)

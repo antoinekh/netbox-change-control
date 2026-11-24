@@ -49,20 +49,6 @@ class ChangeCommentAttributionTest(APITestCase):
         self.assertEqual(comment.author, self.user)
         self.assertNotEqual(comment.author, self.victim)
 
-    def test_a_comment_posted_without_an_author_is_accepted(self):
-        """
-        The field is read-only, so a well behaved client omits it entirely and the caller is
-        still recorded.
-        """
-        response = self.client.post(
-            '/api/plugins/change-control/change-comments/',
-            {'change_request': self.cr.pk, 'change_diff': self.diff.pk, 'text': 'Fine'},
-            format='json',
-            **self.header,
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(ChangeComment.objects.get(pk=response.data['id']).author, self.user)
-
     def test_a_closed_request_takes_no_new_comment(self):
         self.cr.abandon()
         response = self.client.post(

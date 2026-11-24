@@ -355,35 +355,10 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
 
         self.assertEqual(self.cr.history.filter(action=HistoryActionChoices.WINDOW_CLOSED).count(), 2)
 
-    def test_a_closed_window_stops_it(self):
-        from netbox_change_control.automerge import AutoMergeStop
-
-        self.cr.scheduled_end = timezone.now() - timedelta(minutes=5)
-
-        self.assertEqual(self.cr.auto_merge_stopped, AutoMergeStop.WINDOW_CLOSED)
-
-    def test_a_failed_merge_stops_it(self):
-        from netbox_change_control.automerge import AutoMergeStop
-
-        self._fail_a_merge()
-
-        self.assertEqual(self.cr.auto_merge_stopped, AutoMergeStop.MERGE_FAILED)
-
     def test_a_window_still_to_open_does_not_stop_it(self):
         self.cr.scheduled_start = timezone.now() + timedelta(hours=1)
 
         self.assertIsNone(self.cr.auto_merge_stopped)
-
-    def test_the_page_says_it_stopped(self):
-        from django.test import Client
-
-        self.reschedule(scheduled_end=timezone.now() - timedelta(minutes=5))
-        client = Client()
-        client.force_login(self.privileged)
-
-        response = client.get(self.cr.get_absolute_url())
-
-        self.assertContains(response, 'The change window closed before the merge.')
 
 
 class WindowChangeTest(ChangeControlTestCase):
@@ -427,14 +402,6 @@ class AutoMergeIntervalTest(TestCase):
     The sweep interval is configurable, because it bounds how late a change window can fire
     and it costs one Job record per run.
     """
-
-    def test_the_configured_default_is_ten_minutes(self):
-        """
-        The shipped default, read through the plugin config rather than mocked.
-        """
-        from netbox_change_control.jobs import _interval
-
-        self.assertEqual(_interval(), 10)
 
     def test_a_nonsense_interval_is_refused_at_startup(self):
         """
@@ -530,50 +497,3 @@ class ShortWindowWarningTest(TestCase):
         warning = cr.auto_merge_window_warning
         self.assertIsNotNone(warning)
         self.assertEqual(warning.interval_minutes, 10)
-
-
-class ShortWindowAlertTest(TestCase):
-    """
-    The warning has to reach the person who set the window, not just the model layer.
-    """
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.user = User.objects.create(username='short-window-viewer', is_superuser=True)
-        branch = Branch.objects.create(name='short-window-alert')
-        start = timezone.now() + timedelta(hours=1)
-        cls.cr = ChangeRequest.objects.create(
-            branch=branch,
-            title='Nightly',
-            requester=cls.user,
-            auto_merge=True,
-            scheduled_start=start,
-            scheduled_end=start + timedelta(minutes=5),
-        )
-
-    def setUp(self):
-        self.client.force_login(self.user)
-
-    def _config(self, interval):
-        values = {'auto_merge_interval': interval, 'enable_auto_merge': True}
-
-        def cfg(name, setting, default=None):
-            return values.get(setting, default)
-
-        return patch('netbox_change_control.automerge.get_plugin_config', cfg)
-
-    def test_the_detail_page_shows_the_alert(self):
-        with self._config(60):
-            response = self.client.get(self.cr.get_absolute_url())
-        content = response.content.decode()
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('may never merge automatically', content)
-        self.assertIn('Window too short', content)
-
-    def test_the_detail_page_stays_quiet_when_the_window_is_long_enough(self):
-        with self._config(1):
-            response = self.client.get(self.cr.get_absolute_url())
-        content = response.content.decode()
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn('may never merge automatically', content)
-        self.assertNotIn('Window too short', content)

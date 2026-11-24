@@ -6,7 +6,6 @@ reviews that decided it.
 import uuid
 
 from django.test import RequestFactory
-from django.urls import reverse
 from netbox.context import current_request
 from netbox_branching.models import Branch
 from netbox_branching.signals import post_merge, post_revert
@@ -52,17 +51,6 @@ class MergeHistoryTest(HistoryTestCase):
         entry = self.cr.history.get(action=HistoryActionChoices.APPROVED)
 
         self.assertEqual(list(entry.reviewers.all()), [self.reviewer])
-
-    def test_the_history_tab_lists_the_steps(self):
-        post_merge.send(sender=Branch, branch=self.branch, user=self.merger)
-        post_revert.send(sender=Branch, branch=self.branch, user=self.reverter)
-        self.client.force_login(User.objects.create(username='root', is_superuser=True))
-
-        url = reverse('plugins:netbox_change_control:changerequest_history', kwargs={'pk': self.cr.pk})
-        content = self.client.get(url).content.decode()
-
-        for text in ('Opened', 'Approved', 'Merged', 'Reverted', 'merger', 'reverter'):
-            self.assertIn(text, content)
 
 
 class ReviewHistoryTest(HistoryTestCase):

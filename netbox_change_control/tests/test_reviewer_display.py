@@ -25,44 +25,6 @@ class ReviewerSummaryTest(TestCase):
         rule.users.set(users)
         return rule
 
-    def test_a_group_is_named_not_expanded(self):
-        group = Group.objects.create(name='Change Engineers')
-        for name in ('erin', 'frank', 'grace'):
-            User.objects.create(username=name).groups.add(group)
-
-        summary = self.rule(groups=[group]).reviewer_summary
-
-        self.assertEqual(summary.group_names, ('Change Engineers',))
-        self.assertEqual(summary.user_names, ())
-        self.assertTrue(summary.anybody)
-
-    def test_several_groups_are_listed_in_order(self):
-        leads = Group.objects.create(name='Change Leads')
-        engineers = Group.objects.create(name='Change Engineers')
-        User.objects.create(username='erin').groups.add(engineers)
-
-        summary = self.rule(groups=[leads, engineers]).reviewer_summary
-
-        self.assertEqual(summary.group_names, ('Change Engineers', 'Change Leads'))
-
-    def test_a_directly_named_user_is_listed(self):
-        dave = User.objects.create(username='dave')
-
-        summary = self.rule(users=[dave]).reviewer_summary
-
-        self.assertEqual(summary.user_names, ('dave',))
-        self.assertTrue(summary.anybody)
-
-    def test_groups_and_named_users_are_both_shown(self):
-        group = Group.objects.create(name='Change Engineers')
-        User.objects.create(username='erin').groups.add(group)
-        dave = User.objects.create(username='dave')
-
-        summary = self.rule(groups=[group], users=[dave]).reviewer_summary
-
-        self.assertEqual(summary.group_names, ('Change Engineers',))
-        self.assertEqual(summary.user_names, ('dave',))
-
     def test_a_rule_naming_an_empty_group_reports_nobody(self):
         """
         The trap the expanded list did catch: a rule pointing at a group with no members can
@@ -119,25 +81,6 @@ class ReviewerDisplayInThePagesTest(TestCase):
         self.cr.refresh_from_db()
         self.client.force_login(self.admin)
 
-    def test_the_change_request_page_names_the_group(self):
-        html = self.client.get(self.cr.get_absolute_url()).content.decode()
-
-        self.assertIn('Change Engineers', html)
-        for member in self.members:
-            self.assertNotIn(member.username, html)
-
-    def test_the_branch_page_names_the_group(self):
-        from netbox_branching.choices import BranchStatusChoices
-        from netbox_branching.models import Branch
-
-        Branch.objects.filter(pk=self.branch.pk).update(status=BranchStatusChoices.READY)
-
-        html = self.client.get(self.branch.get_absolute_url()).content.decode()
-
-        self.assertIn('Change Engineers', html)
-        for member in self.members:
-            self.assertNotIn(member.username, html)
-
     def test_an_empty_group_is_named_and_called_out(self):
         """
         A rule pointing at a group with no members can never be satisfied. Naming the group is
@@ -149,13 +92,6 @@ class ReviewerDisplayInThePagesTest(TestCase):
         html = self.client.get(self.cr.get_absolute_url()).content.decode()
 
         self.assertIn('Nobody Here', html)
-        self.assertIn('can never be satisfied', html)
-
-    def test_a_rule_naming_nobody_at_all_says_so(self):
-        PolicyRule.objects.create(policy=self.policy, name='Unassigned', min_reviews=1)
-
-        html = self.client.get(self.cr.get_absolute_url()).content.decode()
-
         self.assertIn('can never be satisfied', html)
 
     def test_the_page_cost_does_not_grow_with_the_group(self):

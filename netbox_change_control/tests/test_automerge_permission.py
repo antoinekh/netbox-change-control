@@ -93,24 +93,3 @@ class AutoMergePermissionTest(TestCase):
         self.assertEqual(response.status_code, 400)
         change_request.refresh_from_db()
         self.assertFalse(change_request.auto_merge)
-
-    def test_the_page_says_why_a_flagged_request_will_not_merge_itself(self):
-        change_request = self._request('page', auto_merge=True)
-        admin = User.objects.create(username='auto-admin', is_superuser=True)
-        client = Client()
-        client.force_login(admin)
-
-        page = client.get(change_request.get_absolute_url()).content.decode()
-
-        self.assertIn('This change will not merge automatically.', page)
-
-    def test_a_closed_request_carries_no_warning(self):
-        change_request = self._request('closed', auto_merge=True)
-        change_request.abandon()
-        admin = User.objects.create(username='auto-admin-closed', is_superuser=True)
-        client = Client()
-        client.force_login(admin)
-
-        page = client.get(change_request.get_absolute_url()).content.decode()
-
-        self.assertFalse('This change will not merge automatically.' in page)

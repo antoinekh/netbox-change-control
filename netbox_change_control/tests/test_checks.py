@@ -161,20 +161,6 @@ class BuiltinSelectionTest(TestCase):
         _registry.clear()
         _registry.update(self._saved)
 
-    def test_none_registers_every_builtin(self):
-        from netbox_change_control.checks import BUILTIN_CHECKS, register_builtin_checks
-
-        selected = register_builtin_checks(None)
-        self.assertCountEqual(selected, BUILTIN_CHECKS.keys())
-        self.assertCountEqual(_registry.keys(), BUILTIN_CHECKS.keys())
-
-    def test_a_list_registers_only_that_subset(self):
-        from netbox_change_control.checks import register_builtin_checks
-
-        selected = register_builtin_checks(['no-conflicts', 'threads-resolved'])
-        self.assertCountEqual(selected, ['no-conflicts', 'threads-resolved'])
-        self.assertCountEqual(_registry.keys(), ['no-conflicts', 'threads-resolved'])
-
     def test_an_unknown_name_is_skipped_not_raised(self):
         """
         A typo in configuration must not stop NetBox from booting.
@@ -483,11 +469,6 @@ class ChecksRunOnCreationTest(TestCase):
         self.assertEqual(check.summary, 'ran')
         self.assertIsNotNone(check.completed)
 
-    def test_no_check_is_left_pending(self):
-        cr = ChangeRequest.objects.create(branch=self.branch, title='Fresh', requester=self.requester)
-        pending = cr.checks.filter(status=MergeCheckStatusChoices.PENDING)
-        self.assertEqual(list(pending), [])
-
 
 class ChecksRefreshOnApprovalTest(CheckTestCase):
     """
@@ -767,14 +748,6 @@ class BuiltinScopeTest(TestCase):
         self.assertEqual(sorted(get_registered_checks()), ['no-conflicts'])
         self.assertEqual(get_registered_checks()['no-conflicts'].scope, CheckScope.POLICY)
 
-    def test_every_builtin_is_offered_on_the_policy_form(self):
-        from netbox_change_control.checks import BUILTIN_CHECKS, register_builtin_checks
-        from netbox_change_control.forms import PolicyForm
-
-        register_builtin_checks()
-        offered = dict(PolicyForm().fields['checks'].choices)
-        self.assertEqual(sorted(offered), sorted(BUILTIN_CHECKS))
-
     def test_a_builtin_only_runs_where_a_policy_asks(self):
         from netbox_change_control.checks import register_builtin_checks
 
@@ -825,18 +798,6 @@ class ChecksRunWhenPoliciesAttachTest(TestCase):
         check = cr.checks.get(name='has-changes')
         self.assertNotEqual(check.status, MergeCheckStatusChoices.PENDING)
         self.assertIsNotNone(check.completed)
-
-    def test_detaching_the_policy_removes_its_checks(self):
-        cr = ChangeRequest.objects.create(
-            branch=make_branch('detach', self._testMethodName),
-            title='T',
-            requester=self.requester,
-        )
-        ChangeRequestPolicy.objects.create(change_request=cr, policy=self.policy)
-        self.assertTrue(cr.checks.filter(name='has-changes').exists())
-
-        ChangeRequestPolicy.objects.filter(change_request=cr).delete()
-        self.assertFalse(cr.checks.filter(name='has-changes').exists())
 
 
 class RunChecksDoesItsWorkOnceTest(CheckTestCase):

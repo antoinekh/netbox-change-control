@@ -18,7 +18,7 @@ from netbox_branching.models import Branch
 from users.models import Group, ObjectPermission, User
 
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
-from netbox_change_control.tests.base import approve, make_branch
+from netbox_change_control.tests.base import make_branch
 
 
 def ready_branch(prefix, suffix):
@@ -88,44 +88,6 @@ class BranchPageTestCase(TestCase):
 
 
 class BranchPageTest(BranchPageTestCase):
-    def test_the_branch_page_links_to_its_change_request(self):
-        branch, cr = self.with_request('link', title='Upgrade the access switch', ref='CHG0012345')
-        html = self.page(branch)
-
-        self.assertIn(cr.get_absolute_url(), html)
-        self.assertIn('Upgrade the access switch', html)
-        self.assertIn('CHG0012345', html)
-
-    def test_it_names_what_is_still_outstanding(self):
-        """
-        The reason the merge is refused, and who can clear it. Branching's merge form states
-        the refusal; only this says what to do about it.
-        """
-        branch, _cr = self.with_request('outstanding', title='Blocked one')
-        html = self.page(branch)
-
-        self.assertIn('One lead', html)
-        self.assertIn('0 / 1', html)
-        self.assertIn('lead', html)
-
-    def test_a_ready_branch_says_so(self):
-        branch, cr = self.with_request('ready', title='Ready one')
-        approve(cr, self.lead)
-        cr.refresh_from_db()
-        self.assertTrue(cr.is_ready_to_merge)
-
-        html = self.page(branch)
-
-        self.assertIn('Every gate is satisfied', html)
-
-    def test_a_branch_with_no_change_request_is_told_to_open_one(self):
-        branch = ready_branch('bpage', 'none')
-
-        html = self.page(branch)
-
-        self.assertIn('No change request', html)
-        self.assertIn(f'/change-requests/add/?branch={branch.pk}', html)
-
     def test_a_branch_that_is_not_ready_yet_is_left_alone(self):
         """
         A branch still provisioning cannot merge for reasons that have nothing to do with

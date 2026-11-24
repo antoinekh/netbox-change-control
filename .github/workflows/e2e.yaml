@@ -1,0 +1,120 @@
+name: Browser tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Browser tests on NetBox v4.7.4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: netbox
+          POSTGRES_PASSWORD: netbox
+          POSTGRES_DB: netbox
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@v7
+        with:
+          path: netbox-change-control
+
+      - name: Check out NetBox
+        uses: actions/checkout@v7
+        with:
+          repository: netbox-community/netbox
+          ref: v4.7.4
+          path: netbox
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          cache: pip
+
+      - name: Install NetBox, netbox-branching and the plugin
+        run: |
+          python -m pip install --upgrade pip uv
+          pip install -r netbox/requirements.txt
+          pip install 'netboxlabs-netbox-branching>=1.2.2,<1.3'
+          pip install -e ./netbox-change-control
+
+      - name: Configure NetBox
+        run: |
+          ln -s "$GITHUB_WORKSPACE/netbox-change-control/testing/configuration.py" \
+                "$GITHUB_WORKSPACE/netbox/netbox/netbox/configuration.py"
+
+      - name: Grant the database user permission to create schemas
+        env:
+          PGPASSWORD: netbox
+        run: psql -h localhost -U netbox -d netbox -c 'GRANT CREATE ON DATABASE netbox TO netbox;'
+
+      - name: Migrate and create the superuser's API token
+        working-directory: netbox
+        run: |
+          python netbox/manage.py migrate --no-input
+          python netbox/manage.py shell -c "
+          from users.models import Token, User
+          admin = User.objects.create_superuser('e2e-admin', 'e2e@example.com', 'e2e-admin-Passw0rd!')
+          token = Token(user=admin, description='e2e')
+          token.full_clean()
+          token.save()
+          print('E2E_AUTHORIZATION=' + token.get_auth_header_prefix() + token.token)
+          " | grep '^E2E_AUTHORIZATION=' >> "$GITHUB_ENV"
+
+      # Branches are provisioned and merged by jobs, so the worker runs beside the server.
+      - name: Start NetBox and its worker
+        working-directory: netbox
+        run: |
+          nohup python netbox/manage.py runserver --insecure --noreload 0.0.0.0:8000 > "$RUNNER_TEMP/web.log" 2>&1 &
+          nohup python netbox/manage.py rqworker high default low > "$RUNNER_TEMP/worker.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            curl -fs -o /dev/null http://localhost:8000/login/ && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/web.log"
+          exit 1
+
+      - name: Install the browser
+        working-directory: netbox-change-control
+        run: uv run --only-group e2e playwright install --with-deps chromium
+
+      - name: Run the browser tests
+        working-directory: netbox-change-control
+        env:
+          NETBOX_URL: http://localhost:8000
+        run: uv run --only-group e2e pytest e2e -v
+
+      - name: Show the server logs
+        if: failure()
+        run: tail -n 200 "$RUNNER_TEMP/web.log" "$RUNNER_TEMP/worker.log"

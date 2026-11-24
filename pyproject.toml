@@ -36,6 +36,10 @@ Source = "https://github.com/antoinekh/netbox-change-control"
 Changelog = "https://antoinekh.github.io/netbox-change-control/changelog/"
 Issues = "https://github.com/antoinekh/netbox-change-control/issues"
 
+[dependency-groups]
+# The browser tests in e2e/ drive a running NetBox; they are not part of the package.
+e2e = ["pytest>=8.3", "pytest-playwright>=0.6"]
+
 [tool.setuptools.packages.find]
 # The test suite ships with the package, as netbox-branching's does, so it can be run
 # against an installed copy. The seed commands do not: they live in dev/ as a separate

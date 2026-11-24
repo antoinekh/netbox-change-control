@@ -87,6 +87,19 @@ class NotificationTest(TestCase):
 
         self.assertEqual(self._notifications(self.eng).count(), 1)
         self.assertIsNone(self._notifications(self.eng).first().read)
+
+    def test_a_repeat_notification_is_dated_now(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        long_ago = timezone.now() - timedelta(days=30)
+        self._notifications(self.eng).update(created=long_ago)
+
+        self.cr.return_to_draft()
+        self.cr.submit()
+
+        self.assertGreater(self._notifications(self.eng).get().created, long_ago + timedelta(days=29))
         self.assertIsNone(self._notifications(self.eng).first().read)
 
 

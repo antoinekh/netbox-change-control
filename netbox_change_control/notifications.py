@@ -7,6 +7,7 @@ request does not spam its reviewers.
 """
 
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 from netbox.plugins import get_plugin_config
 
 from netbox_change_control.choices import ChangeRequestStatusChoices
@@ -99,7 +100,8 @@ def _deliver(change_request, recipients, event_type):
     Write one notification per recipient.
 
     Notification carries a unique constraint on (object_type, object_id, user), so a repeat
-    notification updates the existing row and marks it unread again rather than failing.
+    notification updates the existing row, marks it unread again and dates it now, so it sorts
+    with the new notifications rather than at its first date.
     """
     from extras.models import Notification
 
@@ -113,5 +115,6 @@ def _deliver(change_request, recipients, event_type):
                 'event_type': event_type,
                 'object_repr': str(change_request)[:200],
                 'read': None,
+                'created': timezone.now(),
             },
         )

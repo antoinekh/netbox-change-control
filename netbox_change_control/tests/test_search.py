@@ -103,18 +103,44 @@ class SearchFindsThingsTest(TestCase):
         self.index_everything()
         return {(r.object._meta.model_name, r.object.pk) for r in search_backend.search(term)}
 
-    def test_a_change_request_is_found_by_its_reference(self):
-        """
-        The reason this file exists. A pipeline or a colleague has a ticket number and nothing
-        else.
-        """
-        self.assertIn(('changerequest', self.cr.pk), self.found('CHG0012345'))
-
-    def test_a_change_request_is_found_by_its_title(self):
-        self.assertIn(('changerequest', self.cr.pk), self.found('access switch'))
-
-    def test_a_change_request_is_found_by_its_description(self):
-        self.assertIn(('changerequest', self.cr.pk), self.found('line card'))
+    def test_each_indexed_field_finds_its_object(self):
+        policy = Policy.objects.create(name='Circuit changes', description='customer facing')
+        rule = PolicyRule.objects.create(policy=policy, name='Two engineers', min_reviews=2)
+        review = Review.objects.create(
+            change_request=self.cr,
+            reviewer=self.reviewer,
+            decision=ReviewDecisionChoices.REJECT,
+            comment='the loopback address is wrong',
+        )
+        comment = ChangeComment.objects.create(
+            change_request=self.cr,
+            author=self.reviewer,
+            text='are we sure about this rack?',
+            change_label='dmi01-akron-rtr01',
+        )
+        # After the comment: a comment runs the checks, which drop a row no policy declares.
+        check = MergeCheck.objects.create(
+            change_request=self.cr,
+            name='ci-pipeline',
+            label='CI pipeline',
+            status=MergeCheckStatusChoices.FAILURE,
+            summary='config render failed on core-sw-1',
+        )
+        cases = (
+            # A pipeline or a colleague often has a ticket number and nothing else.
+            ('CHG0012345', ('changerequest', self.cr.pk)),
+            ('access switch', ('changerequest', self.cr.pk)),
+            ('line card', ('changerequest', self.cr.pk)),
+            ('Circuit changes', ('policy', policy.pk)),
+            ('Two engineers', ('policyrule', rule.pk)),
+            ('loopback address', ('review', review.pk)),
+            ('config render failed', ('mergecheck', check.pk)),
+            ('sure about this rack', ('changecomment', comment.pk)),
+            ('dmi01-akron-rtr01', ('changecomment', comment.pk)),
+        )
+        for term, key in cases:
+            with self.subTest(term=term):
+                self.assertIn(key, self.found(term))
 
     def test_a_change_request_is_found_by_its_branch_name_after_the_branch_is_gone(self):
         """
@@ -128,44 +154,6 @@ class SearchFindsThingsTest(TestCase):
 
         self.assertTrue(self.cr.branch_deleted)
         self.assertIn(('changerequest', self.cr.pk), self.found(name))
-
-    def test_a_policy_is_found_by_name(self):
-        policy = Policy.objects.create(name='Circuit changes', description='customer facing')
-        self.assertIn(('policy', policy.pk), self.found('Circuit changes'))
-
-    def test_a_policy_rule_is_found_by_name(self):
-        policy = Policy.objects.create(name='Device changes')
-        rule = PolicyRule.objects.create(policy=policy, name='Two engineers', min_reviews=2)
-        self.assertIn(('policyrule', rule.pk), self.found('Two engineers'))
-
-    def test_a_review_is_found_by_its_comment(self):
-        review = Review.objects.create(
-            change_request=self.cr,
-            reviewer=self.reviewer,
-            decision=ReviewDecisionChoices.REJECT,
-            comment='the loopback address is wrong',
-        )
-        self.assertIn(('review', review.pk), self.found('loopback address'))
-
-    def test_a_check_is_found_by_its_summary(self):
-        check = MergeCheck.objects.create(
-            change_request=self.cr,
-            name='ci-pipeline',
-            label='CI pipeline',
-            status=MergeCheckStatusChoices.FAILURE,
-            summary='config render failed on core-sw-1',
-        )
-        self.assertIn(('mergecheck', check.pk), self.found('config render failed'))
-
-    def test_a_comment_is_found_by_its_text_and_by_what_it_was_about(self):
-        comment = ChangeComment.objects.create(
-            change_request=self.cr,
-            author=self.reviewer,
-            text='are we sure about this rack?',
-            change_label='dmi01-akron-rtr01',
-        )
-        self.assertIn(('changecomment', comment.pk), self.found('sure about this rack'))
-        self.assertIn(('changecomment', comment.pk), self.found('dmi01-akron-rtr01'))
 
     def test_an_unrelated_term_finds_nothing_of_ours(self):
         ours = {name for name, _pk in self.found('zzz-nothing-matches-this')}

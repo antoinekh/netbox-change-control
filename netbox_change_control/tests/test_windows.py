@@ -33,32 +33,21 @@ class WindowStateTest(TestCase):
         branch = make_branch('win', self._testMethodName)
         return ChangeRequest.objects.create(branch=branch, title='T', requester=self.requester, **kwargs)
 
-    def test_no_window_is_always_open(self):
-        cr = self._request()
-        self.assertEqual(cr.window_state(), ChangeWindowState.NONE)
-        self.assertTrue(cr.window_is_open)
-
-    def test_a_future_window_is_not_yet_open(self):
-        cr = self._request(scheduled_start=timezone.now() + timedelta(hours=1))
-        self.assertEqual(cr.window_state(), ChangeWindowState.EARLY)
-        self.assertFalse(cr.window_is_open)
-
-    def test_a_past_window_is_closed(self):
-        cr = self._request(scheduled_end=timezone.now() - timedelta(hours=1))
-        self.assertEqual(cr.window_state(), ChangeWindowState.CLOSED)
-        self.assertFalse(cr.window_is_open)
-
-    def test_a_current_window_is_open(self):
-        cr = self._request(
-            scheduled_start=timezone.now() - timedelta(hours=1),
-            scheduled_end=timezone.now() + timedelta(hours=1),
+    def test_the_state_of_each_window(self):
+        now = timezone.now()
+        hour = timedelta(hours=1)
+        cases = (
+            ({}, ChangeWindowState.NONE, True),
+            ({'scheduled_start': now + hour}, ChangeWindowState.EARLY, False),
+            ({'scheduled_end': now - hour}, ChangeWindowState.CLOSED, False),
+            ({'scheduled_start': now - hour, 'scheduled_end': now + hour}, ChangeWindowState.OPEN, True),
+            # A start alone means "not before".
+            ({'scheduled_start': now - timedelta(minutes=1)}, ChangeWindowState.OPEN, True),
         )
-        self.assertEqual(cr.window_state(), ChangeWindowState.OPEN)
-        self.assertTrue(cr.window_is_open)
-
-    def test_a_start_alone_means_not_before(self):
-        cr = self._request(scheduled_start=timezone.now() - timedelta(minutes=1))
-        self.assertEqual(cr.window_state(), ChangeWindowState.OPEN)
+        for window, state, is_open in cases:
+            with self.subTest(window=window):
+                cr = ChangeRequest(title='T', requester=self.requester, **window)
+                self.assertEqual((cr.window_state(), cr.window_is_open), (state, is_open))
 
     def test_the_window_must_close_after_it_opens(self):
         now = timezone.now()
@@ -485,7 +474,7 @@ class ShortWindowWarningTest(TestCase):
         cls.requester = User.objects.create(username='short-window-requester')
 
     def _request(self, *, auto_merge=True, minutes=5, both_bounds=True):
-        branch = make_branch('short', self._testMethodName)
+        branch = make_branch('short', f'{self._testMethodName}-{ChangeRequest.objects.count()}')
         start = timezone.now() + timedelta(hours=1)
         return ChangeRequest.objects.create(
             branch=branch,
@@ -515,41 +504,22 @@ class ShortWindowWarningTest(TestCase):
         self.assertEqual(warning.window_minutes, 5)
         self.assertEqual(warning.interval_minutes, 15)
 
-    def test_a_window_as_long_as_the_interval_is_not_reported(self):
-        """
-        Runs are spaced one interval apart, so a window of exactly that length always
-        contains one.
-        """
-        cr = self._request(minutes=15)
-        with self._config(interval=15):
-            self.assertIsNone(cr.auto_merge_window_warning)
-
-    def test_nothing_is_reported_without_auto_merge(self):
-        cr = self._request(auto_merge=False, minutes=1)
-        with self._config(interval=15):
-            self.assertIsNone(cr.auto_merge_window_warning)
-
-    def test_nothing_is_reported_for_a_half_open_window(self):
-        """
-        One bound leaves the window open indefinitely in one direction, so a sweep finds it.
-        """
-        cr = self._request(both_bounds=False)
-        with self._config(interval=15):
-            self.assertIsNone(cr.auto_merge_window_warning)
-
-    def test_nothing_is_reported_when_auto_merge_is_switched_off_globally(self):
-        cr = self._request(minutes=1)
-        with self._config(interval=15, enabled=False):
-            self.assertIsNone(cr.auto_merge_window_warning)
-
-    def test_an_unusable_interval_reports_nothing(self):
-        """
-        The warning stays quiet rather than raising; jobs.py is where a bad value is loud.
-        """
-        cr = self._request(minutes=1)
-        for bad in (0, -5, 1.5, '60', None):
-            with self._config(interval=bad):
-                self.assertIsNone(cr.auto_merge_window_warning)
+    def test_nothing_is_reported_when_the_sweep_can_be_relied_on(self):
+        cases = (
+            # Sweeps are one interval apart, so a window of exactly that length contains one.
+            ('as long as the interval', {'minutes': 15}, {}),
+            ('no automatic merge', {'auto_merge': False, 'minutes': 1}, {}),
+            # One bound leaves the window open in one direction, so a sweep finds it.
+            ('half-open window', {'both_bounds': False}, {}),
+            ('automatic merge switched off', {'minutes': 1}, {'enabled': False}),
+            # The warning stays quiet; the job is where a bad interval is loud.
+            *((f'interval {bad!r}', {'minutes': 1}, {'interval': bad}) for bad in (0, -5, 1.5, '60', None)),
+        )
+        for name, request, config in cases:
+            with self.subTest(name):
+                cr = self._request(**request)
+                with self._config(**{'interval': 15, **config}):
+                    self.assertIsNone(cr.auto_merge_window_warning)
 
     def test_the_shipped_default_warns_on_a_five_minute_window(self):
         """

@@ -45,20 +45,17 @@ class MarkdownRenderingTest(TestCase):
         # The raw source must not leak through alongside the rendered form.
         self.assertNotIn('**bold text**', content)
 
-    def test_the_change_request_page_renders_a_review_comment(self):
-        self._assert_rendered(self.cr.get_absolute_url())
-
-    def test_the_reviews_tab_renders_a_review_comment(self):
-        """
-        The tab renders through ReviewTable, so it needs a Markdown column of its own.
-        """
-        self._assert_rendered(reverse('plugins:netbox_change_control:changerequest_reviews', args=[self.cr.pk]))
-
-    def test_the_review_list_renders_a_comment(self):
-        self._assert_rendered(reverse('plugins:netbox_change_control:review_list'))
-
-    def test_the_review_detail_page_renders_a_comment(self):
-        self._assert_rendered(reverse('plugins:netbox_change_control:review', args=[self.review.pk]))
+    def test_every_page_renders_a_review_comment(self):
+        pages = (
+            self.cr.get_absolute_url(),
+            # The tab renders through ReviewTable, so it needs a Markdown column of its own.
+            reverse('plugins:netbox_change_control:changerequest_reviews', args=[self.cr.pk]),
+            reverse('plugins:netbox_change_control:review_list'),
+            reverse('plugins:netbox_change_control:review', args=[self.review.pk]),
+        )
+        for url in pages:
+            with self.subTest(url=url):
+                self._assert_rendered(url)
 
 
 class MarkdownSanitisingTest(TestCase):

@@ -43,25 +43,20 @@ class PolicyFilterTest(TestCase):
     def _filter(self, data):
         return set(PolicyFilterSet(data, queryset=Policy.objects.all()).qs.values_list('name', flat=True))
 
-    def test_enabled(self):
-        self.assertNotIn('Disabled one', self._filter({'enabled': True}))
-        self.assertEqual(self._filter({'enabled': False}), {'Disabled one'})
-
-    def test_weight(self):
-        self.assertEqual(self._filter({'weight': [100]}), {'Enabled one'})
-
-    def test_object_type_by_app_and_model(self):
-        self.assertEqual(self._filter({'object_type': 'circuits.circuit'}), {'Circuits only'})
-
-    def test_object_type_by_app_alone(self):
-        self.assertEqual(self._filter({'object_type': 'circuits'}), {'Circuits only'})
-
-    def test_has_conditions(self):
-        self.assertEqual(self._filter({'has_conditions': True}), {'Conditional'})
-
-    def test_search_covers_name_and_description(self):
+    def test_filters(self):
         Policy.objects.create(name='Zulu', description='findme please')
-        self.assertEqual(self._filter({'q': 'findme'}), {'Zulu'})
+        cases = (
+            ({'enabled': False}, {'Disabled one'}),
+            ({'weight': [100]}, {'Enabled one'}),
+            ({'object_type': 'circuits.circuit'}, {'Circuits only'}),
+            ({'object_type': 'circuits'}, {'Circuits only'}),
+            ({'has_conditions': True}, {'Conditional'}),
+            # The search reaches the description too.
+            ({'q': 'findme'}, {'Zulu'}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
 
 class PolicyRuleFilterTest(TestCase):
@@ -80,21 +75,18 @@ class PolicyRuleFilterTest(TestCase):
     def _filter(self, data):
         return set(PolicyRuleFilterSet(data, queryset=PolicyRule.objects.all()).qs.values_list('name', flat=True))
 
-    def test_by_group(self):
-        self.assertEqual(self._filter({'group_id': [self.engineers.pk]}), {'By group'})
-
-    def test_by_named_user(self):
-        self.assertEqual(self._filter({'user_id': [self.named.pk]}), {'By user'})
-
-    def test_minimum_reviews(self):
-        self.assertEqual(self._filter({'min_reviews': [2]}), {'By group'})
-
-    def test_eligible_for_covers_groups_and_named_users(self):
-        """
-        A user satisfies a rule through a group or by being named, so both must match.
-        """
-        self.assertEqual(self._filter({'eligible_for': ['eng']}), {'By group'})
-        self.assertEqual(self._filter({'eligible_for': ['named']}), {'By user'})
+    def test_filters(self):
+        cases = (
+            ({'group_id': [self.engineers.pk]}, {'By group'}),
+            ({'user_id': [self.named.pk]}, {'By user'}),
+            ({'min_reviews': [2]}, {'By group'}),
+            # A user satisfies a rule through a group or by being named, so both match.
+            ({'eligible_for': ['eng']}, {'By group'}),
+            ({'eligible_for': ['named']}, {'By user'}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
 
 class ChangeRequestFilterTest(TestCase):
@@ -136,35 +128,26 @@ class ChangeRequestFilterTest(TestCase):
             ChangeRequestFilterSet(data, queryset=ChangeRequest.objects.all()).qs.values_list('title', flat=True)
         )
 
-    def test_by_branch_name(self):
-        self.assertEqual(self._filter({'branch': 'bare'}), {'Bare'})
-
-    def test_by_applied_policy(self):
-        self.assertEqual(self._filter({'policy_id': [self.policy.pk]}), {'Reviewed'})
-
-    def test_by_reviewer(self):
-        self.assertEqual(self._filter({'reviewer_id': [self.reviewer.pk]}), {'Reviewed'})
-
-    def test_has_reviews(self):
-        self.assertEqual(self._filter({'has_reviews': True}), {'Reviewed'})
-        self.assertEqual(self._filter({'has_reviews': False}), {'Bare'})
-
-    def test_auto_merge(self):
-        self.assertEqual(self._filter({'auto_merge': True}), {'Reviewed'})
-
-    def test_has_window(self):
-        self.assertEqual(self._filter({'has_window': True}), {'Reviewed'})
-        self.assertEqual(self._filter({'has_window': False}), {'Bare'})
+    def test_filters(self):
+        cases = (
+            ({'branch': 'bare'}, {'Bare'}),
+            ({'policy_id': [self.policy.pk]}, {'Reviewed'}),
+            ({'reviewer_id': [self.reviewer.pk]}, {'Reviewed'}),
+            ({'has_reviews': True}, {'Reviewed'}),
+            ({'has_reviews': False}, {'Bare'}),
+            ({'auto_merge': True}, {'Reviewed'}),
+            ({'has_window': True}, {'Reviewed'}),
+            ({'has_window': False}, {'Bare'}),
+            # The branch name is a column, so the quick search reaches it.
+            ({'q': 'bare-branch'}, {'Bare'}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
     def test_branch_deleted(self):
         self.bare.branch.delete()
         self.assertEqual(self._filter({'branch_deleted': True}), {'Bare'})
-
-    def test_search_covers_the_branch_name(self):
-        """
-        The branch name is a column, so the quick search should reach it.
-        """
-        self.assertEqual(self._filter({'q': 'bare-branch'}), {'Bare'})
 
 
 class MergeCheckFilterTest(TestCase):
@@ -200,17 +183,16 @@ class MergeCheckFilterTest(TestCase):
     def _filter(self, data):
         return set(MergeCheckFilterSet(data, queryset=MergeCheck.objects.all()).qs.values_list('name', flat=True))
 
-    def test_by_status(self):
-        self.assertEqual(self._filter({'status': ['success']}), {'ok'})
-
-    def test_blocks_merge_excludes_advisory_checks(self):
-        """
-        An advisory check that failed does not block, so it must not appear.
-        """
-        self.assertEqual(self._filter({'blocks_merge': True}), {'bad'})
-
-    def test_by_required(self):
-        self.assertEqual(self._filter({'required': False}), {'advice'})
+    def test_filters(self):
+        cases = (
+            ({'status': ['success']}, {'ok'}),
+            # An advisory check that failed does not block.
+            ({'blocks_merge': True}, {'bad'}),
+            ({'required': False}, {'advice'}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
 
 class ReviewFilterTest(TestCase):
@@ -235,11 +217,14 @@ class ReviewFilterTest(TestCase):
     def _filter(self, data):
         return set(ReviewFilterSet(data, queryset=Review.objects.all()).qs.values_list('reviewer__username', flat=True))
 
-    def test_by_decision(self):
-        self.assertEqual(self._filter({'decision': ['approve']}), {'approver'})
-
-    def test_by_reviewer_username(self):
-        self.assertEqual(self._filter({'reviewer': ['rejecter']}), {'rejecter'})
+    def test_filters(self):
+        cases = (
+            ({'decision': ['approve']}, {'approver'}),
+            ({'reviewer': ['rejecter']}, {'rejecter'}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
 
 class PolicyCheckFilterTest(TestCase):
@@ -258,27 +243,19 @@ class PolicyCheckFilterTest(TestCase):
     def _filter(self, data):
         return set(PolicyFilterSet(data, queryset=Policy.objects.all()).qs.values_list('name', flat=True))
 
-    def test_by_one_check(self):
-        self.assertEqual(self._filter({'required_checks': ['no-conflicts']}), {'Everywhere'})
-
-    def test_several_names_are_an_or(self):
-        """
-        The question is which policies bring a check in, not which require all of them.
-        """
-        self.assertEqual(
-            self._filter({'required_checks': ['no-conflicts', 'threads-resolved']}),
-            {'Everywhere', 'Devices'},
+    def test_filters(self):
+        cases = (
+            ({'required_checks': ['no-conflicts']}, {'Everywhere'}),
+            # The question is which policies bring a check in, so several names are an or.
+            ({'required_checks': ['no-conflicts', 'threads-resolved']}, {'Everywhere', 'Devices'}),
+            ({'required_checks': ['cab-approval']}, {'External'}),
+            ({'required_checks': ['not-stale']}, set()),
+            ({'has_checks': False}, {'No checks'}),
+            ({'has_checks': True}, {'Everywhere', 'Devices', 'External'}),
         )
-
-    def test_an_externally_reported_name_filters_too(self):
-        self.assertEqual(self._filter({'required_checks': ['cab-approval']}), {'External'})
-
-    def test_a_name_nothing_requires_matches_nothing(self):
-        self.assertEqual(self._filter({'required_checks': ['not-stale']}), set())
-
-    def test_has_checks(self):
-        self.assertEqual(self._filter({'has_checks': False}), {'No checks'})
-        self.assertNotIn('No checks', self._filter({'has_checks': True}))
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)
 
 
 class ChangeRequestRefTest(TestCase):
@@ -301,17 +278,15 @@ class ChangeRequestRefTest(TestCase):
     def _filter(self, data):
         return set(ChangeRequestFilterSet(data, queryset=ChangeRequest.objects.all()).qs.values_list('ref', flat=True))
 
-    def test_by_exact_reference(self):
-        self.assertEqual(self._filter({'ref': ['CHG0012345']}), {'CHG0012345'})
-
-    def test_by_partial_reference(self):
-        self.assertEqual(self._filter({'ref': ['chg']}), {'CHG0012345'})
-
-    def test_several_references_are_an_or(self):
-        self.assertEqual(self._filter({'ref': ['CHG0012345', 'INC-99']}), {'CHG0012345', 'INC-99'})
-
-    def test_the_general_search_covers_it(self):
-        self.assertEqual(self._filter({'q': 'INC-99'}), {'INC-99'})
-
-    def test_it_is_optional(self):
-        self.assertIn('', self._filter({}))
+    def test_filters(self):
+        cases = (
+            ({'ref': ['CHG0012345']}, {'CHG0012345'}),
+            ({'ref': ['chg']}, {'CHG0012345'}),
+            ({'ref': ['CHG0012345', 'INC-99']}, {'CHG0012345', 'INC-99'}),
+            ({'q': 'INC-99'}, {'INC-99'}),
+            # The reference is optional.
+            ({}, {'CHG0012345', 'INC-99', ''}),
+        )
+        for data, expected in cases:
+            with self.subTest(data=data):
+                self.assertEqual(self._filter(data), expected)

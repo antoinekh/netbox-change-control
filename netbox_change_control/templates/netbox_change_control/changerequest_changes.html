@@ -11,6 +11,13 @@
     </div>
     {% endif %}
 
+    {% if last_merge %}
+    <div class="alert alert-info">
+      <i class="mdi mdi-source-merge"></i>
+      {% blocktrans with time=last_merge.time|isodatetime:"minutes" user=last_merge.user|default:_("the system") %}The changes as merged on {{ time }} by {{ user }}.{% endblocktrans %}
+    </div>
+    {% endif %}
+
     {% for row in rows %}
     <div class="card mb-3" id="change-{{ row.diff.pk }}">
       <h2 class="card-header d-flex justify-content-between align-items-center">
@@ -30,7 +37,7 @@
             <tr>
               <th>{% trans "Attribute" %}</th>
               <th>{% trans "Original" %}</th>
-              <th>{% trans "In this branch" %}</th>
+              <th>{% if last_merge %}{% trans "Merged" %}{% else %}{% trans "In this branch" %}{% endif %}</th>
             </tr>
           </thead>
           <tbody>
@@ -123,7 +130,7 @@
 
     {% if orphaned_threads %}
     <div class="card mb-3">
-      <h2 class="card-header">{% trans "Discussion from the deleted branch" %}</h2>
+      <h2 class="card-header">{% trans "Discussion on objects no longer in the change" %}</h2>
       <div class="card-body">
         {% for thread in orphaned_threads %}
         <div class="border-start border-3 ps-3 mb-3" id="comment-{{ thread.comment.pk }}">

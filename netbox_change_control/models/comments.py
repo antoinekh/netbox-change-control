@@ -30,6 +30,21 @@ class ChangeComment(NetBoxModel):
         verbose_name=_('change'),
         help_text=_('The changed object this comment refers to. Cleared once the branch is gone.'),
     )
+    object_type = models.ForeignKey(
+        to='contenttypes.ContentType',
+        on_delete=models.PROTECT,
+        related_name='+',
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name=_('object type'),
+    )
+    object_id = models.PositiveBigIntegerField(
+        verbose_name=_('object ID'),
+        null=True,
+        blank=True,
+        editable=False,
+    )
     change_label = models.CharField(
         verbose_name=_('change'),
         max_length=200,
@@ -92,8 +107,10 @@ class ChangeComment(NetBoxModel):
         # comment that no longer says which object it concerned is worthless as a record.
         if self.change_diff_id and self.change_diff:
             self.change_label = self.change_diff.object_repr[:200]
+            self.object_type_id = self.change_diff.object_type_id
+            self.object_id = self.change_diff.object_id
             if (update_fields := kwargs.get('update_fields')) is not None:
-                kwargs['update_fields'] = {*update_fields, 'change_label'}
+                kwargs['update_fields'] = {*update_fields, 'change_label', 'object_type', 'object_id'}
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):

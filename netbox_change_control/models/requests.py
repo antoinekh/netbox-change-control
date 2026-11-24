@@ -1,3 +1,4 @@
+from core.choices import ObjectChangeActionChoices
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -8,6 +9,7 @@ from netbox.models import NetBoxModel, PrimaryModel
 from netbox_change_control.choices import (
     ChangeRequestPriorityChoices,
     ChangeRequestStatusChoices,
+    ChangesSource,
     ChangeWindowState,
     HistoryActionChoices,
     ReviewDecisionChoices,
@@ -17,6 +19,7 @@ __all__ = (
     'ChangeRequest',
     'ChangeRequestPolicy',
     'HistoryEntry',
+    'MergedChange',
     'Review',
 )
 
@@ -504,6 +507,42 @@ class ChangeRequest(PrimaryModel):
 
         return lifecycle.reopen(self)
 
+    @property
+    def last_merge(self):
+        """
+        The history entry of the last merge that kept its changes, or None.
+        """
+        return (
+            self.history.filter(action=HistoryActionChoices.MERGED, merged_changes__isnull=False)
+            .distinct()
+            .order_by('-time', '-pk')
+            .first()
+        )
+
+    @property
+    def changes_source(self):
+        """
+        Where the changes are read from: the branch while it exists and the change can still
+        move, else the record of the last merge.
+        """
+        if not self.branch_deleted and not self.is_completed:
+            return ChangesSource.BRANCH
+        return ChangesSource.MERGE if self.last_merge is not None else ChangesSource.NONE
+
+    def changes(self):
+        """
+        The changed objects, from `changes_source`: ChangeDiff rows or MergedChange rows, which
+        offer the same fields.
+        """
+        from netbox_branching.models import ChangeDiff
+
+        source = self.changes_source
+        if source == ChangesSource.BRANCH:
+            return list(ChangeDiff.objects.filter(branch=self.branch).select_related('object_type'))
+        if source == ChangesSource.MERGE:
+            return list(self.last_merge.merged_changes.select_related('object_type'))
+        return []
+
     def evaluate(self):
         """
         Return a PolicyEvaluation describing which rules are satisfied.
@@ -619,6 +658,54 @@ class HistoryEntry(models.Model):
 
     def get_action_color(self):
         return HistoryActionChoices.colors.get(self.action)
+
+
+class MergedChange(models.Model):
+    """
+    One object as a merge put it into main: the record of the change, kept after the branch.
+
+    Copied from the branch diff when the merge is recorded, and never written again. It offers
+    the fields of a ChangeDiff, so the Changes tab renders either.
+    """
+
+    merge = models.ForeignKey(
+        to=HistoryEntry,
+        on_delete=models.CASCADE,
+        related_name='merged_changes',
+        editable=False,
+        verbose_name=_('merge'),
+    )
+    object_type = models.ForeignKey(
+        to='contenttypes.ContentType',
+        on_delete=models.PROTECT,
+        related_name='+',
+        editable=False,
+        verbose_name=_('object type'),
+    )
+    object_id = models.PositiveBigIntegerField(verbose_name=_('object ID'), editable=False)
+    object_repr = models.CharField(verbose_name=_('object'), max_length=200, editable=False)
+    action = models.CharField(
+        verbose_name=_('action'), max_length=50, choices=ObjectChangeActionChoices, editable=False
+    )
+    original = models.JSONField(verbose_name=_('before'), blank=True, null=True, editable=False)
+    modified = models.JSONField(verbose_name=_('after'), blank=True, null=True, editable=False)
+
+    # A merge is done, so nothing is left in conflict.
+    conflicts = None
+
+    class Meta:
+        # The order of the branch diff it was copied from.
+        ordering = ('pk',)
+        # Written by the lifecycle only; nothing grants a write to them.
+        default_permissions = ()
+        verbose_name = _('merged change')
+        verbose_name_plural = _('merged changes')
+
+    def __str__(self):
+        return f'{self.get_action_display()} {self.object_repr}'
+
+    def get_action_color(self):
+        return ObjectChangeActionChoices.colors.get(self.action)
 
 
 class Review(NetBoxModel):

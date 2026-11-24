@@ -17,6 +17,7 @@
 - **A completed or abandoned change request keeps the check results it ended with.** Its checks no longer run, and a report on it is refused.
 - **A new change window needs new approvals.** Moving the window makes the reviews stale, and the history records **Window changed**.
 - **A completed or abandoned change request is read-only**, except its tags and comments.
+- **A merge keeps the record of what it changed.** The Changes tab still shows the changes and their comment threads after the branch is deleted. A migration fills the record for completed requests whose branch still exists.
 - Internal: the change window state is an enum, the change request model holds every status guard, and the templates read states from the model and the choice sets.
 
 ### Fixed

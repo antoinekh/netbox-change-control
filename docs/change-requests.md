@@ -63,7 +63,7 @@ A solid arrow is a button in the plugin. A dashed arrow is the plugin moving the
 
 A completed or abandoned request is read-only, because it is the record of a decision: only its tags and comments can still change, for notes after the fact. Reopening an abandoned request makes it editable again.
 
-An open request always has a branch. Deleting the branch abandons the request, because nothing is left to merge, and a request without a branch cannot be reopened. The request stays as the record of the change.
+An open request always has a branch. Deleting the branch abandons the request, because nothing is left to merge, and a request without a branch cannot be reopened. The request stays as the record of the change, with the changes of its last merge, if it had one.
 
 !!! note
 

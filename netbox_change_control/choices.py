@@ -7,6 +7,7 @@ __all__ = (
     'ChangeRequestPriorityChoices',
     'ChangeRequestStatusChoices',
     'ChangeWindowState',
+    'ChangesSource',
     'ConditionStateChoices',
     'HistoryActionChoices',
     'MergeCheckStatusChoices',
@@ -54,6 +55,19 @@ class ChangeWindowState(StrEnum):
     EARLY = 'early'
     OPEN = 'open'
     CLOSED = 'closed'
+
+
+class ChangesSource(StrEnum):
+    """
+    Where the changes of a change request are read from.
+    """
+
+    # The branch diff, while the branch exists and the change can still move.
+    BRANCH = 'branch'
+    # The record of the last merge, once the change is in main or the branch is gone.
+    MERGE = 'merge'
+    # Neither: the branch was deleted before any merge.
+    NONE = 'none'
 
 
 class ChangeRequestPriorityChoices(ChoiceSet):

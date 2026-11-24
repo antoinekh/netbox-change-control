@@ -86,6 +86,30 @@ def _record(change_request, action, user=None, reviewers=()):
     entry = HistoryEntry.objects.create(change_request=change_request, action=action, user=user)
     if reviewers:
         entry.reviewers.set(reviewers)
+    return entry
+
+
+def _keep_merged_changes(change_request, merge):
+    """
+    Copy what the merge put into main from the branch diff, which the branch takes with it when
+    it is deleted.
+    """
+    from netbox_branching.models import ChangeDiff
+
+    from netbox_change_control.models import MergedChange
+
+    MergedChange.objects.bulk_create(
+        MergedChange(
+            merge=merge,
+            object_type_id=diff.object_type_id,
+            object_id=diff.object_id,
+            object_repr=diff.object_repr,
+            action=diff.action,
+            original=diff.original,
+            modified=diff.modified,
+        )
+        for diff in ChangeDiff.objects.filter(branch_id=change_request.branch_id)
+    )
 
 
 def submit(change_request):
@@ -176,7 +200,7 @@ def complete(change_request, user=None):
         if not change_request.lock_status() or not change_request.can_be_completed:
             return False
         _move(change_request, ChangeRequestStatusChoices.COMPLETED)
-        _record(change_request, HistoryActionChoices.MERGED, user)
+        _keep_merged_changes(change_request, _record(change_request, HistoryActionChoices.MERGED, user))
         _announce(change_request, ChangeRequestStatusChoices.COMPLETED)
     return True
 

@@ -8,6 +8,7 @@ from netbox.views import generic
 from utilities.views import ViewTab, register_model_view
 
 from netbox_change_control import forms
+from netbox_change_control.choices import ChangesSource
 from netbox_change_control.diffs import build_change_rows
 from netbox_change_control.models import ChangeComment, ChangeRequest
 from netbox_change_control.permissions import (
@@ -53,46 +54,46 @@ class ChangeRequestChangesView(generic.ObjectView):
     )
 
     def get_extra_context(self, request, instance):
-        from netbox_branching.models import ChangeDiff
+        source = instance.changes_source
+        changes = instance.changes()
+        attribute_rows = build_change_rows(changes)
+        comments = instance.change_comments.select_related('author').order_by('created', 'pk')
 
-        diffs = list(ChangeDiff.objects.filter(branch=instance.branch).select_related('object_type'))
-        attribute_rows = build_change_rows(diffs)
-        comments = instance.change_comments.select_related('author', 'change_diff').order_by('created', 'pk')
-
+        # A thread belongs to an object, whichever source shows that object.
+        shown = {(change.object_type_id, change.object_id) for change in changes}
         threads = {}
         orphaned = []
         for comment in comments:
             if comment.parent_id is not None:
                 continue
-            if comment.change_diff_id is None:
-                # The branch is gone, so there is no diff row to hang this thread under. It
-                # is still part of the record, so it is shown separately rather than dropped.
-                orphaned.append({'comment': comment, 'replies': []})
-                continue
-            threads.setdefault(comment.change_diff_id, []).append(
-                {
-                    'comment': comment,
-                    'replies': [],
-                }
-            )
+            thread = {'comment': comment, 'replies': []}
+            if (comment.object_type_id, comment.object_id) in shown:
+                threads.setdefault((comment.object_type_id, comment.object_id), []).append(thread)
+            else:
+                # No row shows its object. It is still part of the record, so it is shown apart.
+                orphaned.append(thread)
         by_id = {thread['comment'].pk: thread for group in (*threads.values(), orphaned) for thread in group}
         for comment in comments:
             if comment.parent_id and (thread := by_id.get(comment.parent_id)):
                 thread['replies'].append(comment)
 
-        rows = [
-            {
-                'diff': diff,
-                'attributes': attribute_rows[diff.pk],
-                'threads': threads.get(diff.pk, []),
-                'open_count': sum(1 for t in threads.get(diff.pk, []) if not t['comment'].resolved),
-            }
-            for diff in diffs
-        ]
+        rows = []
+        for change in changes:
+            object_threads = threads.get((change.object_type_id, change.object_id), [])
+            rows.append(
+                {
+                    'diff': change,
+                    'attributes': attribute_rows[change.pk],
+                    'threads': object_threads,
+                    'open_count': sum(1 for thread in object_threads if not thread['comment'].resolved),
+                }
+            )
 
         return {
             'rows': rows,
             'orphaned_threads': orphaned,
+            'changes_source': source,
+            'last_merge': instance.last_merge if source == ChangesSource.MERGE else None,
             'branch_deleted': instance.branch_deleted,
             'can_comment': (instance.is_open and request.user.has_perm(ADD_COMMENT_PERMISSION)),
             'can_resolve': request.user.has_perm(CHANGE_COMMENT_PERMISSION),

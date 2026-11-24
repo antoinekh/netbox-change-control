@@ -23,6 +23,8 @@ The **Changes** tab lists every object the branch touches, with its changed attr
 
 ![Changes tab](img/changes-tab.png)
 
+Once the branch has merged, the tab shows the changes **as merged**, with the time and the user of the merge. The plugin keeps a record of each merge, so the changes and their comment threads stay readable after the branch is deleted, and a merge done again after a revert keeps its own record. A branch deleted before any merge leaves only the comment threads.
+
 Related objects are shown by name, not by database id. A branch diff stores them as raw primary keys, so an unresolved row would read `provider 2 -> 3`, which tells a reviewer nothing. The tab renders that as `CenturyLink (#2) -> Comcast (#3)`, keeping the id for traceability. An object that no longer exists shows as `#7 (deleted)`. Lookups are batched per model, so a large diff costs one query per related model rather than one per value.
 
 Each object carries its own comment thread, so a reviewer can raise a concern about one circuit rather than the whole request. Others reply in the thread, and a thread is resolved once it is dealt with. Replies are one level deep: a reply to a reply joins the same thread, which keeps a discussion readable.

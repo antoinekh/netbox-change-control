@@ -120,8 +120,8 @@ class ActionConstraintTest(ChangeControlTestCase):
         theirs = ChangeComment.objects.create(change_request=self.cr, change_diff=diff, author=self.requester, text='a')
         mine = ChangeComment.objects.create(change_request=self.cr, change_diff=diff, author=self.me, text='b')
 
-        self.client.post(reverse('plugins:netbox_change_control:changecomment_resolve', args=[theirs.pk]))
-        self.client.post(reverse('plugins:netbox_change_control:changecomment_resolve', args=[mine.pk]))
+        self._post('changecomment_resolve', theirs.pk, {'resolved': 'true'})
+        self._post('changecomment_resolve', mine.pk, {'resolved': 'true'})
 
         theirs.refresh_from_db()
         mine.refresh_from_db()

@@ -6,6 +6,10 @@
 
 - Internal: the change window state is an enum.
 
+### Fixed
+
+- **A double click on Resolve or Reopen no longer undoes it.** The button sends the state it asks for.
+
 ### Documentation
 
 - The README starts with a 50-second video of the plugin.

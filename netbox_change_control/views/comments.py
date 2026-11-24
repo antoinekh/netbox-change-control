@@ -177,16 +177,22 @@ class AddChangeCommentView(View):
 
 class ResolveChangeCommentView(View):
     """
-    Toggle a thread between open and resolved.
+    Resolve a thread, or reopen it.
+
+    The form names the state it asks for rather than toggling, so a double click or a second
+    reviewer acting on the same stale page does not undo the first.
     """
 
     def post(self, request, pk):
         comment = restricted_or_404(ChangeComment.objects.all(), request.user, 'view', pk=pk, parent__isnull=True)
+        resolved = {'true': True, 'false': False}.get(request.POST.get('resolved'))
 
         if not request.user.has_perm(CHANGE_COMMENT_PERMISSION, comment):
             messages.error(request, _('You do not have permission to resolve threads.'))
-        else:
-            comment.resolved = not comment.resolved
+        elif resolved is None:
+            messages.error(request, _('Choose whether to resolve the thread or reopen it.'))
+        elif comment.resolved != resolved:
+            comment.resolved = resolved
             comment.save(update_fields=['resolved'])
 
         return redirect(

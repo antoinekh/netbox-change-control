@@ -282,6 +282,40 @@ class DeletingARequestWithCommentsTest(ChangeControlTestCase):
         self.assertEqual(other.status, ChangeRequestStatusChoices.APPROVED)
 
 
+class ResolveThreadViewTest(CommentFixture):
+    """
+    The Resolve and Reopen buttons ask for a state, so repeating one changes nothing.
+    """
+
+    def setUp(self):
+        from django.test import Client
+
+        super().setUp()
+        self.thread = self._comment()
+        self.client = Client()
+        self.client.force_login(User.objects.create(username='resolver', is_superuser=True))
+
+    def _post(self, data):
+        from django.urls import reverse
+
+        self.client.post(reverse('plugins:netbox_change_control:changecomment_resolve', args=[self.thread.pk]), data)
+        self.thread.refresh_from_db()
+        return self.thread.resolved
+
+    def test_resolving_twice_leaves_the_thread_resolved(self):
+        self.assertTrue(self._post({'resolved': 'true'}))
+        self.assertTrue(self._post({'resolved': 'true'}))
+
+    def test_reopening_twice_leaves_the_thread_open(self):
+        self._post({'resolved': 'true'})
+        self.assertFalse(self._post({'resolved': 'false'}))
+        self.assertFalse(self._post({'resolved': 'false'}))
+
+    def test_a_post_without_a_state_changes_nothing(self):
+        self.assertFalse(self._post({}))
+        self.assertFalse(self._post({'resolved': 'toggle'}))
+
+
 class CommentEditingTest(TestCase):
     """
     A comment can be corrected.

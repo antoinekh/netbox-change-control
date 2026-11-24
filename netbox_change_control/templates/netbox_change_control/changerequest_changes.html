@@ -60,6 +60,7 @@
             {% if can_resolve %}
             <form action="{% url 'plugins:netbox_change_control:changecomment_resolve' pk=thread.comment.pk %}" method="post">
               {% csrf_token %}
+              <input type="hidden" name="resolved" value="{% if thread.comment.resolved %}false{% else %}true{% endif %}">
               <button type="submit" class="btn btn-sm btn-link p-0">
                 {% if thread.comment.resolved %}{% trans "Reopen" %}{% else %}{% trans "Resolve" %}{% endif %}
               </button>

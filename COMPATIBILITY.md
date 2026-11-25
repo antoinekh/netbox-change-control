@@ -7,5 +7,6 @@
 | 0.6.x   | 4.7.0                  | 4.7.99                 | 1.2.2 - 1.2.x    | 3.12+  |
 | 0.7.x   | 4.7.0                  | 4.7.99                 | 1.2.2 - 1.2.x    | 3.12+  |
 | 0.8.x   | 4.7.0                  | 4.7.99                 | 1.2.2 - 1.2.x    | 3.12+  |
+| 0.9.x   | 4.7.0                  | 4.7.99                 | 1.2.2 - 1.2.x    | 3.12+  |
 
-Releases before 0.4.0 are not listed and are not recommended. Use 0.4.x on NetBox 4.6 and 0.8.x on NetBox 4.7.
+Releases before 0.4.0 are not listed and are not recommended. Use 0.4.x on NetBox 4.6 and 0.9.x on NetBox 4.7.

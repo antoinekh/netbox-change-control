@@ -73,13 +73,17 @@ Enabling it by default would break an existing install the moment the plugin is 
 
 ## Testing
 
-Two layers.
+Three layers.
 
-Layer one is the test suite, one file per subject: the policy engine, the merge gate, the checks, change windows and automatic merging, conflicts, comment threads, `protect_main`, the filtersets, the REST API and the plugin hooks. Most of it constructs branches without provisioning a schema, which is what keeps a suite this size to about half a minute.
+Layer one is the test suite, one file per subject: the policy engine, the merge gate, the checks, change windows and automatic merging, conflicts, comment threads, `protect_main`, the filtersets, the REST API and the plugin hooks. It tests the rules with many cases, the security rules, concurrency and migrations; obvious code and what NetBox already tests are left out. Most of it constructs branches without provisioning a schema.
+
+`tests/test_state_machine.py` reads the transition table of `docs/change-requests.md` as its specification. Fixed scenarios make every documented transition, then seeded random walks combine real actions: reviews, branch edits, window moves, checks, merges, reverts and branch deletion. After each step it checks that every status move is a documented row recorded in the history, that an open request has a branch, that the cached state equals the live answer, and that a finished request keeps its record.
 
 The shared fixtures live in `tests/base.py`, so the shape of a change request is declared once rather than in every file. Fixture classes carry no tests of their own: subclassing a class which has tests re-runs every one of them under the subclass, which inflates the count and covers nothing new.
 
-Layer two is the seed command, `seed_change_control`. It creates the reviewer groups and users, the object permissions those users need, five graded policies, a branch with a real change, and an open change request. `--adopt` opens a change request for branches that already exist.
+Layer two is the browser tests in `e2e/`. They drive a running NetBox with Playwright as a requester, a reviewer and a viewer, from opening a change to its record, and check what each person sees. They prepare their data through the REST API, delete it at the end, and scope their policy to site groups, so they can run against a NetBox that holds other data. The `Browser tests` workflow runs them against a new NetBox; `e2e/conftest.py` says how to run them locally.
+
+Layer three is the seed command, `seed_change_control`. It creates the reviewer groups and users, the object permissions those users need, five graded policies, a branch with a real change, and an open change request. `--adopt` opens a change request for branches that already exist.
 
 The seed commands live in a development-only plugin which is neither published nor committed, so a production install has no command that can invent policies, users or permissions, and a reader of this repository will not find one.
 

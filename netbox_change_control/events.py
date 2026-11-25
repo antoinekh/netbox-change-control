@@ -24,6 +24,7 @@ __all__ = (
     'CHANGE_REQUEST_WINDOW_CLOSED',
     'REVIEW_SUBMITTED',
     'emit',
+    'event_rule_forms_need_refresh',
     'refresh_event_rule_form_choices',
 )
 
@@ -48,13 +49,27 @@ EventType(
 ).register()
 
 
+# The first NetBox release whose event rule forms read the event types each time they are built.
+EVENT_RULE_FORMS_FIXED_IN = '4.7.6'
+
+
+def event_rule_forms_need_refresh():
+    """
+    Whether this NetBox's event rule forms read the event types only once, at import.
+    """
+    from django.conf import settings
+    from packaging.version import Version
+
+    return Version(settings.RELEASE.version) < Version(EVENT_RULE_FORMS_FIXED_IN)
+
+
 def refresh_event_rule_form_choices():
     """
     Make NetBox's event rule forms read the registered event types each time they are built.
 
-    NetBox 4.7 imports these forms before any plugin is ready, and they read the event types
-    once, at import, so no plugin's types can be picked in the interface or a CSV import. The
-    callable also covers plugins that register their types after this one.
+    Before 4.7.6, NetBox imports these forms before any plugin is ready, and they read the event
+    types once, at import, so no plugin's types can be picked in the interface or a CSV import.
+    The callable also covers plugins that register their types after this one.
     """
     from extras.forms import EventRuleBulkEditForm, EventRuleForm, EventRuleImportForm
     from netbox.events import get_event_type_choices

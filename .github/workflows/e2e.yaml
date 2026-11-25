@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   e2e:
-    name: Browser tests on NetBox v4.7.4
+    name: Browser tests on NetBox v4.7.6
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: netbox-community/netbox
-          ref: v4.7.4
+          ref: v4.7.6
           path: netbox
 
       - name: Set up Python

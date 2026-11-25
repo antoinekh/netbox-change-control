@@ -68,7 +68,8 @@ class ChangeControlConfig(PluginConfig):
         # already holding one fails to load at all.
         from . import dashboard, events, receivers  # noqa: F401
 
-        events.refresh_event_rule_form_choices()
+        if events.event_rule_forms_need_refresh():
+            events.refresh_event_rule_form_choices()
 
         # Registering the job is what makes rqworker schedule it, so skipping the import
         # when auto-merge is off means no periodic job and no Job records at all.

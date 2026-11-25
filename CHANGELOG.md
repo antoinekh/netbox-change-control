@@ -4,7 +4,7 @@
 
 ### Upgrading
 
-- **NetBox 4.7.6 or later is required.** Its event rule forms list the event types of every plugin, so the workaround of 0.6.1 is removed. Stay on 0.8.x on NetBox 4.7.0 to 4.7.5.
+- **NetBox 4.7.6 or later is required.** Its event rule forms list the event types of every plugin ([netbox#23652](https://github.com/netbox-community/netbox/issues/23652), fixed by [netbox#23688](https://github.com/netbox-community/netbox/pull/23688)), so the workaround of 0.6.1 is removed. Stay on 0.8.x on NetBox 4.7.0 to 4.7.5.
 - **Migrate every open branch.** This release adds a migration, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
 
 ### Changed

@@ -107,13 +107,13 @@ jobs:
 
       - name: Install the browser
         working-directory: netbox-change-control
-        run: uv run --only-group e2e playwright install --with-deps chromium
+        run: uv run --locked --only-group e2e playwright install --with-deps chromium
 
       - name: Run the browser tests
         working-directory: netbox-change-control
         env:
           NETBOX_URL: http://localhost:8000
-        run: uv run --only-group e2e pytest e2e -v
+        run: uv run --locked --only-group e2e pytest e2e -v
 
       - name: Show the server logs
         if: failure()

@@ -181,6 +181,10 @@ Run it as often as you like: it tears its own branches down first, so every sess
 
 Capture at roughly 1400px wide in light mode, cropped to the card rather than the whole window, except for `change-request-detail.png` and `my-reviews-widget.png` which are meant to show context.
 
+## Code review
+
+Greptile reviews each pull request when it opens and after each push. Its configuration is in `.greptile/`: `config.json` sets what it comments on, and `files.json` gives it `AGENTS.md` and the design pages as context. Comment `@greptileai` on a pull request to ask for a new review.
+
 ## Releasing
 
 1. In `CHANGELOG.md`, rename the `Unreleased` heading to the new version and its date.

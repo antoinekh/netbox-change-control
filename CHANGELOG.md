@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Internal: Greptile reviews the pull requests, with its configuration in `.greptile/`.
+
 ## 0.9.0 - 2026-11-25
 
 ### Upgrading

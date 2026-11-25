@@ -1,0 +1,22 @@
+{
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "description": "Project conventions: the owner of each state, explicit state machines, the test strategy and the changelog rule"
+    },
+    {
+      "path": "docs/design.md",
+      "description": "Design decisions, data model and module layout"
+    },
+    {
+      "path": "docs/change-requests.md",
+      "description": "The change request state machine; its transition table must change with the lifecycle code",
+      "scope": ["netbox_change_control/**"]
+    },
+    {
+      "path": "dev/UPSTREAM.md",
+      "description": "The netbox-branching problems that the plugin works around",
+      "scope": ["netbox_change_control/**"]
+    }
+  ]
+}

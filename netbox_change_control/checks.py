@@ -210,8 +210,14 @@ def checks_for_display(change_request):
     the gate already treats it as blocking, so the page must show it; a placeholder shows it
     without a page view writing a row. A row no longer expected is left out, as the gate ignores
     it until the next run deletes it.
+
+    A finished request shows its stored rows only: they are its record, and a later change to
+    the settings must not change what it ended with.
     """
     from netbox_change_control.models import MergeCheck
+
+    if not change_request.is_open:
+        return list(change_request.checks.all())
 
     expected = expected_checks(change_request)
     rows = [row for row in change_request.checks.all() if row.name in expected]

@@ -91,6 +91,14 @@ def test_a_change_is_reviewed_merged_and_kept_on_record(api, people, branch, log
     requester.goto(f'{url}edit/')
     expect(requester.locator('input[name=title]')).to_be_disabled()
 
+    # The policy is shared by every journey, so it gets its check back even if this one fails.
+    api.call('PATCH', f'plugins/change-control/policies/{people.policy}/', {'checks': []})
+    try:
+        requester.goto(url)
+        expect(requester.locator('tr', has_text=people.check)).to_contain_text('Passed')
+    finally:
+        api.call('PATCH', f'plugins/change-control/policies/{people.policy}/', {'checks': [people.check]})
+
     api.call('DELETE', f'plugins/branching/branches/{branch["id"]}/')
     requester.goto(f'{url}changes/')
     expect(requester.get_by_text('The changes as merged on')).to_be_visible()

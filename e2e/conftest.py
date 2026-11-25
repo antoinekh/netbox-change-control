@@ -93,6 +93,7 @@ class People:
     requester: str
     reviewer: str
     viewer: str
+    policy: int
     # The reported check the e2e policy requires.
     check: str = CHECK
 
@@ -131,7 +132,9 @@ def people(api):
         'plugins/change-control/policy-rules/',
         {'policy': policy['id'], 'name': 'One reviewer', 'min_reviews': 1, 'groups': [group['id']]},
     )
-    return People(requester=requester['username'], reviewer=reviewer['username'], viewer=viewer['username'])
+    return People(
+        requester=requester['username'], reviewer=reviewer['username'], viewer=viewer['username'], policy=policy['id']
+    )
 
 
 @pytest.fixture

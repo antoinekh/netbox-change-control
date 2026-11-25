@@ -21,7 +21,7 @@
 - **A failed merge stops the automatic merge until the next approval.** The history records it.
 - **A change window that closes before an automatic merge is recorded.** The requester is notified, and `change_request_window_closed` is emitted.
 - **The change request page warns when an automatic merge has stopped**, after a failed merge or a closed window.
-- **A completed or abandoned change request keeps the check results it ended with.** Its checks no longer run, and a report on it is refused.
+- **A completed or abandoned change request keeps the check results it ended with.** Its checks no longer run, a later change to the policies does not change what its page shows, and a report on it is refused.
 - **A new change window needs new approvals.** Moving the window makes the reviews stale, and the history records **Window changed**. The window is stored to the second, as the form shows it.
 - **A completed or abandoned change request is read-only**, except its tags and comments.
 - **A merge keeps the record of what it changed.** The Changes tab still shows the changes and their comment threads after the branch is deleted. A migration fills the record for completed requests whose branch still exists.

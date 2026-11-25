@@ -35,6 +35,7 @@
 - The README starts with a 50-second video of the plugin.
 - The README is shorter: features in groups, installation before the documentation, and only the main documentation pages.
 - The lifecycle table shows that a merge completes a request that is not approved when the merge gate is off.
+- `AGENTS.md` maps the architecture for contributors and coding agents: where each state lives, the explicit-state rules, and the test strategy.
 
 ## 0.8.0 - 2026-11-21
 

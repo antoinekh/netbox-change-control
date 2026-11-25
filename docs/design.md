@@ -66,10 +66,16 @@ Enabling it by default would break an existing install the moment the plugin is 
 
 | Module | Responsibility |
 |---|---|
-| `policy.py` | Matching and evaluation. Pure functions over the database, no request needed, so they test in under a second. |
+| `lifecycle.py` | The status transitions of a change request, and the only writer of its status and history. Each transition locks the row, checks a guard on the model, writes, records and announces. |
+| `policy.py` | Matching, evaluation and staleness. Pure functions over the database, no request needed, so they test in under a second. |
 | `validators.py` | The merge gate. |
-| `receivers/` | The signal receivers, one module per concern: `protect_main`, status and policy re-evaluation, branch events, checks, and the delete-cascade guard. |
-| `models/` | Split into `policies.py` and `requests.py`. |
+| `checks.py` | Pre-merge checks: the registry, which checks apply to a request, and the run. |
+| `automerge.py` | Automatic merging, and the stops that hold it back. `jobs.py` runs the periodic sweep. |
+| `notifications.py`, `events.py` | Notifications to reviewers and requesters, and the event types for event rules. |
+| `diffs.py` | Rendering the changes of a request for review, from the branch or from the merge record. |
+| `permissions.py` | Every permission the plugin checks, and the helpers that check them. |
+| `receivers/` | The signal receivers, one module per concern: `protect_main`, status and policy re-evaluation, branch events, failed merge jobs, checks, and the delete-cascade guard. |
+| `models/` | `policies.py`, `requests.py` (change request, review, history, merge record), `checks.py` and `comments.py`. |
 
 ## Testing
 

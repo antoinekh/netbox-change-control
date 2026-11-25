@@ -11,10 +11,6 @@ netbox_change_control.egg-info/
 .venv/
 venv/
 
-# Local development harness, not versioned for now.
-dev/
-Makefile
-
 # Zensical builds the site here, and caches beside it.
 site/
 .zensical/

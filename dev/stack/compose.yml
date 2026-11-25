@@ -1,0 +1,145 @@
+# The development stack: NetBox with netbox-branching, this plugin mounted from the working copy,
+# and the seed plugin in dev/. The Makefile at the repository root drives it.
+#
+# The `e2e` profile adds a second NetBox on its own database for the browser tests in e2e/, and
+# the `webhook` profile a receiver for webhook deliveries.
+#
+# Every password, key and token below is a fixed value for this local stack only.
+
+name: netbox-change-control-dev
+
+x-netbox-environment: &netbox-environment
+  DB_HOST: postgres
+  DB_NAME: netbox
+  DB_USER: netbox
+  DB_PASSWORD: netbox
+  REDIS_HOST: redis
+  REDIS_DATABASE: "0"
+  REDIS_CACHE_HOST: redis
+  REDIS_CACHE_DATABASE: "1"
+  SECRET_KEY: dev-stack-only-secret-key-not-for-production-0123456789
+  API_TOKEN_PEPPER_1: dev-stack-only-api-token-pepper-not-for-production-0123
+  # The plugin, and dev/ for the seed plugin.
+  PYTHONPATH: /workspace:/workspace/dev
+  # NetBox runs makemigrations only for a developer.
+  DEVELOPER: "true"
+  SKIP_SUPERUSER: "false"
+  SUPERUSER_NAME: admin
+  SUPERUSER_EMAIL: admin@example.com
+  SUPERUSER_PASSWORD: admin
+  # The address the seed prints in its links.
+  NETBOX_URL: http://localhost:${NETBOX_PORT:-8890}
+
+x-netbox: &netbox
+  image: netbox-change-control-dev:4.7.6
+  # The tag is local; there is no such image to pull.
+  pull_policy: never
+  build:
+    context: .
+  user: "netbox:root"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  environment: *netbox-environment
+  volumes:
+    - ../..:/workspace:z
+    - ./plugins.py:/etc/netbox/config/plugins.py:z,ro
+
+x-netbox-healthcheck: &netbox-healthcheck
+  test: curl -f http://localhost:8080/login/ || exit 1
+  # The first start migrates an empty database.
+  start_period: 600s
+  timeout: 3s
+  interval: 15s
+
+x-worker: &worker
+  command:
+    - /opt/netbox/venv/bin/python
+    - /opt/netbox/netbox/manage.py
+    - rqworker
+  healthcheck:
+    test: ps -aux | grep -v grep | grep -q rqworker || exit 1
+    start_period: 20s
+    timeout: 3s
+    interval: 15s
+
+x-e2e-environment: &e2e-environment
+  <<: *netbox-environment
+  DB_NAME: netbox_e2e
+  REDIS_DATABASE: "2"
+  REDIS_CACHE_DATABASE: "3"
+  SUPERUSER_NAME: e2e-admin
+  SUPERUSER_EMAIL: e2e-admin@example.com
+  SUPERUSER_PASSWORD: e2e-admin
+  # The browser tests authenticate with `Bearer nbt_<key>.<token>`; see the Makefile.
+  SUPERUSER_API_KEY: e2eAdminKey1
+  SUPERUSER_API_TOKEN: devStackE2eTokenNotASecret00000000000000
+  NETBOX_URL: http://localhost:${E2E_PORT:-8891}
+
+services:
+  netbox:
+    <<: *netbox
+    ports:
+      - "${NETBOX_PORT:-8890}:8080"
+    healthcheck: *netbox-healthcheck
+
+  netbox-worker:
+    <<: [*netbox, *worker]
+    depends_on:
+      netbox:
+        condition: service_healthy
+
+  netbox-e2e:
+    <<: *netbox
+    profiles: [e2e]
+    environment: *e2e-environment
+    ports:
+      - "${E2E_PORT:-8891}:8080"
+    healthcheck: *netbox-healthcheck
+
+  netbox-e2e-worker:
+    <<: [*netbox, *worker]
+    profiles: [e2e]
+    environment: *e2e-environment
+    depends_on:
+      netbox-e2e:
+        condition: service_healthy
+
+  webhook:
+    image: docker.io/python:3.14-alpine
+    profiles: [webhook]
+    command: [python, -u, /webhook_receiver.py]
+    volumes:
+      - ./webhook_receiver.py:/webhook_receiver.py:z,ro
+    ports:
+      - "${WEBHOOK_PORT:-8892}:9000"
+
+  postgres:
+    image: docker.io/postgres:17-alpine
+    environment:
+      POSTGRES_DB: netbox
+      POSTGRES_USER: netbox
+      POSTGRES_PASSWORD: netbox
+    healthcheck:
+      test: pg_isready -q -t 2 -d netbox -U netbox
+      start_period: 20s
+      timeout: 30s
+      interval: 10s
+      retries: 5
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:z,ro
+
+  redis:
+    image: docker.io/valkey/valkey:9.1-alpine
+    healthcheck:
+      test: '[ "$$(valkey-cli ping)" = "PONG" ]'
+      start_period: 5s
+      timeout: 3s
+      interval: 1s
+      retries: 5
+
+volumes:
+  postgres:

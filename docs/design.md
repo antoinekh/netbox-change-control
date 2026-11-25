@@ -87,11 +87,11 @@ Layer one is the test suite, one file per subject: the policy engine, the merge 
 
 The shared fixtures live in `tests/base.py`, so the shape of a change request is declared once rather than in every file. Fixture classes carry no tests of their own: subclassing a class which has tests re-runs every one of them under the subclass, which inflates the count and covers nothing new.
 
-Layer two is the browser tests in `e2e/`. They drive a running NetBox with Playwright as a requester, a reviewer and a viewer, from opening a change to its record, and check what each person sees. They prepare their data through the REST API, delete it at the end, and scope their policy to site groups, so they can run against a NetBox that holds other data. The `Browser tests` workflow runs them against a new NetBox; `e2e/conftest.py` says how to run them locally.
+Layer two is the browser tests in `e2e/`. They drive a running NetBox with Playwright as a requester, a reviewer and a viewer, from opening a change to its record, and check what each person sees. They prepare their data through the REST API, delete it at the end, and scope their policy to site groups, so they leave the data of their NetBox alone. They still run on a NetBox of their own, because policies that cover every branch would change what they see. The `Browser tests` workflow runs them against a new NetBox, and `make e2e` against the e2e NetBox of the development stack.
 
 Layer three is the seed command, `seed_change_control`. It creates the reviewer groups and users, the object permissions those users need, five graded policies, a branch with a real change, and an open change request. `--adopt` opens a change request for branches that already exist.
 
-The seed commands live in a development-only plugin which is neither published nor committed, so a production install has no command that can invent policies, users or permissions, and a reader of this repository will not find one.
+The seed commands live in a development-only plugin in `dev/`. It is in the repository, so every developer seeds the same data in the same development stack (`dev/stack/`), and it is not in the package, so a production install has no command that can invent policies, users or permissions.
 
 The seed's branch edit must run inside `netbox.context_managers.event_tracking` with a synthetic request. NetBox writes `ObjectChange` records only within a request context; without it the branch records no changes, `ChangeDiff` stays empty, and every scoped policy silently fails to match.
 

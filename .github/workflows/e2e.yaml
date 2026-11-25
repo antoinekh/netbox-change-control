@@ -71,7 +71,7 @@ jobs:
 
       - name: Configure NetBox
         run: |
-          ln -s "$GITHUB_WORKSPACE/netbox-change-control/testing/configuration.py" \
+          ln -s "$GITHUB_WORKSPACE/netbox-change-control/dev/ci/configuration.py" \
                 "$GITHUB_WORKSPACE/netbox/netbox/netbox/configuration.py"
 
       - name: Grant the database user permission to create schemas

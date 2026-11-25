@@ -6,6 +6,8 @@ netbox-change-control is a NetBox 4.7 plugin that puts a policy-driven review ga
 
 - `docs/design.md`: the decisions and why (the gate is a validator, eligibility is per rule, zero rules fail closed, plugin models are exempt from branching), the data model, and the module layout. Read it before you change a rule.
 - `docs/change-requests.md`, section "Every transition": the specification of the change request state machine. `tests/test_state_machine.py` parses this table.
+- `dev/UPSTREAM.md`: the netbox-branching problems that the plugin works around. Read it before you change or remove a workaround.
+- `dev/DEV.md`: the development stack in `dev/stack/`, the `make` targets, the seeded users and policies.
 - The other pages in `docs/` are the user documentation, one page per feature. The code follows them: when a behaviour changes, its page changes in the same commit.
 
 Where each state lives:
@@ -37,7 +39,7 @@ Every field or flag that moves through states is a state machine, and it is writ
 
 ## Tests
 
-End-to-end first. For behaviour a person sees, extend a journey in `e2e/test_journeys.py` or add one: it drives a running NetBox through the browser (Playwright) as a requester, a reviewer and a viewer. The docstring of `e2e/conftest.py` says how to run it, and `.github/workflows/e2e.yaml` runs it in CI.
+End-to-end first. For behaviour a person sees, extend a journey in `e2e/test_journeys.py` or add one: it drives a running NetBox through the browser (Playwright) as a requester, a reviewer and a viewer. `make e2e` runs the journeys against a NetBox of their own, and `.github/workflows/e2e.yaml` runs them in CI.
 
 Add a unit test in `netbox_change_control/tests/` only for what a journey cannot reach cheaply: concurrency, migrations, query counts, who may write what, and rules with many cases (one table test with `subTest`, not one test per case). A new status transition is covered by the state machine test once the docs table lists it; add a scenario to `SCENARIOS` if no scenario reaches the new row.
 
@@ -45,7 +47,7 @@ Keep the suite lean: obvious code (properties, labels, `__str__`, a page that re
 
 A test earns its place by going red: remove the fix, see the test fail, put the fix back.
 
-The unit tests run with `manage.py test netbox_change_control` in a NetBox 4.7 with netbox-branching and `testing/configuration.py`, as `.github/workflows/tests.yaml` does. Most of them build branches without a schema; `tests/base.py` holds the shared fixtures.
+`make test` runs the unit tests in the development stack; `.github/workflows/tests.yaml` runs them in CI with `dev/ci/configuration.py`. Most of them build branches without a schema; `tests/base.py` holds the shared fixtures.
 
 ## Conventions
 

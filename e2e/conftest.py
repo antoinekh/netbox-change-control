@@ -4,13 +4,16 @@ Browser tests against a running NetBox with the plugin installed.
 They prepare their data through the REST API and act through the browser as three people: a
 requester, who opens and merges the change, a reviewer, who approves it, and a viewer, who may
 only read it. Every object they create is deleted at the end, and their policy covers only site
-groups, so the data of the NetBox they run against is left alone.
+groups, so the data of the NetBox they run against is left alone. A NetBox whose own policies
+cover every branch still changes what they see, so they run on a NetBox of their own.
 
-    NETBOX_URL=http://localhost:8889 E2E_AUTHORIZATION='Token ...' \\
-        uv run --only-group e2e pytest e2e --browser-channel chrome
+`make e2e` starts one from dev/stack/ on its own database, and runs them. Against another
+NetBox, with its background worker running, since jobs provision and merge the branches:
 
-E2E_AUTHORIZATION is the whole Authorization header of a superuser's API token. A background
-worker must be running: branches are provisioned and merged by jobs.
+    NETBOX_URL=http://localhost:8891 E2E_AUTHORIZATION='Bearer nbt_...' \\
+        uv run --locked --only-group e2e pytest e2e
+
+E2E_AUTHORIZATION is the whole Authorization header of a superuser's API token.
 """
 
 import os
@@ -44,7 +47,7 @@ def pytest_configure(config):
 
 @pytest.fixture(scope='session')
 def base_url():
-    return os.environ.get('NETBOX_URL', 'http://localhost:8889').rstrip('/')
+    return os.environ.get('NETBOX_URL', 'http://localhost:8891').rstrip('/')
 
 
 @dataclass

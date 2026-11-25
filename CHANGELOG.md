@@ -1,12 +1,6 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
-- Internal: Greptile reviews the pull requests, with its configuration in `.greptile/`.
-
-## 0.9.0 - 2026-11-25
+## 0.9.0 - 2026-11-26
 
 ### Upgrading
 
@@ -27,6 +21,7 @@
 - **A merge keeps the record of what it changed.** The Changes tab still shows the changes and their comment threads after the branch is deleted. A migration fills the record for completed requests whose branch still exists.
 - Internal: the change window state is an enum, the change request model holds every status guard, the templates read states from the model and the choice sets, a test checks the state machine against the documented transition table and its invariants, and browser tests cover eight journeys of a requester, a reviewer and a viewer, with their tools pinned in `uv.lock`.
 - Internal: a development stack in `dev/stack/` runs NetBox with netbox-branching, its worker, a second NetBox for the browser tests and a webhook receiver. `make up`, `make seed`, `make test` and `make e2e` drive it, and the seed plugin and the developer guide are in the repository. The NetBox configuration of CI moves from `testing/` to `dev/ci/`. The stack is for development only, and its ports listen on localhost.
+- Internal: Greptile reviews the pull requests, with its configuration in `.greptile/`.
 
 ### Fixed
 

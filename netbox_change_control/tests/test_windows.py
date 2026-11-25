@@ -342,6 +342,33 @@ class AutoMergeStopsTest(ApprovedRequestTestCase):
             Notification.objects.filter(user=self.requester, event_type=CHANGE_REQUEST_WINDOW_CLOSED).exists()
         )
 
+    def test_a_closed_window_is_not_recorded_from_a_stale_read(self):
+        from netbox_change_control.lifecycle import record_closed_window
+
+        closed = timezone.now() - timedelta(minutes=5)
+        self.reschedule(scheduled_end=closed)
+        changes = (
+            ('merged', {'status': ChangeRequestStatusChoices.COMPLETED}),
+            ('abandoned', {'status': ChangeRequestStatusChoices.ABANDONED}),
+            ('automatic merge turned off', {'auto_merge': False}),
+            ('window moved later', {'scheduled_end': timezone.now() + timedelta(hours=1)}),
+        )
+        for name, fields in changes:
+            with self.subTest(name):
+                stale = ChangeRequest.objects.get(pk=self.cr.pk)
+                ChangeRequest.objects.filter(pk=self.cr.pk).update(**fields)
+
+                recorded = record_closed_window(stale)
+                entries = self.cr.history.filter(action=HistoryActionChoices.WINDOW_CLOSED)
+                self.assertFalse(recorded)
+                self.assertFalse(entries.exists())
+
+                # An entry would cover this window and hide the next case, so each starts clean.
+                entries.delete()
+                ChangeRequest.objects.filter(pk=self.cr.pk).update(
+                    status=ChangeRequestStatusChoices.APPROVED, auto_merge=True, scheduled_end=closed
+                )
+
     def test_a_window_moved_later_is_recorded_again_when_it_closes(self):
         from netbox_change_control.automerge import run_due_auto_merges
 

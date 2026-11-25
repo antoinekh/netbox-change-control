@@ -261,10 +261,15 @@ def record_closed_window(change_request):
     Once per window: a step recorded after the window closed covers it, and moving the window
     later makes the next close a new one.
     """
+    from netbox_change_control.automerge import AutoMergeStop, stopped
     from netbox_change_control.notifications import notify_window_closed
 
     with transaction.atomic():
         if not change_request.lock_status():
+            return False
+        # The caller read the request before the lock: it may have merged, or its window moved.
+        change_request.refresh_from_db(fields=['auto_merge', 'scheduled_start', 'scheduled_end'])
+        if stopped(change_request) != AutoMergeStop.WINDOW_CLOSED:
             return False
         if change_request.history.filter(
             action=HistoryActionChoices.WINDOW_CLOSED, time__gte=change_request.scheduled_end

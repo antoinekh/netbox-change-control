@@ -216,9 +216,6 @@ m2m_changed.connect(refresh_on_group_membership_change, sender=User.groups.throu
 m2m_changed.connect(refresh_on_group_membership_change, sender=Group.users.through)
 
 
-WINDOW_FIELDS = ('scheduled_start', 'scheduled_end')
-
-
 @receiver(pre_save, sender=ChangeRequest)
 def read_stored_window(sender, instance, update_fields=None, **kwargs):
     """
@@ -227,11 +224,10 @@ def read_stored_window(sender, instance, update_fields=None, **kwargs):
     Read from the database, not from the instance, so the rule holds however the instance was
     loaded.
     """
-    if instance._state.adding or (update_fields is not None and not set(WINDOW_FIELDS) & set(update_fields)):
+    window = ChangeRequest.WINDOW_FIELDS
+    if instance._state.adding or (update_fields is not None and not set(window) & set(update_fields)):
         return
-    instance._change_control_stored_window = (
-        ChangeRequest.objects.filter(pk=instance.pk).values_list(*WINDOW_FIELDS).first()
-    )
+    instance._change_control_stored_window = ChangeRequest.objects.filter(pk=instance.pk).values_list(*window).first()
 
 
 @receiver(post_save, sender=ChangeRequest)
@@ -240,7 +236,7 @@ def invalidate_approval_on_window_change(sender, instance, **kwargs):
     A new change window makes the reviews stale: they approved the slot as well as the content.
     """
     stored = instance.__dict__.pop('_change_control_stored_window', None)
-    if stored is not None and stored != tuple(getattr(instance, field) for field in WINDOW_FIELDS):
+    if stored is not None and stored != tuple(getattr(instance, field) for field in ChangeRequest.WINDOW_FIELDS):
         record_window_change(instance)
 
 

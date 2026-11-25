@@ -201,11 +201,21 @@ def test_a_viewer_can_read_but_not_act(api, people, branch, login):
     expect(viewer.get_by_text('You do not have permission to review change requests.')).to_be_visible()
 
 
-def test_moving_the_window_needs_a_new_approval(api, people, branch, login):
+def test_only_moving_the_window_needs_a_new_approval(api, people, branch, login):
     requester, reviewer = login(people.requester), login(people.reviewer)
     url = open_request(requester, api, branch)
+    # A script sets the window to the microsecond; the form shows it to the second.
+    request_id = url.rstrip('/').rsplit('/', 1)[1]
+    start = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    api.call('PATCH', f'plugins/change-control/change-requests/{request_id}/', {'scheduled_start': start})
+    requester.goto(url)
     submit(requester)
     approve(reviewer, url)
+    assert status_of(requester, url) == 'Approved'
+
+    requester.goto(f'{url}edit/')
+    requester.fill('input[name=title]', f'{branch["name"]} renamed')
+    requester.click('button[name=_update]')
     assert status_of(requester, url) == 'Approved'
 
     later = (datetime.now(UTC) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
@@ -221,4 +231,5 @@ def test_moving_the_window_needs_a_new_approval(api, people, branch, login):
 
     assert status_of(requester, url) == 'Needs review'
     requester.goto(f'{url}history/')
-    expect(requester.get_by_text('Window changed', exact=True)).to_be_visible()
+    # The script's window and the move; the title edit records none.
+    expect(requester.get_by_text('Window changed', exact=True)).to_have_count(2)

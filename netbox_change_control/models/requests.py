@@ -122,6 +122,7 @@ class ChangeRequest(PrimaryModel):
 
     # What the request says about the change. Frozen once the request is finished.
     RECORD_FIELDS = ('ref', 'title', 'description', 'priority', 'scheduled_start', 'scheduled_end', 'auto_merge')
+    WINDOW_FIELDS = ('scheduled_start', 'scheduled_end')
 
     class Meta:
         ordering = ('-created',)
@@ -158,6 +159,11 @@ class ChangeRequest(PrimaryModel):
             self.branch_name = self.branch.name
             if (update_fields := kwargs.get('update_fields')) is not None:
                 kwargs['update_fields'] = {*update_fields, 'branch_name'}
+        # The edit form shows the window to the second, so a finer value would read as a move of
+        # the window, which makes the reviews stale, the next time the form saves another field.
+        for name in self.WINDOW_FIELDS:
+            if value := getattr(self, name):
+                setattr(self, name, value.replace(microsecond=0))
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):

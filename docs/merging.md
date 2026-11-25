@@ -45,7 +45,7 @@ Either bound may be left empty. A start alone means "not before"; an end alone m
 
 The window is a **third, independent gate**, checked alongside the policies and the checks. When it blocks, the merge button states when the window opens or when it closed.
 
-The reviewers approve the window as well as the content. A new start or end, including adding or removing a bound, makes the reviews given before it stale: the request goes back to Needs review, and the history records **Window changed**. Change the window before the reviews, or ask for them again.
+The reviewers approve the window as well as the content. A new start or end, including adding or removing a bound, makes the reviews given before it stale: the request goes back to Needs review, and the history records **Window changed**. Change the window before the reviews, or ask for them again. The window is stored to the second, as the form shows it, so saving the form without touching the window keeps the reviews.
 
 Users holding `netbox_change_control.override_window_changerequest` may merge outside the window, which is what an incident needs. See [granting the exemptions](permissions.md#granting-the-custom-actions).
 

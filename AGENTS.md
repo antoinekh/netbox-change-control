@@ -51,5 +51,5 @@ The unit tests run with `manage.py test netbox_change_control` in a NetBox 4.7 w
 
 - Every change gets a bullet under `## Unreleased` in `CHANGELOG.md`, in its section (Upgrading, Changed, Fixed, Removed, Documentation).
 - netbox-branching runs the plugin migrations again in each branch schema, so a data migration skips what is already done.
-- Lint with ruff 0.17.4 on `netbox_change_control` and `e2e`, as `.github/workflows/lint.yaml` does.
+- Lint with `make lint`, which runs ruff as CI does.
 - A code comment says why, in one sentence.

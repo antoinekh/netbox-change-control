@@ -7,7 +7,7 @@ netbox-change-control is a NetBox 4.7 plugin that puts a policy-driven review ga
 - `docs/design.md`: the decisions and why (the gate is a validator, eligibility is per rule, zero rules fail closed, plugin models are exempt from branching), the data model, and the module layout. Read it before you change a rule.
 - `docs/change-requests.md`, section "Every transition": the specification of the change request state machine. `tests/test_state_machine.py` parses this table.
 - `dev/UPSTREAM.md`: the netbox-branching problems that the plugin works around. Read it before you change or remove a workaround.
-- `dev/DEV.md`: the development stack in `dev/stack/`, the `make` targets, the seeded users and policies.
+- `dev/DEV.md`: the development stack in `dev/stack/`, the `make` targets, the seeded users and policies. The stack is for development and tests only, never for production: its credentials are public, so its ports listen on localhost.
 - The other pages in `docs/` are the user documentation, one page per feature. The code follows them: when a behaviour changes, its page changes in the same commit.
 
 Where each state lives:

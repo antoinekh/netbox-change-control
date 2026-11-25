@@ -15,7 +15,10 @@ make seed  # once, on a new database
 
 The first start migrates an empty database, which takes several minutes. Then open <http://localhost:8890> and sign in as `admin` / `admin`. A source change needs `make reload`, never a rebuild.
 
-Every password, key and token in the compose file is a fixed value for this local stack only. Set `NETBOX_PORT` or `E2E_PORT` to move the ports.
+> [!WARNING]
+> The stack is for development and tests only, never for production. Every password, key and token in the compose file is a fixed value that anyone can read in this repository.
+
+Its ports listen on `127.0.0.1` only. Set `NETBOX_PORT`, `E2E_PORT` or `WEBHOOK_PORT` to move them, and `BIND_ADDRESS` to listen on another address, for a stack on a remote machine you reach through a private network.
 
 ## Make targets
 

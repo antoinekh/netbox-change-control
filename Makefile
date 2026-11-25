@@ -10,6 +10,8 @@ AS_HOST := -u $(shell id -u):$(shell id -g)
 export NETBOX_PORT ?= 8890
 export E2E_PORT ?= 8891
 export WEBHOOK_PORT ?= 8892
+# The stack's credentials are public, so its ports listen on this address only.
+export BIND_ADDRESS ?= 127.0.0.1
 # The API token the compose file gives the e2e superuser.
 E2E_AUTHORIZATION := Bearer nbt_e2eAdminKey1.devStackE2eTokenNotASecret00000000000000
 

@@ -8,14 +8,53 @@ A cache is only worth having if it agrees with the truth, so most of this file c
 cached answer against the live one across the states a change request passes through.
 """
 
+from importlib import import_module
+
+from django.apps import apps
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from users.models import Group, User
 
 from netbox_change_control.checks import BUILTIN_CHECKS
+from netbox_change_control.choices import ChangeRequestStatusChoices
 from netbox_change_control.models import ChangeRequest, ChangeRequestPolicy, Policy, PolicyRule
-from netbox_change_control.tests.base import approve, make_branch
+from netbox_change_control.tests.base import ChangeControlTestCase, approve, make_branch
+
+
+class StaleCacheMigrationTest(ChangeControlTestCase):
+    """
+    Rows whose cached columns outlived their status or their branch are repaired.
+
+    netbox-branching runs the plugin migrations again in each branch, so the repair runs twice.
+    """
+
+    branch_prefix = 'stale-cache'
+
+    def _flags(self):
+        self.cr.refresh_from_db()
+        return self.cr.cached_gates_cleared, self.cr.cached_conflicted
+
+    def test_the_migration_clears_only_what_the_row_no_longer_allows(self):
+        migration = import_module('netbox_change_control.migrations.0018_clear_stale_cached_columns')
+        cases = (
+            ('approved with its branch', ChangeRequestStatusChoices.APPROVED, True, (True, True)),
+            ('abandoned with its branch', ChangeRequestStatusChoices.ABANDONED, True, (False, True)),
+            ('abandoned without a branch', ChangeRequestStatusChoices.ABANDONED, False, (False, False)),
+        )
+        for name, status, has_branch, expected in cases:
+            with self.subTest(name):
+                ChangeRequest.objects.filter(pk=self.cr.pk).update(
+                    status=status,
+                    branch=self.branch if has_branch else None,
+                    cached_gates_cleared=True,
+                    cached_conflicted=True,
+                )
+
+                migration.clear_stale_cached_columns(apps, None)
+                migration.clear_stale_cached_columns(apps, None)
+
+                self.assertEqual(self._flags(), expected)
 
 
 class WindowIsNotCachedTest(TestCase):

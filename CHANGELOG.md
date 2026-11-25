@@ -11,7 +11,7 @@
 ### Upgrading
 
 - **NetBox 4.7.6 or later is required.** Its event rule forms list the event types of every plugin ([netbox#23652](https://github.com/netbox-community/netbox/issues/23652), fixed by [netbox#23688](https://github.com/netbox-community/netbox/pull/23688)), so the workaround of 0.6.1 is removed. Stay on 0.8.x on NetBox 4.7.0 to 4.7.5.
-- **Migrate every open branch.** This release adds a migration, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
+- **Migrate every open branch.** This release adds migrations, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
 
 ### Changed
 
@@ -35,7 +35,7 @@
 - **A check that no longer applies does not block the merge**, and the change request page does not show it.
 - **The REST API records the caller as the requester of a new change request.** A caller could name a colleague, approve the change as a reviewer, or have an automatic merge run as somebody else.
 - **A repeated notification is dated when it is raised again**, so it sorts with the new ones.
-- **An abandoned change request is no longer listed as ready to merge.** Every status change now refreshes the cached columns of the list.
+- **An abandoned change request is no longer listed as ready to merge.** Every status change now refreshes the cached columns of the list, and a migration repairs the requests abandoned before.
 - **A change request stays on the branch it was opened for.** The edit form and the REST API let it move to another branch, which carried the approvals over to changes nobody reviewed.
 
 ### Documentation

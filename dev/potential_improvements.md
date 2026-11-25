@@ -31,15 +31,52 @@ This is mostly blocked upstream: branching offers acknowledgement, not resolutio
 
 ## Checks shipped rather than documented
 
-The check registry is the intended extension point, and [writing your own checks](../docs/custom-checks.md) shows an AI reviewer and a CI reporter as worked examples. Both are examples, not features: neither ships. Now that a policy decides where a check applies, shipping one is safer than it was, because a site chooses which changes it governs rather than getting it everywhere.
+The plugin ships four checks (`has-changes`, `no-conflicts`, `not-stale`, `threads-resolved`). `enable_builtin_checks` makes them available, and a policy decides where they apply. Every other check is an example in [writing your own checks](../docs/custom-checks.md): to use one, a site writes its own NetBox plugin, copies the code, registers it in `ready()` and maintains it. Few NetBox teams do that.
 
-Candidates for shipping, each behind its own setting:
+The idea is to ship the most useful examples as built-in checks, so a site turns each one on with a setting and selects it in a policy, like the four built-ins. A policy decides where a check applies, so shipping a check no longer forces it on every change.
 
-- a model-backed review of the diff, reporting a summary and a pass or fail;
-- a check that waits on an external pipeline and is reported through the REST API;
-- a check that refuses a change touching more than a configured number of objects.
+```python
+PLUGINS_CONFIG = {
+    'netbox_change_control': {
+        'enable_builtin_checks': ['has-changes', 'no-conflicts', 'max-objects', 'ai-review'],
+        'max_changed_objects': 50,
+    },
+}
+```
 
-The AI one needs care. A model must not be able to approve a change on its own, so it should report as an advisory check by default, and a site should have to opt in to making it required.
+### 1. A limit on the size of a change (`max-objects`)
+
+The check fails when the branch changes more objects than the configured limit. A branch that bulk-edits 300 interfaces shows **Failed: 300 objects changed; the limit is 50. Split the change.** A "Core network" policy selects it, and a policy for cable labels does not, so a large label clean-up still merges.
+
+It needs no external service and is deterministic, so it is the easiest one to ship. A check receives only the change request, so the limit is one global setting. A limit per policy (20 for core, 500 for labels) needs a parameter on the policy, which is more work.
+
+### 2. A check that an external pipeline reports
+
+Most of it works today: `required_external_checks` declares the check, the merge waits while it is pending, and the pipeline reports `status`, `summary` and `details_url` through the REST API. For example, a GitLab job renders the configurations of the changed devices from the branch, validates them (with Batfish, for example), and reports **Success: 12 configurations valid** with a link to the job.
+
+What is missing is the signal that tells the pipeline when to start: today it polls, or the site builds its own event rule. Shipping it means a ready-made webhook when the checks must run again (the branch is synced, the change is edited), and GitLab CI and GitHub Actions recipes in the documentation.
+
+### 3. An AI review (`ai-review`)
+
+The check sends the diff to a model and shows its verdict, for example **Failed (advisory): the change disables ge-0/0/1, the only uplink of edge-sw-1**, or **Passed: descriptions and tags only.**
+
+The rules that keep it safe:
+
+- It is advisory by default (`required=False`), so it blocks a merge only where a site opts in.
+- It never approves: approvals stay with people.
+- Settings for the model, the API key (read from the environment) and a maximum diff size.
+
+To solve before shipping:
+
+- Cost and delay: checks run again on every refresh, including each change to a comment thread. This check must run only when the diff changes, or when someone presses **Re-run checks**.
+- Data: the whole diff goes to a third party. The documentation must say so, and some sites will forbid it.
+- Context: the model sees only the diff, not the rest of the network.
+
+### Suggested order
+
+1. `max-objects`: small, safe and useful at once.
+2. The pipeline webhook and the CI recipes.
+3. `ai-review`, after a check can run only when the diff changes.
 
 ## A calendar view of change windows
 

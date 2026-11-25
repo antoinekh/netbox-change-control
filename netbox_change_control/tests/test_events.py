@@ -119,8 +119,8 @@ class EventRuleFormChoicesTest(TestCase):
     Every registered event type is offered by NetBox's event rule forms.
 
     A type the forms do not offer cannot be picked in the interface, and a CSV import naming it
-    is refused, even though it is registered and the REST API accepts it. NetBox 4.7 imports
-    these forms before any plugin is ready, so a list read at import misses every plugin type.
+    is refused, even though it is registered and the REST API accepts it. The forms are imported
+    before any plugin is ready, so they must read the list each time they are built.
     """
 
     OUR_EVENTS = (

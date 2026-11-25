@@ -31,9 +31,8 @@ jobs:
         # This branch is the NetBox 4.7 line and is tested against nothing else. 4.7 drops
         # the django-mptt columns, so netbox-branching 1.1.x cannot run on it and 1.2 cannot
         # run on 4.6; there is no version of NetBox both lines share. The 0.4.x branch keeps
-        # the 4.6 job. 4.7.0 is the declared minimum and 4.7.6 the latest release, the first
-        # whose event rule forms offer plugin event types without the plugin's help.
-        netbox: ['v4.7.0', 'v4.7.6']
+        # the 4.6 job. 4.7.6 is both the declared minimum and the latest release.
+        netbox: ['v4.7.6']
         python: ['3.12', '3.13', '3.14']
 
     services:

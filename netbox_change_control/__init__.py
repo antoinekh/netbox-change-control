@@ -13,7 +13,7 @@ class ChangeControlConfig(PluginConfig):
     # requirement is enforced rather than documented. This release is the NetBox 4.7 line and
     # supports nothing older: 4.7 drops the django-mptt columns, so netbox-branching 1.1.x
     # cannot run on it, and 1.2 cannot run on 4.6. Stay on the 0.4.x line for NetBox 4.6.
-    min_version = '4.7.0'
+    min_version = '4.7.6'
     max_version = '4.7.99'
     default_settings = {  # noqa: RUF012
         # Block writes to branching-supported models outside of a branch. Users holding the
@@ -67,9 +67,6 @@ class ChangeControlConfig(PluginConfig):
         # Without this the My Reviews widget is missing from "Add widget", and a dashboard
         # already holding one fails to load at all.
         from . import dashboard, events, receivers  # noqa: F401
-
-        if events.event_rule_forms_need_refresh():
-            events.refresh_event_rule_form_choices()
 
         # Registering the job is what makes rqworker schedule it, so skipping the import
         # when auto-merge is off means no periodic job and no Job records at all.

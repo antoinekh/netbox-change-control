@@ -4,6 +4,7 @@
 
 ### Upgrading
 
+- **NetBox 4.7.6 or later is required.** Its event rule forms list the event types of every plugin, so the workaround of 0.6.1 is removed. Stay on 0.8.x on NetBox 4.7.0 to 4.7.5.
 - **Migrate every open branch.** This release adds a migration, so netbox-branching marks existing branches **Pending migrations** until you run **Migrate** on each one.
 
 ### Changed
@@ -19,7 +20,6 @@
 - **A completed or abandoned change request is read-only**, except its tags and comments.
 - **A merge keeps the record of what it changed.** The Changes tab still shows the changes and their comment threads after the branch is deleted. A migration fills the record for completed requests whose branch still exists.
 - Internal: the change window state is an enum, the change request model holds every status guard, the templates read states from the model and the choice sets, a test checks the state machine against the documented transition table and its invariants, and browser tests cover eight journeys of a requester, a reviewer and a viewer, with their tools pinned in `uv.lock`.
-- **On NetBox 4.7.6 and later, the event rule forms list the plugin event types without the workaround of 0.6.1**, which now applies only to older releases. CI tests NetBox 4.7.6.
 
 ### Fixed
 

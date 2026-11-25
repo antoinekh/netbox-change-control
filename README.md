@@ -5,7 +5,7 @@
   <a href="https://pypi.org/project/netbox-change-control/"><img src="https://img.shields.io/pypi/v/netbox-change-control" alt="PyPI version" /></a>
   <a href="https://github.com/antoinekh/netbox-change-control/actions/workflows/tests.yaml"><img src="https://github.com/antoinekh/netbox-change-control/actions/workflows/tests.yaml/badge.svg?branch=master" alt="Tests" /></a>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
-  <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.7.0%2C%20%3C%204.8-00857d" alt="NetBox compatibility" />
+  <img src="https://img.shields.io/badge/NetBox-%3E%3D%204.7.6%2C%20%3C%204.8-00857d" alt="NetBox compatibility" />
   <img src="https://img.shields.io/badge/netbox--branching-%3E%3D%201.2.2-00857d" alt="netbox-branching compatibility" />
   <img src="https://img.shields.io/badge/python-%3E%3D%203.12-blue" alt="Python version" />
   <p>
@@ -105,7 +105,7 @@ Two gates guard the merge and they are independent: the people gate (policies an
 
 | Component | Version |
 |---|---|
-| NetBox | `>= 4.7.0, < 4.8` |
+| NetBox | `>= 4.7.6, < 4.8` |
 | netbox-branching | `>= 1.2.2, < 1.3` |
 | Python | `>= 3.12` |
 

@@ -2,7 +2,7 @@
 
 | Component | Version |
 |---|---|
-| NetBox | `>= 4.7.0, < 4.8` |
+| NetBox | `>= 4.7.6, < 4.8` |
 | netbox-branching | `>= 1.2.2, < 1.3` |
 | Python | `>= 3.12` |
 
